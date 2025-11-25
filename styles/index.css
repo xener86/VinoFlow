@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #a8a29e;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #78716c;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* Safe area for mobile */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Wine colors */
+@layer utilities {
+  .text-wine-50 { color: #fdf2f2; }
+  .text-wine-100 { color: #fde8e8; }
+  .text-wine-200 { color: #fbd5d5; }
+  .text-wine-300 { color: #f8b4b4; }
+  .text-wine-400 { color: #f98080; }
+  .text-wine-500 { color: #f05252; }
+  .text-wine-600 { color: #e02424; }
+  .text-wine-700 { color: #c81e1e; }
+  .text-wine-800 { color: #9b1c1c; }
+  .text-wine-900 { color: #771d1d; }
+  .text-wine-950 { color: #3f0d0d; }
+  
+  .bg-wine-50 { background-color: #fdf2f2; }
+  .bg-wine-100 { background-color: #fde8e8; }
+  .bg-wine-200 { background-color: #fbd5d5; }
+  .bg-wine-300 { background-color: #f8b4b4; }
+  .bg-wine-400 { background-color: #f98080; }
+  .bg-wine-500 { background-color: #f05252; }
+  .bg-wine-600 { background-color: #e02424; }
+  .bg-wine-700 { background-color: #c81e1e; }
+  .bg-wine-800 { background-color: #9b1c1c; }
+  .bg-wine-900 { background-color: #771d1d; }
+  .bg-wine-950 { background-color: #3f0d0d; }
+  
+  .border-wine-100 { border-color: #fde8e8; }
+  .border-wine-200 { border-color: #fbd5d5; }
+  .border-wine-300 { border-color: #f8b4b4; }
+  .border-wine-500 { border-color: #f05252; }
+  .border-wine-800 { border-color: #9b1c1c; }
+  .border-wine-900 { border-color: #771d1d; }
+  
+  .ring-wine-500 { --tw-ring-color: #f05252; }
+  .ring-wine-600 { --tw-ring-color: #e02424; }
+  
+  .shadow-wine-500\/20 { --tw-shadow-color: rgba(240, 82, 82, 0.2); }
+  .shadow-wine-500\/30 { --tw-shadow-color: rgba(240, 82, 82, 0.3); }
+  .shadow-wine-900\/20 { --tw-shadow-color: rgba(119, 29, 29, 0.2); }
+  .shadow-wine-900\/30 { --tw-shadow-color: rgba(119, 29, 29, 0.3); }
+}

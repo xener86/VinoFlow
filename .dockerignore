@@ -1,0 +1,59 @@
+# .dockerignore - /volume3/docker/vinoflow/.dockerignore
+
+# Dépendances
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Next.js
+.next
+out
+build
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Tests
+coverage
+.nyc_output
+
+# Variables d'environnement
+.env
+.env*.local
+.env.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+docs
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Logs
+*.log
+logs
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Prisma
+prisma/migrations
