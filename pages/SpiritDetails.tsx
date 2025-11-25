@@ -69,6 +69,27 @@ export const SpiritDetails: React.FC = () => {
 
   if (!spirit) return null;
 
+  const alcoholContent = (spirit as any).alcoholContent ?? (spirit as any).abv;
+  const volume = (spirit as any).volume ?? (spirit as any).format;
+  const quantity = (spirit as any).quantity ?? (spirit as any).inventoryLevel;
+  const isInventoryPercentage = (spirit as any).quantity === undefined && (spirit as any).inventoryLevel !== undefined;
+  const formattedQuantity = (() => {
+    if (quantity === undefined) return undefined;
+    if (typeof quantity === 'number') {
+      const value = quantity > 0 ? quantity : 0;
+      return `${value}${isInventoryPercentage ? '%' : ''}`;
+    }
+    return quantity;
+  })();
+  const origin =
+    (spirit as any).origin ??
+    [(spirit as any).region, (spirit as any).country].filter(Boolean).join(' • ');
+  const barrelType = (spirit as any).barrelType ?? (spirit as any).caskType;
+  const aromas = (spirit as any).aromas ?? (spirit as any).aromaProfile;
+  const notes = (spirit as any).notes;
+  const finish = (spirit as any).finish;
+  const brand = (spirit as any).brand ?? spirit.distillery;
+
   return (
     <div className="pb-32 animate-fade-in">
       {/* Header with gradient background */}
@@ -104,29 +125,35 @@ export const SpiritDetails: React.FC = () => {
             {spirit.category}
           </div>
           <h1 className="text-4xl font-serif mb-2 leading-tight">{spirit.name}</h1>
-          <p className="text-xl font-medium opacity-90">{spirit.brand}</p>
-          {spirit.origin && (
-            <p className="text-sm opacity-75 mt-2">{spirit.origin}</p>
+          <p className="text-xl font-medium opacity-90">{brand}</p>
+          {origin && (
+            <p className="text-sm opacity-75 mt-2">{origin}</p>
           )}
         </div>
 
         {/* Quick Stats */}
         <div className="mt-8 grid grid-cols-3 gap-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-            <Percent size={20} className="mx-auto mb-2 opacity-75" />
-            <p className="text-2xl font-bold">{spirit.alcoholContent}%</p>
-            <p className="text-xs opacity-75 uppercase tracking-wide">Alcool</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-            <Droplets size={20} className="mx-auto mb-2 opacity-75" />
-            <p className="text-2xl font-bold">{spirit.volume}ml</p>
-            <p className="text-xs opacity-75 uppercase tracking-wide">Volume</p>
-          </div>
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-            <Wine size={20} className="mx-auto mb-2 opacity-75" />
-            <p className="text-2xl font-bold">{spirit.quantity}</p>
-            <p className="text-xs opacity-75 uppercase tracking-wide">Stock</p>
-          </div>
+          {alcoholContent !== undefined && (
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
+              <Percent size={20} className="mx-auto mb-2 opacity-75" />
+              <p className="text-2xl font-bold">{alcoholContent}%</p>
+              <p className="text-xs opacity-75 uppercase tracking-wide">Alcool</p>
+            </div>
+          )}
+          {volume !== undefined && (
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
+              <Droplets size={20} className="mx-auto mb-2 opacity-75" />
+              <p className="text-2xl font-bold">{volume}ml</p>
+              <p className="text-xs opacity-75 uppercase tracking-wide">Volume</p>
+            </div>
+          )}
+          {formattedQuantity !== undefined && (
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
+              <Wine size={20} className="mx-auto mb-2 opacity-75" />
+              <p className="text-2xl font-bold">{formattedQuantity}</p>
+              <p className="text-xs opacity-75 uppercase tracking-wide">Stock</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -173,7 +200,7 @@ export const SpiritDetails: React.FC = () => {
 
             {/* Details Grid */}
             <div className="grid grid-cols-2 gap-4">
-              
+
               {spirit.age && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
                   <div className="flex items-center gap-2 text-stone-500 mb-2">
@@ -194,58 +221,58 @@ export const SpiritDetails: React.FC = () => {
                 </div>
               )}
 
-              {spirit.barrelType && (
+              {barrelType && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm col-span-2">
                   <div className="flex items-center gap-2 text-stone-500 mb-2">
                     <Wine size={16} />
                     <span className="text-xs uppercase font-bold">Type de Fût</span>
                   </div>
-                  <p className="text-stone-800 dark:text-stone-200">{spirit.barrelType}</p>
+                  <p className="text-stone-800 dark:text-stone-200">{barrelType}</p>
                 </div>
               )}
 
-              {spirit.purchaseDate && (
+              {(spirit as any).purchaseDate && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
                   <div className="flex items-center gap-2 text-stone-500 mb-2">
                     <Calendar size={16} />
                     <span className="text-xs uppercase font-bold">Date d'Achat</span>
                   </div>
                   <p className="text-stone-800 dark:text-stone-200 text-sm">
-                    {new Date(spirit.purchaseDate).toLocaleDateString('fr-FR', { 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
+                    {new Date((spirit as any).purchaseDate).toLocaleDateString('fr-FR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
                     })}
                   </p>
                 </div>
               )}
 
-              {spirit.price !== undefined && (
+              {(spirit as any).price !== undefined && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
                   <div className="flex items-center gap-2 text-stone-500 mb-2">
                     <span className="text-xs uppercase font-bold">Prix d'Achat</span>
                   </div>
-                  <p className="text-stone-800 dark:text-stone-200 font-medium">{spirit.price} €</p>
+                  <p className="text-stone-800 dark:text-stone-200 font-medium">{(spirit as any).price} €</p>
                 </div>
               )}
 
-              {spirit.location && (
+              {(spirit as any).location && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm col-span-2">
                   <div className="flex items-center gap-2 text-stone-500 mb-2">
                     <MapPin size={16} />
                     <span className="text-xs uppercase font-bold">Emplacement</span>
                   </div>
-                  <p className="text-stone-800 dark:text-stone-200">{spirit.location}</p>
+                  <p className="text-stone-800 dark:text-stone-200">{(spirit as any).location}</p>
                 </div>
               )}
             </div>
 
             {/* Notes */}
-            {spirit.notes && (
+            {notes && (
               <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-200 dark:border-amber-900/50">
                 <h3 className="font-serif text-lg text-amber-900 dark:text-amber-200 mb-3">Notes Personnelles</h3>
                 <p className="text-amber-800 dark:text-amber-300 leading-relaxed italic">
-                  "{spirit.notes}"
+                  "{notes}"
                 </p>
               </div>
             )}
@@ -270,13 +297,13 @@ export const SpiritDetails: React.FC = () => {
             )}
 
             {/* Aromas */}
-            {spirit.aromas && spirit.aromas.length > 0 && (
+            {aromas && aromas.length > 0 && (
               <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
                 <h3 className="font-serif text-lg text-stone-900 dark:text-white mb-4">Profil Aromatique</h3>
                 <div className="flex flex-wrap gap-2">
-                  {spirit.aromas.map((aroma, i) => (
-                    <span 
-                      key={i} 
+                  {aromas.map((aroma: string, i: number) => (
+                    <span
+                      key={i}
                       className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-sm border border-stone-200 dark:border-stone-700"
                     >
                       {aroma}
@@ -287,11 +314,11 @@ export const SpiritDetails: React.FC = () => {
             )}
 
             {/* Finish */}
-            {spirit.finish && (
+            {finish && (
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 p-6 rounded-2xl border border-orange-200 dark:border-orange-900/50">
                 <h3 className="font-serif text-lg text-orange-900 dark:text-orange-200 mb-3">Finale</h3>
                 <p className="text-orange-800 dark:text-orange-300 leading-relaxed">
-                  {spirit.finish}
+                  {finish}
                 </p>
               </div>
             )}
@@ -325,7 +352,7 @@ export const SpiritDetails: React.FC = () => {
             </div>
 
             {/* Empty State */}
-            {!spirit.tastingNotes && (!spirit.aromas || spirit.aromas.length === 0) && !spirit.finish && (
+            {!spirit.tastingNotes && (!aromas || aromas.length === 0) && !finish && (
               <div className="bg-stone-50 dark:bg-stone-900/30 p-12 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 text-center">
                 <GlassWater size={48} className="mx-auto mb-4 text-stone-400" />
                 <h3 className="font-serif text-xl text-stone-600 dark:text-stone-400 mb-2">
