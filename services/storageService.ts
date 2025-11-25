@@ -374,17 +374,18 @@ export const consumeSpecificBottle = (wineId: string, bottleId: string): void =>
     bottle.isConsumed = true;
     bottle.consumedDate = new Date().toISOString();
     
-    // Log journal entry with location
-    let locationLabel = 'Non trié';
-    if (typeof bottle.location !== 'string') {
-        const racks = getRacks();
-        const rack = racks.find(r => r.id === bottle.location.rackId);
-        const rackName = rack?.name || 'Rack Inconnu';
-        const rowLabel = String.fromCharCode(65 + bottle.location.y);
-        locationLabel = `${rackName} [${rowLabel}${bottle.location.x + 1}]`;
-    } else {
-        locationLabel = bottle.location;
-    }
+      // Log journal entry with location
+      let locationLabel = 'Non trié';
+      if (typeof bottle.location !== 'string') {
+          const bottleLocation: BottleLocation = bottle.location;
+          const racks = getRacks();
+          const rack = racks.find(r => r.id === bottleLocation.rackId);
+          const rackName = rack?.name || 'Rack Inconnu';
+          const rowLabel = String.fromCharCode(65 + bottleLocation.y);
+          locationLabel = `${rackName} [${rowLabel}${bottleLocation.x + 1}]`;
+      } else {
+          locationLabel = bottle.location;
+      }
     
     const wine = getWineById(wineId);
     if (wine) {

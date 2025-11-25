@@ -119,7 +119,8 @@ export const Dashboard: React.FC = () => {
   };
 
   const confirmConsumption = (bottleId: string) => {
-      consumeSpecificBottle(bottleId);
+      if (!consumingWine) return;
+      consumeSpecificBottle(consumingWine.id, bottleId);
       setConsumingWine(null);
       loadData();
   };

@@ -131,13 +131,11 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-       const success = moveBottle(moveSource.bottleId, { rackId, x, y });
-       if (success) {
-           setMoveSource(null);
-           loadData();
-       }
-       return;
-    }
+        moveBottle(moveSource.bottleId, { rackId, x, y });
+        setMoveSource(null);
+        loadData();
+        return;
+     }
 
     if (occupied && targetBottle) {
         setSelectedBottle({
@@ -227,7 +225,7 @@ export const CellarMap: React.FC = () => {
       setOptimizing(true);
       try {
           const result = await optimizeCellarStorage(inventory, racks);
-          setSuggestions(result.suggestions || []);
+          setSuggestions(result || []);
       } catch (err) {
           console.error('Optimization failed', err);
       } finally {
