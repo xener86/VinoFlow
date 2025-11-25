@@ -1,12 +1,10 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabase: SupabaseClient | null = null;
 
 // --- Configuration Management ---
 export const getSupabaseConfig = () => {
-  if (typeof window === 'undefined') {
-    return { url: '', key: '' };
-  }
   return {
     url: localStorage.getItem('vf_supabase_url') || '',
     key: localStorage.getItem('vf_supabase_key') || ''
@@ -16,18 +14,14 @@ export const getSupabaseConfig = () => {
 export const saveSupabaseConfig = (url: string, key: string) => {
   localStorage.setItem('vf_supabase_url', url);
   localStorage.setItem('vf_supabase_key', key);
+  // Re-init client
   initSupabase();
 };
 
 export const initSupabase = () => {
   const { url, key } = getSupabaseConfig();
   if (url && key) {
-    try {
-      supabase = createClient(url, key);
-    } catch (error) {
-      console.error('Failed to initialize Supabase:', error);
-      supabase = null;
-    }
+    supabase = createClient(url, key);
   } else {
     supabase = null;
   }
@@ -35,9 +29,7 @@ export const initSupabase = () => {
 };
 
 // Initialize immediately if config exists
-if (typeof window !== 'undefined') {
-  initSupabase();
-}
+initSupabase();
 
 export const getClient = () => supabase;
 

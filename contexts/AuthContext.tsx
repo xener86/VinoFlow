@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getClient } from '../services/supabase';
+import { getClient, initSupabase } from '../services/supabase';
 import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
@@ -20,11 +21,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isConfigured, setIsConfigured] = useState(false);
 
   useEffect(() => {
-    const client = getClient();
+    const client = getClient(); // Try to get existing client
     
     if (client) {
       setIsConfigured(true);
-      
       // Check active session
       client.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user ?? null);

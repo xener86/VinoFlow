@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -16,17 +17,19 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Loader2 } from 'lucide-react';
 
-const ProtectedRoute: React.FC = () => {
+// Protected Route Component
+const ProtectedRoute = () => {
   const { user, loading, isConfigured } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
-        <Loader2 className="animate-spin text-wine-500" size={48} />
+         <Loader2 className="animate-spin text-wine-500" size={48} />
       </div>
     );
   }
 
+  // If not configured or not logged in, redirect to login
   if (!isConfigured || !user) {
     return <Navigate to="/login" replace />;
   }
@@ -38,31 +41,31 @@ const ProtectedRoute: React.FC = () => {
   );
 };
 
-const AppRoutes: React.FC = () => {
+const AppRoutes = () => {
   const { user, loading } = useAuth();
 
   if (loading) return null;
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      
-      <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/wine/:id" element={<WineDetails />} />
-        <Route path="/wine/:id/edit" element={<EditWine />} />
-        <Route path="/spirit/:id" element={<SpiritDetails />} />
-        <Route path="/map" element={<CellarMap />} />
-        <Route path="/bar" element={<Bar />} />
-        <Route path="/add" element={<AddWine />} />
-        <Route path="/sommelier" element={<Sommelier />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
+        <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+        
+        <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/wine/:id" element={<WineDetails />} />
+            <Route path="/wine/:id/edit" element={<EditWine />} />
+            <Route path="/spirit/:id" element={<SpiritDetails />} />
+            <Route path="/map" element={<CellarMap />} />
+            <Route path="/bar" element={<Bar />} />
+            <Route path="/add" element={<AddWine />} />
+            <Route path="/sommelier" element={<Sommelier />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
     </Routes>
   );
-};
+}
 
 const App: React.FC = () => {
   return (

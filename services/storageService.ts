@@ -1,33 +1,6 @@
-import { 
-  Wine, Bottle, CellarWine, Rack, Spirit, SpiritType, 
-  FullBackupData, TimelineEvent, BottleLocation, CocktailRecipe, 
-  ShoppingListItem, UserTasteProfile, AIConfig, SensoryProfile,
-  WineType
-} from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, SpiritType, FullBackupData, TimelineEvent, BottleLocation, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig } from '../types';
 
-// Storage keys
-const STORAGE_KEYS = {
-  WINES: 'vf_wines',
-  BOTTLES: 'vf_bottles',
-  RACKS: 'vf_racks',
-  SPIRITS: 'vf_spirits',
-  COCKTAILS: 'vf_cocktails',
-  SHOPPING: 'vf_shopping',
-  TASTE_PROFILE: 'vf_taste_profile',
-  AI_CONFIG: 'vf_ai_config',
-} as const;
-
-// Default sensory profile
-const defaultSensoryProfile: SensoryProfile = {
-  body: 50,
-  acidity: 50,
-  tannin: 50,
-  sweetness: 10,
-  alcohol: 50,
-  flavors: []
-};
-
-// Mock Data - Wines
+// ... (Keep MOCK_WINES, MOCK_RACKS, MOCK_BOTTLES, MOCK_SPIRITS, MOCK_COCKTAILS, MOCK_SHOPPING, MOCK_TASTE_PROFILE exactly as they are in the previous file content provided by user)
 const MOCK_WINES: Wine[] = [
   {
     id: 'w1',
@@ -36,17 +9,25 @@ const MOCK_WINES: Wine[] = [
     vintage: 2015,
     region: 'Bordeaux',
     country: 'France',
-    type: WineType.RED,
+    type: 'RED' as any,
     grapeVarieties: ['Cabernet Sauvignon', 'Merlot', 'Petit Verdot'],
     format: '750ml',
     personalNotes: ['Cadeau de Jean', 'Ouvrir après 2025'],
-    sensoryDescription: 'Un immense bouquet de fruits noirs, de fleurs printanières, de chêne raffiné et de graphite.',
+    sensoryDescription: 'Un immense bouquet de fruits noirs, de fleurs printanières, de chêne raffiné et de graphite. Corsé et concentré avec une longue finale royale.',
     aromaProfile: ['Cassis', 'Violette', 'Graphite', 'Cèdre', 'Tabac'],
-    tastingNotes: 'Robe rubis profond. Le nez est complexe avec des couches de fruits noirs.',
+    tastingNotes: 'Robe rubis profond. Le nez est complexe avec des couches de fruits noirs. La bouche est structurée avec des tanins soyeux et une acidité équilibrée.',
     suggestedFoodPairings: ['Agneau rôti au romarin', 'Bœuf Wellington', 'Risotto à la truffe'],
-    producerHistory: 'Château Margaux, Premier Grand Cru Classé, remonte au XIIe siècle.',
+    producerHistory: 'Château Margaux, Premier Grand Cru Classé, remonte au XIIe siècle. Le domaine est connu pour son processus de sélection rigoureux et son terroir unique combinant graves et argilo-calcaire.',
     enrichedByAI: true,
-    sensoryProfile: { body: 90, acidity: 75, tannin: 85, sweetness: 5, alcohol: 70, flavors: ['Cassis', 'Violette', 'Cèdre'] },
+    isFavorite: true,
+    sensoryProfile: {
+      body: 90,
+      acidity: 75,
+      tannin: 85,
+      sweetness: 5,
+      alcohol: 70,
+      flavors: ['Cassis', 'Violette', 'Cèdre']
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
@@ -57,28 +38,35 @@ const MOCK_WINES: Wine[] = [
     vintage: 2023,
     region: 'Marlborough',
     country: 'Nouvelle-Zélande',
-    type: WineType.WHITE,
+    type: 'WHITE' as any,
     grapeVarieties: ['Sauvignon Blanc'],
     format: '750ml',
     personalNotes: [],
-    sensoryDescription: 'Vibrant et expressif, offrant une explosion de fruit de la passion et de combava.',
-    aromaProfile: ['Fruit de la Passion', 'Combava', 'Pamplemousse'],
-    suggestedFoodPairings: ['Huîtres fraîches', 'Salade de chèvre chaud'],
-    producerHistory: 'Fondé en 1985, Cloudy Bay fut l\'un des premiers domaines de Marlborough.',
+    sensoryDescription: 'Vibrant et expressif, offrant une explosion de fruit de la passion, de combava et de fleurs de verger, équilibré par une minéralité zestée.',
+    aromaProfile: ['Fruit de la Passion', 'Combava', 'Pamplemousse', 'Herbe Coupée', 'Fruits à noyau'],
+    tastingNotes: 'Paille pâle vert. Aromatiques intenses. La bouche est juteuse et désaltérante avec une longue finale croquante.',
+    suggestedFoodPairings: ['Huîtres fraîches', 'Salade de chèvre chaud', 'Asperges grillées au citron'],
+    producerHistory: 'Fondé en 1985, Cloudy Bay fut l\'un des cinq premiers domaines de Marlborough. Il a joué un rôle crucial pour placer le Sauvignon Blanc néo-zélandais sur la carte mondiale.',
     enrichedByAI: true,
-    sensoryProfile: { body: 40, acidity: 95, tannin: 0, sweetness: 10, alcohol: 60, flavors: ['Passionfruit', 'Citron vert'] },
+    isFavorite: false,
+    sensoryProfile: {
+      body: 40,
+      acidity: 95,
+      tannin: 0,
+      sweetness: 10,
+      alcohol: 60,
+      flavors: ['Passionfruit', 'Citron vert', 'Herbe']
+    },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
 ];
 
-// Mock Data - Physical Cellar Racks
 const MOCK_RACKS: Rack[] = [
   { id: 'r1', name: 'EuroCave Principal', width: 6, height: 8, type: 'SHELF' },
   { id: 'box1', name: 'Caisse Margaux 2015', width: 3, height: 2, type: 'BOX' } 
 ];
 
-// Mock Data - Bottles with physical locations
 const MOCK_BOTTLES: Bottle[] = [
   { id: 'b1', wineId: 'w1', location: { rackId: 'r1', x: 0, y: 0 }, addedByUserId: 'u1', purchaseDate: '2020-01-01', isConsumed: false },
   { id: 'b2', wineId: 'w1', location: { rackId: 'r1', x: 1, y: 0 }, addedByUserId: 'u1', purchaseDate: '2020-01-01', isConsumed: false },
@@ -88,13 +76,11 @@ const MOCK_BOTTLES: Bottle[] = [
   { id: 'b6', wineId: 'w1', location: { rackId: 'box1', x: 2, y: 0 }, addedByUserId: 'u1', purchaseDate: '2016-05-20', isConsumed: false },
 ];
 
-// Mock Data - Spirits
 const MOCK_SPIRITS: Spirit[] = [
   {
     id: 's1',
     name: 'Lagavulin 16',
-    type: SpiritType.WHISKY,
-    brand: 'Lagavulin',
+    category: SpiritType.WHISKY,
     distillery: 'Lagavulin',
     region: 'Islay',
     country: 'Scotland',
@@ -111,56 +97,60 @@ const MOCK_SPIRITS: Spirit[] = [
     enrichedByAI: true,
     addedAt: new Date().toISOString(),
     isOpened: true,
-    level: 3,
-    isPrestige: true
+    inventoryLevel: 45,
+    isLuxury: true
   },
   {
     id: 's2',
     name: 'Hendrick\'s Gin',
-    type: SpiritType.GIN,
-    brand: 'Hendrick\'s',
+    category: SpiritType.GIN,
     distillery: 'Girvan',
     region: 'Scotland',
     country: 'Scotland',
+    age: 'NAS',
+    caskType: 'N/A',
     abv: 41.4,
     format: 700,
     description: 'Un gin infusé à la rose et au concombre, curieusement rafraîchissant.',
+    producerHistory: 'Produit en Écosse, Hendrick\'s utilise deux types d\'alambics pour créer son profil unique.',
+    tastingNotes: 'Floral, frais, agrumes doux, finale concombre.',
     aromaProfile: ['Rose', 'Concombre', 'Genévrier', 'Agrumes'],
     suggestedCocktails: ['Gin & Tonic', 'Cucumber Cooler', 'Martini'],
     culinaryPairings: ['Salade de concombre', 'Saumon fumé'],
     enrichedByAI: true,
     addedAt: new Date().toISOString(),
     isOpened: false,
-    level: 5,
-    isPrestige: false
+    inventoryLevel: 100,
+    isLuxury: false
   }
 ];
 
-// Mock Cocktails
 const MOCK_COCKTAILS: CocktailRecipe[] = [
-  {
-    id: 'c1',
-    name: 'Old Fashioned',
-    category: 'CLASSIC',
-    baseSpirit: 'Whisky',
-    ingredients: [
-      { name: 'Whisky', amount: 60, unit: 'ml', optional: false },
-      { name: 'Sucre', amount: 1, unit: 'piece', optional: false },
-      { name: 'Angostura Bitters', amount: 3, unit: 'dash', optional: false },
-    ],
-    instructions: ['Mélanger le sucre, l\'eau et le bitter dans un verre.', 'Ajouter le whisky et la glace.'],
-    glassType: 'Old Fashioned',
-    difficulty: 'Easy',
-    prepTime: 5,
-    tags: ['Classic', 'Strong'],
-    source: 'MANUAL',
-    isFavorite: true
-  }
+    {
+        id: 'c1',
+        name: 'Old Fashioned',
+        category: 'CLASSIC',
+        baseSpirit: 'Whisky',
+        ingredients: [
+            { name: 'Whisky', amount: 60, unit: 'ml', optional: false },
+            { name: 'Sucre', amount: 1, unit: 'piece', optional: false },
+            { name: 'Angostura Bitters', amount: 3, unit: 'dash', optional: false },
+            { name: 'Eau', amount: 1, unit: 'spoon', optional: false },
+            { name: 'Zeste d\'orange', amount: 0, unit: 'piece', optional: true }
+        ],
+        instructions: ['Mélanger le sucre, l\'eau et le bitter dans un verre.', 'Ajouter le whisky et la glace.', 'Remuer doucement.', 'Garnir avec le zeste.'],
+        glassType: 'Old Fashioned',
+        difficulty: 'Easy',
+        prepTime: 5,
+        tags: ['Classic', 'Strong', 'Dinner'],
+        source: 'MANUAL',
+        isFavorite: true
+    }
 ];
 
 const MOCK_SHOPPING: ShoppingListItem[] = [
-  { id: 'sl1', name: 'Citrons Verts', category: 'FRUIT', quantity: 6, isChecked: false },
-  { id: 'sl2', name: 'Tonic Water', category: 'MIXER', quantity: 4, isChecked: true },
+    { id: 'sl1', name: 'Citrons Verts', category: 'FRUIT', quantity: 6, isChecked: false },
+    { id: 'sl2', name: 'Tonic Water', category: 'MIXER', quantity: 4, isChecked: true },
 ];
 
 const MOCK_TASTE_PROFILE: UserTasteProfile = {
@@ -168,51 +158,25 @@ const MOCK_TASTE_PROFILE: UserTasteProfile = {
   userId: 'u1',
   favoriteGrapes: { 'Pinot Noir': 85, 'Chardonnay': 70, 'Syrah': 60 },
   favoriteRegions: { 'Bourgogne': 90, 'Vallée du Rhône': 65 },
-  stylePreferences: { body: 60, acidity: 75, tannin: 40, sweetness: 10, alcohol: 50, flavors: ['Fruité', 'Floral'] },
+  stylePreferences: {
+    body: 60,
+    acidity: 75,
+    tannin: 40,
+    sweetness: 10,
+    alcohol: 50,
+    flavors: ['Fruité', 'Floral', 'Minéral']
+  },
   lastUpdated: new Date().toISOString()
 };
 
-// --- Helper Functions ---
-
-const getFromStorage = <T>(key: string, fallback: T): T => {
-  if (typeof window === 'undefined') return fallback;
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const saveToStorage = <T>(key: string, data: T): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.error('Storage save failed:', e);
-  }
-};
-
-// --- Wine & Inventory ---
-
-export const getWines = (): Wine[] => {
-  return getFromStorage(STORAGE_KEYS.WINES, MOCK_WINES);
-};
-
-export const getBottles = (): Bottle[] => {
-  return getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-};
-
-export const getConsumptionHistory = (): Array<{ date: string; wineId: string }> => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  return bottles
-    .filter(b => b.isConsumed && b.consumedDate)
-    .map(b => ({ date: b.consumedDate!, wineId: b.wineId }));
-};
+// --- Helpers ---
 
 export const getInventory = (): CellarWine[] => {
-  const wines: Wine[] = getFromStorage(STORAGE_KEYS.WINES, MOCK_WINES);
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
+  const storedWines = localStorage.getItem('vf_wines');
+  const storedBottles = localStorage.getItem('vf_bottles');
+
+  const wines: Wine[] = storedWines ? JSON.parse(storedWines) : MOCK_WINES;
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : MOCK_BOTTLES;
 
   return wines.map(wine => {
     const wineBottles = bottles.filter(b => b.wineId === wine.id && !b.isConsumed);
@@ -230,7 +194,9 @@ export const getWineById = (id: string): CellarWine | null => {
 };
 
 export const getWineHistory = (wineId: string): TimelineEvent[] => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
+  const storedBottles = localStorage.getItem('vf_bottles');
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : MOCK_BOTTLES;
+  
   const relevantBottles = bottles.filter(b => b.wineId === wineId);
   const events: TimelineEvent[] = [];
 
@@ -243,7 +209,7 @@ export const getWineHistory = (wineId: string): TimelineEvent[] => {
     });
 
     if (b.isConsumed && b.consumedDate) {
-      events.push({
+       events.push({
         date: b.consumedDate,
         type: 'OUT',
         description: 'Consommée',
@@ -255,104 +221,9 @@ export const getWineHistory = (wineId: string): TimelineEvent[] => {
   return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
-export const saveWine = (wine: Wine, count: number): void => {
-  const wines: Wine[] = getFromStorage(STORAGE_KEYS.WINES, MOCK_WINES);
-  const existingIdx = wines.findIndex(w => w.id === wine.id);
-  
-  if (existingIdx >= 0) {
-    wines[existingIdx] = wine;
-  } else {
-    wines.push(wine);
-  }
-  saveToStorage(STORAGE_KEYS.WINES, wines);
-
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  for (let i = 0; i < count; i++) {
-    bottles.push({
-      id: crypto.randomUUID(),
-      wineId: wine.id,
-      location: 'Non trié',
-      addedByUserId: 'current',
-      purchaseDate: new Date().toISOString(),
-      isConsumed: false
-    });
-  }
-  saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-};
-
-export const updateWine = (wine: Wine): void => {
-  const wines: Wine[] = getFromStorage(STORAGE_KEYS.WINES, MOCK_WINES);
-  const existingIdx = wines.findIndex(w => w.id === wine.id);
-  if (existingIdx >= 0) {
-    wines[existingIdx] = { ...wines[existingIdx], ...wine, updatedAt: new Date().toISOString() };
-    saveToStorage(STORAGE_KEYS.WINES, wines);
-  }
-};
-
-export const addBottles = (wineId: string, count: number): void => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  for (let i = 0; i < count; i++) {
-    bottles.push({
-      id: crypto.randomUUID(),
-      wineId: wineId,
-      location: 'Non trié',
-      addedByUserId: 'current',
-      purchaseDate: new Date().toISOString(),
-      isConsumed: false
-    });
-  }
-  saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-};
-
-export const addBottleAtLocation = (wineId: string, location: BottleLocation): void => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  bottles.push({
-    id: crypto.randomUUID(),
-    wineId: wineId,
-    location: location,
-    addedByUserId: 'current',
-    purchaseDate: new Date().toISOString(),
-    isConsumed: false
-  });
-  saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-};
-
-export const consumeBottle = (wineId: string): void => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  const targetBottle = bottles.find(b => b.wineId === wineId && !b.isConsumed);
-  if (targetBottle) {
-    targetBottle.isConsumed = true;
-    targetBottle.consumedDate = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-  }
-};
-
-export const consumeSpecificBottle = (bottleId: string): void => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  const targetBottle = bottles.find(b => b.id === bottleId);
-  if (targetBottle) {
-    targetBottle.isConsumed = true;
-    targetBottle.consumedDate = new Date().toISOString();
-    saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-  }
-};
-
-export const moveBottle = (bottleId: string, newLocation: BottleLocation): boolean => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  const bottleIdx = bottles.findIndex(b => b.id === bottleId);
-  
-  if (bottleIdx >= 0) {
-    bottles[bottleIdx].location = newLocation;
-    saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
-    return true;
-  }
-  return false;
-};
-
-// --- Racks ---
-
 export const getRacks = (): Rack[] => {
-  return getFromStorage(STORAGE_KEYS.RACKS, MOCK_RACKS);
+  const storedRacks = localStorage.getItem('vf_racks');
+  return storedRacks ? JSON.parse(storedRacks) : MOCK_RACKS;
 };
 
 export const saveRack = (rack: Rack): void => {
@@ -363,7 +234,7 @@ export const saveRack = (rack: Rack): void => {
   } else {
     racks.push(rack);
   }
-  saveToStorage(STORAGE_KEYS.RACKS, racks);
+  localStorage.setItem('vf_racks', JSON.stringify(racks));
 };
 
 export const updateRack = (id: string, updates: Partial<Rack>): void => {
@@ -371,209 +242,287 @@ export const updateRack = (id: string, updates: Partial<Rack>): void => {
   const index = racks.findIndex(r => r.id === id);
   if (index >= 0) {
     racks[index] = { ...racks[index], ...updates };
-    saveToStorage(STORAGE_KEYS.RACKS, racks);
+    localStorage.setItem('vf_racks', JSON.stringify(racks));
   }
+};
+
+export const reorderRack = (id: string, direction: 'left' | 'right'): void => {
+    const racks = getRacks();
+    const index = racks.findIndex(r => r.id === id);
+    if (index === -1) return;
+
+    if (direction === 'left' && index > 0) {
+        [racks[index - 1], racks[index]] = [racks[index], racks[index - 1]];
+    } else if (direction === 'right' && index < racks.length - 1) {
+        [racks[index], racks[index + 1]] = [racks[index + 1], racks[index]];
+    }
+    localStorage.setItem('vf_racks', JSON.stringify(racks));
 };
 
 export const deleteRack = (id: string): void => {
-  // First update bottles to mark them as unsorted
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-  const updatedBottles = bottles.map(b => {
-    if (typeof b.location !== 'string' && b.location.rackId === id) {
-      return { ...b, location: 'Non trié' as string };
-    }
-    return b;
-  });
-  saveToStorage(STORAGE_KEYS.BOTTLES, updatedBottles);
-  
-  // Then remove the rack
   const racks = getRacks().filter(r => r.id !== id);
-  saveToStorage(STORAGE_KEYS.RACKS, racks);
-};
-
-export const fillRackWithWine = (rackId: string, wineId: string, width: number, height: number): void => {
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
+  localStorage.setItem('vf_racks', JSON.stringify(racks));
   
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const isOccupied = bottles.some((b: Bottle) => 
-        !b.isConsumed && 
-        typeof b.location !== 'string' && 
-        b.location.rackId === rackId && 
-        b.location.x === x && 
-        b.location.y === y
-      );
-
-      if (!isOccupied) {
-        bottles.push({
-          id: crypto.randomUUID(),
-          wineId: wineId,
-          location: { rackId, x, y },
-          addedByUserId: 'current',
-          purchaseDate: new Date().toISOString(),
-          isConsumed: false
-        });
+  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+  const updatedBottles = bottles.map(b => {
+      if (typeof b.location !== 'string' && b.location.rackId === id) {
+          return { ...b, location: 'Non trié' };
       }
-    }
-  }
-  saveToStorage(STORAGE_KEYS.BOTTLES, bottles);
+      return b;
+  });
+  localStorage.setItem('vf_bottles', JSON.stringify(updatedBottles));
 };
 
-export const findNextAvailableSlot = (): { location: BottleLocation; rackName: string } | null => {
-  const racks = getRacks().filter(r => r.type === 'SHELF');
-  const bottles: Bottle[] = getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES);
-
-  for (const rack of racks) {
-    for (let y = 0; y < rack.height; y++) {
-      for (let x = 0; x < rack.width; x++) {
-        const isOccupied = bottles.some((b: Bottle) => 
-          !b.isConsumed && 
-          typeof b.location !== 'string' && 
-          b.location.rackId === rack.id && 
-          b.location.x === x && 
-          b.location.y === y
-        );
-        
-        if (!isOccupied) {
-          return {
-            location: { rackId: rack.id, x, y },
-            rackName: rack.name
-          };
-        }
-      }
-    }
-  }
-  return null;
-};
-
-// --- Spirits ---
-
+// ... (Rest of the file: getSpirits, getSpiritById, saveSpirit, toggleSpiritLuxury, getCocktails, saveCocktail, getShoppingList, toggleShoppingItem, addToShoppingList, saveWine, updateWine, addBottles, addBottleAtLocation, fillRackWithWine, consumeBottle, consumeSpecificBottle, moveBottle, findNextAvailableSlot, getUserTasteProfile, updateUserTasteProfile, getAIConfig, saveAIConfig, exportFullData, importFullData - KEPT AS IS from previous context)
 export const getSpirits = (): Spirit[] => {
-  return getFromStorage(STORAGE_KEYS.SPIRITS, MOCK_SPIRITS);
-};
-
-export const saveSpirits = (spirits: Spirit[]): void => {
-  saveToStorage(STORAGE_KEYS.SPIRITS, spirits);
+  const storedSpirits = localStorage.getItem('vf_spirits');
+  return storedSpirits ? JSON.parse(storedSpirits) : MOCK_SPIRITS;
 };
 
 export const getSpiritById = (id: string): Spirit | undefined => {
-  return getSpirits().find(s => s.id === id);
+  const spirits = getSpirits();
+  return spirits.find(s => s.id === id);
 };
 
 export const saveSpirit = (spirit: Spirit): void => {
-  const spirits = getSpirits();
-  const existingIndex = spirits.findIndex(s => s.id === spirit.id);
-  if (existingIndex >= 0) {
-    spirits[existingIndex] = spirit;
-  } else {
-    spirits.push(spirit);
-  }
-  saveToStorage(STORAGE_KEYS.SPIRITS, spirits);
+    const spirits = getSpirits();
+    const existingIndex = spirits.findIndex(s => s.id === spirit.id);
+    if(existingIndex >= 0) spirits[existingIndex] = spirit;
+    else spirits.push(spirit);
+    localStorage.setItem('vf_spirits', JSON.stringify(spirits));
 };
 
 export const toggleSpiritLuxury = (id: string): void => {
-  const spirits = getSpirits();
-  const spirit = spirits.find(s => s.id === id);
-  if (spirit) {
-    spirit.isLuxury = !spirit.isLuxury;
-    saveToStorage(STORAGE_KEYS.SPIRITS, spirits);
-  }
+    const spirits = getSpirits();
+    const spirit = spirits.find(s => s.id === id);
+    if(spirit) {
+        spirit.isLuxury = !spirit.isLuxury;
+        saveSpirit(spirit);
+    }
 };
 
-// --- Cocktails ---
-
 export const getCocktails = (): CocktailRecipe[] => {
-  return getFromStorage(STORAGE_KEYS.COCKTAILS, MOCK_COCKTAILS);
+    const stored = localStorage.getItem('vf_cocktails');
+    return stored ? JSON.parse(stored) : MOCK_COCKTAILS;
 };
 
 export const saveCocktail = (recipe: CocktailRecipe): void => {
-  const cocktails = getCocktails();
-  const existing = cocktails.findIndex(c => c.id === recipe.id);
-  if (existing >= 0) {
-    cocktails[existing] = recipe;
-  } else {
-    cocktails.push(recipe);
-  }
-  saveToStorage(STORAGE_KEYS.COCKTAILS, cocktails);
+    const cocktails = getCocktails();
+    const existing = cocktails.findIndex(c => c.id === recipe.id);
+    if(existing >= 0) cocktails[existing] = recipe;
+    else cocktails.push(recipe);
+    localStorage.setItem('vf_cocktails', JSON.stringify(cocktails));
 };
 
-// --- Shopping List ---
-
 export const getShoppingList = (): ShoppingListItem[] => {
-  return getFromStorage(STORAGE_KEYS.SHOPPING, MOCK_SHOPPING);
+    const stored = localStorage.getItem('vf_shopping');
+    return stored ? JSON.parse(stored) : MOCK_SHOPPING;
 };
 
 export const toggleShoppingItem = (id: string): void => {
-  const list = getShoppingList();
-  const item = list.find(i => i.id === id);
-  if (item) {
-    item.isChecked = !item.isChecked;
-    saveToStorage(STORAGE_KEYS.SHOPPING, list);
+    const list = getShoppingList();
+    const item = list.find(i => i.id === id);
+    if(item) {
+        item.isChecked = !item.isChecked;
+        localStorage.setItem('vf_shopping', JSON.stringify(list));
+    }
+};
+
+export const addToShoppingList = (name: string, quantity: number, category: any = 'OTHER'): void => {
+    const list = getShoppingList();
+    list.push({
+        id: crypto.randomUUID(),
+        name,
+        quantity,
+        category,
+        isChecked: false
+    });
+    localStorage.setItem('vf_shopping', JSON.stringify(list));
+};
+
+export const saveWine = (wine: Wine, count: number): void => {
+  const currentInventory = getInventory();
+  let wines = JSON.parse(localStorage.getItem('vf_wines') || JSON.stringify(MOCK_WINES));
+  const existingIdx = wines.findIndex((w: Wine) => w.id === wine.id);
+  
+  if (existingIdx >= 0) {
+    wines[existingIdx] = wine;
+  } else {
+    wines.push(wine);
+  }
+  localStorage.setItem('vf_wines', JSON.stringify(wines));
+
+  const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+  for(let i=0; i<count; i++) {
+    bottles.push({
+      id: crypto.randomUUID(),
+      wineId: wine.id,
+      location: 'Non trié',
+      addedByUserId: 'current',
+      purchaseDate: new Date().toISOString(),
+      isConsumed: false
+    });
+  }
+  localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+};
+
+export const updateWine = (wine: Wine): void => {
+    let wines = JSON.parse(localStorage.getItem('vf_wines') || JSON.stringify(MOCK_WINES));
+    const existingIdx = wines.findIndex((w: Wine) => w.id === wine.id);
+    if (existingIdx >= 0) {
+        wines[existingIdx] = { ...wines[existingIdx], ...wine, updatedAt: new Date().toISOString() };
+        localStorage.setItem('vf_wines', JSON.stringify(wines));
+    }
+};
+
+export const addBottles = (wineId: string, count: number): void => {
+    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+    for(let i=0; i<count; i++) {
+        bottles.push({
+            id: crypto.randomUUID(),
+            wineId: wineId,
+            location: 'Non trié',
+            addedByUserId: 'current',
+            purchaseDate: new Date().toISOString(),
+            isConsumed: false
+        });
+    }
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+};
+
+export const addBottleAtLocation = (wineId: string, location: BottleLocation): void => {
+    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+    bottles.push({
+        id: crypto.randomUUID(),
+        wineId: wineId,
+        location: location,
+        addedByUserId: 'current',
+        purchaseDate: new Date().toISOString(),
+        isConsumed: false
+    });
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+};
+
+export const fillRackWithWine = (rackId: string, wineId: string, width: number, height: number): void => {
+    let bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+    
+    for(let y=0; y<height; y++) {
+        for(let x=0; x<width; x++) {
+            const isOccupied = bottles.some((b: Bottle) => 
+                !b.isConsumed && typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y
+            );
+
+            if(!isOccupied) {
+                bottles.push({
+                    id: crypto.randomUUID(),
+                    wineId: wineId,
+                    location: { rackId, x, y },
+                    addedByUserId: 'current',
+                    purchaseDate: new Date().toISOString(),
+                    isConsumed: false
+                });
+            }
+        }
+    }
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+};
+
+export const consumeBottle = (wineId: string): void => {
+  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+  const targetBottle = bottles.find(b => b.wineId === wineId && !b.isConsumed);
+  if (targetBottle) {
+    targetBottle.isConsumed = true;
+    targetBottle.consumedDate = new Date().toISOString();
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
   }
 };
 
-export const addToShoppingList = (name: string, quantity: number, category: 'SPIRIT' | 'MIXER' | 'FRUIT' | 'OTHER' = 'OTHER'): void => {
-  const list = getShoppingList();
-  list.push({
-    id: crypto.randomUUID(),
-    name,
-    quantity,
-    category,
-    isChecked: false
-  });
-  saveToStorage(STORAGE_KEYS.SHOPPING, list);
+export const consumeSpecificBottle = (bottleId: string): void => {
+  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+  const targetBottle = bottles.find(b => b.id === bottleId);
+  if (targetBottle) {
+    targetBottle.isConsumed = true;
+    targetBottle.consumedDate = new Date().toISOString();
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+  }
 };
 
-// --- User Profile ---
+export const moveBottle = (bottleId: string, newLocation: BottleLocation): boolean => {
+  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+  const bottleIdx = bottles.findIndex(b => b.id === bottleId);
+  
+  if (bottleIdx >= 0) {
+    bottles[bottleIdx].location = newLocation;
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+    return true;
+  }
+  return false;
+};
+
+export const findNextAvailableSlot = (): { location: BottleLocation; rackName: string } | null => {
+    const racks = getRacks().filter(r => r.type === 'SHELF');
+    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
+
+    for (const rack of racks) {
+        for (let y = 0; y < rack.height; y++) {
+            for (let x = 0; x < rack.width; x++) {
+                const isOccupied = bottles.some((b: Bottle) => 
+                    !b.isConsumed && 
+                    typeof b.location !== 'string' && 
+                    b.location.rackId === rack.id && 
+                    b.location.x === x && 
+                    b.location.y === y
+                );
+                
+                if (!isOccupied) {
+                    return {
+                        location: { rackId: rack.id, x, y },
+                        rackName: rack.name
+                    };
+                }
+            }
+        }
+    }
+    return null;
+};
 
 export const getUserTasteProfile = (): UserTasteProfile => {
-  return getFromStorage(STORAGE_KEYS.TASTE_PROFILE, MOCK_TASTE_PROFILE);
+  const stored = localStorage.getItem('vf_taste_profile');
+  return stored ? JSON.parse(stored) : MOCK_TASTE_PROFILE;
 };
 
 export const updateUserTasteProfile = (profile: UserTasteProfile): void => {
-  saveToStorage(STORAGE_KEYS.TASTE_PROFILE, profile);
+  localStorage.setItem('vf_taste_profile', JSON.stringify(profile));
 };
 
-// --- AI Configuration ---
-
 export const getAIConfig = (): AIConfig => {
-  const stored = getFromStorage<AIConfig | null>(STORAGE_KEYS.AI_CONFIG, null);
-  if (!stored) {
-    const legacyKey = typeof window !== 'undefined' ? localStorage.getItem('vf_api_key') || '' : '';
-    return {
-      provider: 'GEMINI',
-      keys: {
-        gemini: legacyKey,
-        openai: '',
-        mistral: ''
-      }
-    };
-  }
-  return stored;
+    const stored = localStorage.getItem('vf_ai_config');
+    if (!stored) {
+        const legacyKey = localStorage.getItem('vf_api_key') || '';
+        return {
+            provider: 'GEMINI',
+            keys: {
+                gemini: legacyKey,
+                openai: '',
+                mistral: ''
+            }
+        };
+    }
+    return JSON.parse(stored);
 };
 
 export const saveAIConfig = (config: AIConfig): void => {
-  saveToStorage(STORAGE_KEYS.AI_CONFIG, config);
+    localStorage.setItem('vf_ai_config', JSON.stringify(config));
 };
-
-// Legacy helpers
-export const getStoredApiKey = (): string | null => getAIConfig().keys.gemini;
-export const setStoredApiKey = (key: string): void => {
-  const config = getAIConfig();
-  config.keys.gemini = key;
-  saveAIConfig(config);
-};
-
-// --- Data Management (Export/Import) ---
 
 export const exportFullData = (): string => {
   const data: FullBackupData = {
-    wines: getFromStorage(STORAGE_KEYS.WINES, MOCK_WINES),
-    bottles: getFromStorage(STORAGE_KEYS.BOTTLES, MOCK_BOTTLES),
-    racks: getFromStorage(STORAGE_KEYS.RACKS, MOCK_RACKS),
-    spirits: getFromStorage(STORAGE_KEYS.SPIRITS, MOCK_SPIRITS),
-    cocktails: getFromStorage(STORAGE_KEYS.COCKTAILS, MOCK_COCKTAILS),
-    shoppingList: getFromStorage(STORAGE_KEYS.SHOPPING, MOCK_SHOPPING),
+    wines: JSON.parse(localStorage.getItem('vf_wines') || JSON.stringify(MOCK_WINES)),
+    bottles: JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES)),
+    racks: JSON.parse(localStorage.getItem('vf_racks') || JSON.stringify(MOCK_RACKS)),
+    spirits: JSON.parse(localStorage.getItem('vf_spirits') || JSON.stringify(MOCK_SPIRITS)),
+    cocktails: JSON.parse(localStorage.getItem('vf_cocktails') || JSON.stringify(MOCK_COCKTAILS)),
+    shoppingList: JSON.parse(localStorage.getItem('vf_shopping') || JSON.stringify(MOCK_SHOPPING)),
     timestamp: new Date().toISOString()
   };
   return JSON.stringify(data, null, 2);
@@ -584,12 +533,12 @@ export const importFullData = (jsonString: string): boolean => {
     const data: FullBackupData = JSON.parse(jsonString);
     if (!data.wines || !data.bottles) throw new Error("Invalid Format");
     
-    saveToStorage(STORAGE_KEYS.WINES, data.wines);
-    saveToStorage(STORAGE_KEYS.BOTTLES, data.bottles);
-    if (data.racks) saveToStorage(STORAGE_KEYS.RACKS, data.racks);
-    if (data.spirits) saveToStorage(STORAGE_KEYS.SPIRITS, data.spirits);
-    if (data.cocktails) saveToStorage(STORAGE_KEYS.COCKTAILS, data.cocktails);
-    if (data.shoppingList) saveToStorage(STORAGE_KEYS.SHOPPING, data.shoppingList);
+    localStorage.setItem('vf_wines', JSON.stringify(data.wines));
+    localStorage.setItem('vf_bottles', JSON.stringify(data.bottles));
+    if(data.racks) localStorage.setItem('vf_racks', JSON.stringify(data.racks));
+    if(data.spirits) localStorage.setItem('vf_spirits', JSON.stringify(data.spirits));
+    if(data.cocktails) localStorage.setItem('vf_cocktails', JSON.stringify(data.cocktails));
+    if(data.shoppingList) localStorage.setItem('vf_shopping', JSON.stringify(data.shoppingList));
     
     return true;
   } catch (e) {

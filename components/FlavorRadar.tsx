@@ -1,13 +1,13 @@
+
 import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { SensoryProfile } from '../types';
 
-interface FlavorRadarProps {
+interface Props {
   data: SensoryProfile;
-  size?: number;
 }
 
-export const FlavorRadar: React.FC<FlavorRadarProps> = ({ data, size = 200 }) => {
+export const FlavorRadar: React.FC<Props> = ({ data }) => {
   const chartData = [
     { subject: 'Corps', A: data.body, fullMark: 100 },
     { subject: 'Acidité', A: data.acidity, fullMark: 100 },
@@ -17,7 +17,7 @@ export const FlavorRadar: React.FC<FlavorRadarProps> = ({ data, size = 200 }) =>
   ];
 
   return (
-    <div className="w-full select-none" style={{ height: size }}>
+    <div className="w-full h-[200px] select-none">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
           <PolarGrid stroke="#44403c" />
