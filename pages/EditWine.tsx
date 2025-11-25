@@ -18,13 +18,13 @@ export const EditWine: React.FC = () => {
     }
   }, [id, navigate]);
 
-  const handleSave = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (wine) {
-          updateWine(wine);
-          navigate(`/wine/${wine.id}`);
-      }
-  };
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (wine) {
+            updateWine(wine.id, wine);
+            navigate(`/wine/${wine.id}`);
+        }
+    };
 
   if (!wine) return null;
 
