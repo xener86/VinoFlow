@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getSpirits, getCocktails, saveSpirit, saveCocktail } from '../services/storageService';
+import { getSpirits, getCocktails, saveSpirit, saveCocktail, deleteSpirit } from '../services/storageService';
 import { Spirit, SpiritType, CocktailRecipe } from '../types';
 import { searchCocktailsByName } from '../services/cocktailDbService';
 import { createCustomCocktail, enrichSpiritData } from '../services/geminiService';
-import { Search, Plus, GlassWater, Zap, CheckCircle2, PartyPopper, ArrowRight, Loader2, X, AlertCircle, MessageSquare, Gem, Martini, Wine, Coffee, Beer } from 'lucide-react';
+import { Search, Plus, GlassWater, Zap, CheckCircle2, PartyPopper, ArrowRight, Loader2, X, AlertCircle, MessageSquare, Gem, Martini, Wine, Coffee, Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const Bar: React.FC = () => {
@@ -99,6 +99,13 @@ export const Bar: React.FC = () => {
           alert("Erreur lors de l'ajout. Veuillez réessayer.");
       } finally {
           setIsEnriching(false);
+      }
+  };
+
+  const handleDeleteSpirit = (id: string) => {
+      if (window.confirm("Supprimer définitivement cette bouteille ?")) {
+          deleteSpirit(id);
+          loadData();
       }
   };
 
@@ -210,8 +217,7 @@ export const Bar: React.FC = () => {
                       return (
                       <div 
                         key={spirit.id} 
-                        onClick={() => navigate(`/spirit/${spirit.id}`)}
-                        className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex gap-4 items-start cursor-pointer hover:border-stone-400 dark:hover:border-stone-700 transition-all relative group shadow-sm"
+                        className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex gap-4 items-start hover:border-stone-400 dark:hover:border-stone-700 transition-all relative group shadow-sm"
                       >
                           <div className="w-16 h-16 bg-stone-100 dark:bg-stone-950 rounded-lg flex items-center justify-center border border-stone-200 dark:border-stone-800 text-stone-600 relative">
                               <SpiritIcon size={24} />
@@ -236,6 +242,23 @@ export const Bar: React.FC = () => {
                                       <span key={i} className="text-[9px] bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">{a}</span>
                                   ))}
                               </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-2">
+                              <button 
+                                  onClick={() => navigate(`/spirit/${spirit.id}`)}
+                                  className="p-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+                                  title="Voir les détails"
+                              >
+                                  <Eye size={16} className="text-stone-600 dark:text-stone-400" />
+                              </button>
+                              <button 
+                                  onClick={() => handleDeleteSpirit(spirit.id)}
+                                  className="p-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+                                  title="Supprimer"
+                              >
+                                  <Trash2 size={16} className="text-red-600 dark:text-red-400" />
+                              </button>
                           </div>
                       </div>
                   )})}

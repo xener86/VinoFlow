@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, getRacks, consumeBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
+import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
 import { CellarWine, Rack, BottleLocation } from '../types';
 import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
@@ -53,11 +53,10 @@ export const CellarMap: React.FC = () => {
   // Architect Mode State
   const [isArchitectMode, setIsArchitectMode] = useState(false);
   const [showAddRackModal, setShowAddRackModal] = useState(false);
-  const [createRackName, setCreateRackName] = useState('');
-  const [newRackW, setNewRackW] = useState(6); // Default 6
-  const [newRackH, setNewRackH] = useState(9); // Default 9
-  const [newRackType, setNewRackType] = useState<'SHELF' | 'BOX'>('SHELF');
-
+  const [newRackType, setNewRackType] = useState<'SHELF' | 'BOX'>('BOX'); // BOX par défaut
+  const [newRackW, setNewRackW] = useState(3); // 3x2 = 6 par défaut
+  const [newRackH, setNewRackH] = useState(2);
+  const [createRackName, setCreateRackName] = useState('Caisse de 6');
   // Edit Rack State
   const [editingRack, setEditingRack] = useState<Rack | null>(null);
   const [editRackName, setEditRackName] = useState('');
@@ -151,403 +150,302 @@ export const CellarMap: React.FC = () => {
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, bottleId: string) => {
-      setDragSourceId(bottleId);
-      e.dataTransfer.setData("bottleId", bottleId);
-      e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-      e.preventDefault(); 
-      e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e: React.DragEvent, rackId: string, x: number, y: number) => {
-      e.preventDefault();
-      const bottleId = e.dataTransfer.getData("bottleId");
-      if (bottleId) {
-          // Check occupancy
-          let occupied = false;
-          for (const w of inventory) {
-              if(w.bottles.some(b => typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y && !b.isConsumed)) {
-                  occupied = true;
-                  break;
-              }
-          }
-          if (occupied) return; 
-
-          const success = moveBottle(bottleId, { rackId, x, y });
-          if (success) {
-              setDragSourceId(null);
-              loadData();
-          }
-      }
-  };
-
-  const handleConsume = () => {
-      if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-          consumeBottle(selectedBottle.wine.id);
+  const handleConsumeBottle = () => {
+      if (selectedBottle) {
+          consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
           setSelectedBottle(null);
           loadData();
       }
   };
 
-  const handleStartMove = () => {
-      setMoveSource(selectedBottle);
-      setSelectedBottle(null);
+  const handleMoveStart = () => {
+      if (selectedBottle) {
+          setMoveSource(selectedBottle);
+          setSelectedBottle(null);
+      }
   };
 
-  // --- Architect Logic ---
+  const handleAddExistingToSlot = (wine: CellarWine) => {
+      if (emptySlotTarget) {
+          addBottleAtLocation(wine.id, {
+              rackId: emptySlotTarget.rackId,
+              x: emptySlotTarget.x,
+              y: emptySlotTarget.y
+          });
+          setEmptySlotTarget(null);
+          loadData();
+      }
+  };
+
   const handleCreateRack = () => {
       const newRack: Rack = {
           id: crypto.randomUUID(),
-          name: createRackName,
+          name: createRackName || `${newRackType === 'BOX' ? 'Caisse' : 'Étagère'} ${racks.length + 1}`,
           width: newRackW,
           height: newRackH,
           type: newRackType
       };
       saveRack(newRack);
-      setRacks(getRacks());
       setShowAddRackModal(false);
-      
-      if (newRack.type === 'BOX') {
-          setSelectedTabId('VIEW_ALL_BOXES');
-      } else {
-          setSelectedTabId(newRack.id);
+      loadData();
+      setSelectedTabId(newRack.id);
+  };
+
+  const handleDeleteRack = (rackId: string) => {
+      if (window.confirm("Supprimer ce rangement ? Les bouteilles seront déplacées vers 'Non trié'.")) {
+          deleteRack(rackId);
+          setSelectedTabId(null);
+          loadData();
       }
   };
 
-  const handleDeleteRack = (id: string) => {
-      if(window.confirm("Supprimer ce rangement ? Les bouteilles seront marquées 'Non triées'.")) {
-          deleteRack(id);
-          const updatedRacks = getRacks();
-          setRacks(updatedRacks);
-          loadData(); 
-          
-          if (selectedTabId === id) {
-              setSelectedTabId('VIEW_ALL_BOXES');
-          }
-      }
-  };
-
-  const handleEditRack = (rack: Rack) => {
+  const handleStartEdit = (rack: Rack) => {
       setEditingRack(rack);
       setEditRackName(rack.name);
   };
 
   const handleSaveRackEdit = () => {
-      if (editingRack && editRackName) {
+      if (editingRack) {
           updateRack(editingRack.id, { name: editRackName });
           setEditingRack(null);
           loadData();
       }
   };
 
-  const handleReorderRack = (id: string, direction: 'left' | 'right') => {
-      reorderRack(id, direction);
-      loadData();
-  };
-  
-  const handleQuickFill = (rack: Rack) => {
-      setFillTargetRack(rack);
-  };
-  
-  const confirmQuickFill = (wine: CellarWine) => {
-      if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
-          fillRackWithWine(fillTargetRack.id, wine.id, fillTargetRack.width, fillTargetRack.height);
-          setFillTargetRack(null);
-          loadData();
-      }
-  };
-
-  const handleAddExistingToSlot = (wine: CellarWine) => {
-      if(emptySlotTarget) {
-          addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y });
-          setEmptySlotTarget(null);
-          loadData();
+  const handleFillRack = () => {
+      if (fillTargetRack) {
+          const wineId = prompt("Entrez l'ID du vin à utiliser pour le remplissage:");
+          if (wineId) {
+              fillRackWithWine(fillTargetRack.id, wineId);
+              setFillTargetRack(null);
+              loadData();
+          }
       }
   };
 
   const handleOptimize = async () => {
       setOptimizing(true);
-      setSuggestions([]);
-      
-      const boxWines: {id: string, name: string}[] = [];
-      const shelfWines: {id: string, name: string}[] = [];
-
-      inventory.forEach(w => {
-          w.bottles.forEach(b => {
-             const rack = racks.find(r => typeof b.location !== 'string' && r.id === b.location.rackId);
-             if(rack) {
-                 if(rack.type === 'BOX') boxWines.push({ id: b.id, name: w.name });
-                 else shelfWines.push({ id: b.id, name: w.name });
-             }
-          });
-      });
-
-      const results = await optimizeCellarStorage(boxWines, shelfWines);
-      setSuggestions(results);
-      setOptimizing(false);
+      try {
+          const result = await optimizeCellarStorage(inventory, racks);
+          setSuggestions(result.suggestions || []);
+      } catch (err) {
+          console.error('Optimization failed', err);
+      } finally {
+          setOptimizing(false);
+      }
   };
 
-  const handleBoxPreset = (w: number, h: number, name: string) => {
-      setNewRackW(w);
-      setNewRackH(h);
-      setCreateRackName(name);
-  };
-
-  const shelves = racks.filter(r => r.type !== 'BOX');
-  const boxes = racks.filter(r => r.type === 'BOX');
-  const boxesMatchCount = boxes.reduce((acc, box) => acc + getMatchesForRack(box.id), 0);
+  const selectedRack = racks.find(r => r.id === selectedTabId);
+  const boxRacks = racks.filter(r => r.type === 'BOX');
 
   return (
-    <div className="space-y-6 animate-fade-in pb-24 relative min-h-screen">
-      
-      {/* HEADER & TOOLBAR */}
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Plan de Cave</h2>
-            
-            <div className="flex gap-2">
-                 <button 
-                    onClick={() => setIsArchitectMode(!isArchitectMode)}
-                    className={`p-2 rounded-full border transition-all ${isArchitectMode ? 'bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900 dark:border-indigo-500 dark:text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white text-stone-500 border-stone-200 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}
-                    title="Mode Architecte"
-                >
-                    <PencilRuler size={20} />
-                </button>
-                <button 
-                    onClick={handleOptimize}
-                    disabled={optimizing}
-                    className={`p-2 rounded-full border transition-all ${suggestions.length > 0 ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900 dark:border-purple-500 dark:text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white text-stone-500 border-stone-200 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}
-                    title="Optimisation IA"
-                >
-                    <Wand2 size={20} className={optimizing ? "animate-spin" : ""} />
-                </button>
-            </div>
+    <div className="pb-32 max-w-7xl mx-auto overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-serif text-stone-900 dark:text-white">Plan de Cave</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsArchitectMode(!isArchitectMode)}
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+              isArchitectMode 
+                ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900' 
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+            }`}
+          >
+            <PencilRuler size={18} />
+            {isArchitectMode ? 'Fermer' : 'Architecte'}
+          </button>
+          {isArchitectMode && (
+            <button
+              onClick={() => setShowAddRackModal(true)}
+              className="px-4 py-2 rounded-lg bg-wine-600 text-white flex items-center gap-2 hover:bg-wine-700 transition-colors"
+            >
+              <Plus size={18} />
+              Ajouter
+            </button>
+          )}
         </div>
+      </div>
 
-        {/* Global Search */}
+      {/* Search Bar */}
+      <div className="mb-4">
         <div className="relative">
-            <Search className="absolute left-3 top-3 text-stone-400" size={18} />
-            <input 
-                type="text"
-                placeholder="Chercher dans toute la cave..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-600 outline-none"
-            />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Rechercher un vin..."
+            className="w-full bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl pl-10 pr-4 py-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-wine-500"
+          />
         </div>
+      </div>
 
-        {/* RACK NAVIGATOR (Tabs) */}
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {/* Shelf Tabs */}
-            {shelves.map(rack => {
-                const matchCount = getMatchesForRack(rack.id);
-                const isSelected = selectedTabId === rack.id;
-                
-                return (
-                    <button
-                        key={rack.id}
-                        onClick={() => setSelectedTabId(rack.id)}
-                        className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
-                            isSelected 
-                            ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm' 
-                            : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
-                        }`}
-                        style={{marginBottom: -1}} 
-                    >
-                        {rack.name}
-                        {matchCount > 0 && (
-                            <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                                {matchCount}
-                            </span>
-                        )}
-                    </button>
-                )
-            })}
-
-            {/* Boxes Tab */}
-            {boxes.length > 0 && (
-                <button
-                    onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
-                    className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
-                        selectedTabId === 'VIEW_ALL_BOXES'
-                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm' 
-                        : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
-                    }`}
-                    style={{marginBottom: -1}}
-                >
-                    <Box size={14} className="text-amber-500" />
-                    Mes Caisses ({boxes.length})
-                    {boxesMatchCount > 0 && (
-                        <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                            {boxesMatchCount}
-                        </span>
-                    )}
-                </button>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {racks.filter(r => r.type === 'SHELF').map(rack => (
+          <button
+            key={rack.id}
+            onClick={() => setSelectedTabId(rack.id)}
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              selectedTabId === rack.id
+                ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+            }`}
+          >
+            {rack.name}
+            {searchQuery && getMatchesForRack(rack.id) > 0 && (
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-wine-500 text-white text-xs">
+                {getMatchesForRack(rack.id)}
+              </span>
             )}
+          </button>
+        ))}
+        {boxRacks.length > 0 && (
+          <button
+            onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
+            className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+              selectedTabId === 'VIEW_ALL_BOXES'
+                ? 'bg-amber-600 text-white'
+                : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
+            }`}
+          >
+            <Box size={16} className="inline mr-2" />
+            Caisses ({boxRacks.length})
+          </button>
+        )}
+      </div>
 
+      {/* Rack View */}
+      {selectedRack && selectedRack.type === 'SHELF' && (
+        <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-serif text-stone-900 dark:text-white">{selectedRack.name}</h2>
             {isArchitectMode && (
-                <button 
-                  onClick={() => setShowAddRackModal(true)}
-                  className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 dark:border-stone-600 text-stone-500 hover:text-stone-800 dark:hover:text-white hover:border-stone-500 dark:hover:border-stone-400"
+              <div className="flex gap-2">
+                <button
+                  onClick={() => reorderRack(selectedRack.id, 'left')}
+                  className="p-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
                 >
-                    <Plus size={14} />
+                  ←
                 </button>
+                <button
+                  onClick={() => reorderRack(selectedRack.id, 'right')}
+                  className="p-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+                >
+                  →
+                </button>
+                <button
+                  onClick={() => handleStartEdit(selectedRack)}
+                  className="p-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+                >
+                  <PencilRuler size={16} />
+                </button>
+                <button
+                  onClick={() => handleDeleteRack(selectedRack.id)}
+                  className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             )}
-        </div>
-      </div>
-
-      {/* UNSORTED BOTTLES DOCK */}
-      {unsortedBottles.length > 0 && (
-        <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
-               <button 
-                onClick={() => setShowUnsortedDock(false)}
-                className="absolute -left-8 top-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-2 rounded-l-lg text-stone-400 hover:text-stone-800 dark:hover:text-white"
-               >
-                   <ChevronRight size={16} />
-               </button>
-               <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2 border-b border-stone-200 dark:border-stone-800 pb-2">
-                   <Inbox size={16} className="text-wine-600 dark:text-wine-400" />
-                   <span className="text-sm font-bold">Quai de Réception</span>
-                   <span className="text-xs bg-stone-100 dark:bg-stone-800 px-2 rounded-full ml-auto">{unsortedBottles.length}</span>
-               </div>
-               <p className="text-[10px] text-stone-500 italic">Glissez ces bouteilles vers les étagères pour les ranger.</p>
-               {unsortedBottles.map((b, i) => (
-                   <div 
-                    key={b.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, b.id)}
-                    className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
-                   >
-                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName}</div>
-                       <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
-                   </div>
-               ))}
-           </div>
+          </div>
+          <RackGrid
+            rack={selectedRack}
+            inventory={inventory}
+            onSlotClick={handleSlotClick}
+            searchQuery={searchQuery}
+            moveSource={moveSource}
+          />
         </div>
       )}
-      {!showUnsortedDock && unsortedBottles.length > 0 && (
-         <button 
-            onClick={() => setShowUnsortedDock(true)}
-            className="fixed bottom-24 right-0 z-40 bg-wine-600 text-white p-3 rounded-l-xl shadow-lg hover:bg-wine-500 transition-colors"
-         >
-             <Inbox size={20} />
-             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full">{unsortedBottles.length}</span>
-         </button>
+
+      {/* Boxes View */}
+      {selectedTabId === 'VIEW_ALL_BOXES' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {boxRacks.map(rack => (
+            <div key={rack.id} className="bg-amber-50 dark:bg-amber-900/20 rounded-2xl border-2 border-amber-200 dark:border-amber-900/50 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-serif text-lg text-amber-900 dark:text-amber-200">{rack.name}</h3>
+                {isArchitectMode && (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleStartEdit(rack)}
+                      className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60"
+                    >
+                      <PencilRuler size={14} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRack(rack.id)}
+                      className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <RackGrid
+                rack={rack}
+                inventory={inventory}
+                onSlotClick={handleSlotClick}
+                searchQuery={searchQuery}
+                moveSource={moveSource}
+              />
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* VIEW CONTENT */}
-      <div className={`grid gap-6 ${selectedTabId === 'VIEW_ALL_BOXES' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-          {(() => {
-              if (selectedTabId === 'VIEW_ALL_BOXES') {
-                  return boxes.map(box => (
-                      <RackGrid 
-                        key={box.id}
-                        rack={box}
-                        inventory={inventory}
-                        isArchitectMode={isArchitectMode}
-                        searchQuery={searchQuery}
-                        moveSource={moveSource}
-                        selectedBottle={selectedBottle}
-                        dragSourceId={dragSourceId}
-                        suggestions={suggestions}
-                        onSlotClick={handleSlotClick}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onFill={handleQuickFill}
-                        onEdit={handleEditRack}
-                        onDelete={handleDeleteRack}
-                        onReorder={handleReorderRack}
-                      />
-                  ));
-              } else {
-                  const rack = racks.find(r => r.id === selectedTabId);
-                  if (!rack) return (
-                      <div className="text-center py-20 text-stone-500">
-                          <p>Sélectionnez ou créez un rangement.</p>
-                      </div>
-                  );
-                  return (
-                      <RackGrid 
-                        rack={rack}
-                        inventory={inventory}
-                        isArchitectMode={isArchitectMode}
-                        searchQuery={searchQuery}
-                        moveSource={moveSource}
-                        selectedBottle={selectedBottle}
-                        dragSourceId={dragSourceId}
-                        suggestions={suggestions}
-                        onSlotClick={handleSlotClick}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onFill={handleQuickFill}
-                        onEdit={handleEditRack}
-                        onDelete={handleDeleteRack}
-                        onReorder={handleReorderRack}
-                      />
-                  );
-              }
-          })()}
-      </div>
+      {/* Unsorted Dock */}
+      {showUnsortedDock && unsortedBottles.length > 0 && (
+        <div className="fixed bottom-24 left-0 right-0 bg-stone-100/95 dark:bg-stone-900/95 backdrop-blur-xl border-t border-stone-200 dark:border-stone-800 p-4 z-40">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Inbox size={18} className="text-stone-500" />
+                <h3 className="font-medium text-stone-900 dark:text-white">Non triés ({unsortedBottles.length})</h3>
+              </div>
+              <button onClick={() => setShowUnsortedDock(false)} className="text-stone-500 hover:text-stone-700 dark:hover:text-stone-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {unsortedBottles.map((b: any) => (
+                <div
+                  key={b.id}
+                  className="flex-shrink-0 bg-white dark:bg-stone-800 rounded-lg border border-stone-200 dark:border-stone-700 p-3 min-w-[120px]"
+                >
+                  <div className="text-xs font-medium text-stone-900 dark:text-white truncate">{b.wineName}</div>
+                  <div className="text-[10px] text-stone-500">{b.wineVintage}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* BOTTLE ACTION MODAL */}
+      {/* SELECTED BOTTLE MODAL */}
       {selectedBottle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                  <button onClick={() => setSelectedBottle(null)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
+              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl">
+                  <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-2">{selectedBottle.wine.name}</h3>
+                  <p className="text-stone-500 text-sm mb-4">{selectedBottle.wine.vintage}</p>
                   
-                  <div className="text-center mb-6">
-                      <h3 className="text-2xl font-serif text-stone-900 dark:text-white mb-1">{selectedBottle.wine.name}</h3>
-                      <p className="text-stone-500 dark:text-stone-400">{selectedBottle.wine.producer} • {selectedBottle.wine.vintage}</p>
-                      <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
-                          {racks.find(r => r.id === selectedBottle.location.rackId)?.name} • {getRowLabel(selectedBottle.location.y)}{selectedBottle.location.x+1}
-                      </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleConsume} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-sm">Boire</span>
+                  <div className="space-y-2">
+                      <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="w-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-white p-3 rounded-xl flex items-center gap-3 transition-colors">
+                          <Eye size={18} />
+                          <span>Voir la Fiche</span>
                       </button>
-                      <button onClick={handleStartMove} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-sm">Déplacer</span>
+                      <button onClick={handleMoveStart} className="w-full bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-900 dark:text-blue-200 p-3 rounded-xl flex items-center gap-3 transition-colors">
+                          <Move size={18} />
+                          <span>Déplacer</span>
                       </button>
-                      <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
-                      </button>
-                      <button className="bg-stone-100 dark:bg-stone-800 opacity-50 cursor-not-allowed text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2">
-                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
+                      <button onClick={handleConsumeBottle} className="w-full bg-wine-100 dark:bg-wine-900/30 hover:bg-wine-200 dark:hover:bg-wine-900/50 text-wine-900 dark:text-wine-200 p-3 rounded-xl flex items-center gap-3 transition-colors">
+                          <Droplet size={18} />
+                          <span>Consommer</span>
                       </button>
                   </div>
-              </div>
-          </div>
-      )}
-
-      {/* QUICK FILL MODAL (CRATES) */}
-      {fillTargetRack && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setFillTargetRack(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-amber-200 dark:border-amber-900/50 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4 flex items-center gap-2">
-                      <PackagePlus className="text-amber-500" /> Remplir {fillTargetRack.name}
-                  </h3>
-                  <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
-                      {inventory.map(w => (
-                          <button key={w.id} onClick={() => confirmQuickFill(w)} className="w-full text-left p-3 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
-                              <div>
-                                  <div className="text-stone-800 dark:text-white text-sm">{w.name}</div>
-                                  <div className="text-stone-500 text-xs">{w.vintage}</div>
-                              </div>
-                              <Plus size={16} className="text-amber-500"/>
-                          </button>
-                      ))}
-                  </div>
-                  <button onClick={() => setFillTargetRack(null)} className="w-full py-2 text-stone-500">Annuler</button>
               </div>
           </div>
       )}
@@ -564,7 +462,7 @@ export const CellarMap: React.FC = () => {
                   
                   <div className="grid gap-3">
                       <button 
-                        onClick={() => navigate('/add')}
+                        onClick={() => navigate('/add-wine')}
                         className="bg-wine-600 hover:bg-wine-700 text-white p-3 rounded-xl flex items-center gap-3 transition-colors"
                       >
                           <div className="bg-wine-800 p-2 rounded-lg"><Plus size={18}/></div>
@@ -598,50 +496,81 @@ export const CellarMap: React.FC = () => {
           </div>
       )}
 
-      {/* ADD RACK MODAL */}
-      {showAddRackModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setShowAddRackModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4">Architecture</h3>
-                  <div className="space-y-4">
-                      <div>
-                          <label className="text-xs text-stone-500 uppercase">Type de Rangement</label>
-                          <div className="flex gap-2 mt-1 mb-4">
-                              <button onClick={() => setNewRackType('SHELF')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'SHELF' ? 'bg-stone-800 border-stone-500 text-white' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Étagère</button>
-                              <button onClick={() => setNewRackType('BOX')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'BOX' ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-800 dark:text-amber-200' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Caisse</button>
-                          </div>
-                      </div>
+{/* ADD RACK MODAL */}
+{showAddRackModal && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setShowAddRackModal(false)} />
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10">
+            <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4">Architecture</h3>
+            <div className="space-y-4">
+                <div>
+                    <label className="text-xs text-stone-500 uppercase">Type de Rangement</label>
+                    <div className="flex gap-2 mt-1 mb-4">
+                        <button onClick={() => setNewRackType('BOX')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'BOX' ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-800 dark:text-amber-200' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Caisse</button>
+                        <button onClick={() => setNewRackType('SHELF')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'SHELF' ? 'bg-stone-800 border-stone-500 text-white' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Étagère</button>
+                    </div>
+                </div>
 
-                      {/* Presets for Boxes */}
-                      {newRackType === 'BOX' && (
-                          <div className="flex gap-2 mb-2">
-                              <button onClick={() => handleBoxPreset(3, 2, "Caisse de 6")} className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 py-2 text-xs text-stone-500 rounded hover:bg-stone-100 dark:hover:text-white">6 Bouteilles</button>
-                              <button onClick={() => handleBoxPreset(4, 3, "Caisse de 12")} className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 py-2 text-xs text-stone-500 rounded hover:bg-stone-100 dark:hover:text-white">12 Bouteilles</button>
-                          </div>
-                      )}
-
-                      <div>
-                          <label className="text-xs text-stone-500 uppercase">Nom</label>
-                          <input type="text" value={createRackName} onChange={e => setCreateRackName(e.target.value)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" placeholder="ex: Étagère Salon" />
-                      </div>
-                      <div className="flex gap-4">
-                          <div className="flex-1">
-                              <label className="text-xs text-stone-500 uppercase">Largeur (Col)</label>
-                              <input type="number" value={newRackW} onChange={e => setNewRackW(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
-                          </div>
-                          <div className="flex-1">
-                              <label className="text-xs text-stone-500 uppercase">Hauteur (Lig)</label>
-                              <input type="number" value={newRackH} onChange={e => setNewRackH(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
-                          </div>
-                      </div>
-                      
-                      <button onClick={handleCreateRack} className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold py-3 rounded-lg mt-2 hover:bg-stone-800 dark:hover:bg-stone-200">Créer</button>
-                  </div>
-              </div>
-          </div>
-      )}
-
+                {newRackType === 'BOX' ? (
+                    <>
+                        <div>
+                            <label className="text-xs text-stone-500 uppercase mb-2 block">Taille de la Caisse</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                    onClick={() => {
+                                        setNewRackW(3);
+                                        setNewRackH(2);
+                                        setCreateRackName("Caisse de 6");
+                                    }} 
+                                    className={`p-4 rounded-xl border-2 transition-all ${newRackW === 3 && newRackH === 2 ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'border-stone-200 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700'}`}
+                                >
+                                    <div className="text-2xl font-bold text-stone-900 dark:text-white">6</div>
+                                    <div className="text-xs text-stone-500">Bouteilles</div>
+                                    <div className="text-[10px] text-stone-400 mt-1">3×2</div>
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        setNewRackW(4);
+                                        setNewRackH(3);
+                                        setCreateRackName("Caisse de 12");
+                                    }} 
+                                    className={`p-4 rounded-xl border-2 transition-all ${newRackW === 4 && newRackH === 3 ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20' : 'border-stone-200 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700'}`}
+                                >
+                                    <div className="text-2xl font-bold text-stone-900 dark:text-white">12</div>
+                                    <div className="text-xs text-stone-500">Bouteilles</div>
+                                    <div className="text-[10px] text-stone-400 mt-1">4×3</div>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs text-stone-500 uppercase">Nom</label>
+                            <input type="text" value={createRackName} onChange={e => setCreateRackName(e.target.value)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" placeholder="ex: Margaux 2015" />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div>
+                            <label className="text-xs text-stone-500 uppercase">Nom</label>
+                            <input type="text" value={createRackName} onChange={e => setCreateRackName(e.target.value)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" placeholder="ex: Étagère Salon" />
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <label className="text-xs text-stone-500 uppercase">Largeur (Col)</label>
+                                <input type="number" value={newRackW} onChange={e => setNewRackW(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-xs text-stone-500 uppercase">Hauteur (Lig)</label>
+                                <input type="number" value={newRackH} onChange={e => setNewRackH(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
+                            </div>
+                        </div>
+                    </>
+                )}
+                
+                <button onClick={handleCreateRack} className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold py-3 rounded-lg mt-2 hover:bg-stone-800 dark:hover:bg-stone-200">Créer</button>
+            </div>
+        </div>
+    </div>
+)}
       {/* EDIT RACK MODAL */}
       {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">

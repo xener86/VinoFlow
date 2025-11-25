@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getWineById, getWineHistory, consumeBottle, addBottles } from '../services/storageService';
+import { getWineById, getWineHistory, addBottles, getRacks, giftBottle } from '../services/storageService';
 import { CellarWine, TimelineEvent } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
-import { ArrowLeft, Droplet, MapPin, Calendar, Clock, BookOpen, ChefHat, Sparkles, Plus, Edit } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, BookOpen, ChefHat, Sparkles, Plus, Edit, Gift, Wine as WineIcon } from 'lucide-react';
 
 export const WineDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +11,11 @@ export const WineDetails: React.FC = () => {
   const [wine, setWine] = useState<CellarWine | null>(null);
   const [history, setHistory] = useState<TimelineEvent[]>([]);
   const [activeTab, setActiveTab] = useState<'TASTING' | 'STORY' | 'CELLAR'>('TASTING');
+  
+  // Gift Modal State
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftRecipient, setGiftRecipient] = useState('');
+  const [giftOccasion, setGiftOccasion] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -29,15 +33,6 @@ export const WineDetails: React.FC = () => {
       }
   }
 
-  const handleConsume = () => {
-    if (wine && wine.id) {
-      if (window.confirm("Confirmer la consommation d'une bouteille ?")) {
-        consumeBottle(wine.id);
-        loadWineData(wine.id);
-      }
-    }
-  };
-
   const handleAddStock = () => {
       if (wine && wine.id) {
           if(window.confirm(`Ajouter une bouteille de ${wine.name} au stock ?`)) {
@@ -47,6 +42,33 @@ export const WineDetails: React.FC = () => {
       }
   }
 
+  const handleGiftBottle = () => {
+      if (!wine || !giftRecipient) return;
+      
+      // Find first available bottle
+      const availableBottle = wine.bottles.find(b => !b.isConsumed);
+      if (availableBottle) {
+          giftBottle(wine.id, availableBottle.id, giftRecipient, giftOccasion);
+          setShowGiftModal(false);
+          setGiftRecipient('');
+          setGiftOccasion('');
+          loadWineData(wine.id);
+          alert(`Bouteille offerte à ${giftRecipient} !`);
+      } else {
+          alert("Aucune bouteille disponible en stock.");
+      }
+  };
+
+  const getRackName = (rackId: string) => {
+      const racks = getRacks();
+      return racks.find(r => r.id === rackId)?.name || 'Rack Inconnu';
+  };
+
+  const getRowLabel = (index: number) => {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      return letters[index] || "?";
+  };
+
   if (!wine) return null;
 
   const typeColor = wine.type === 'RED' ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 
@@ -54,7 +76,7 @@ export const WineDetails: React.FC = () => {
                     'text-pink-600 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50';
 
   return (
-    <div className="pb-24 animate-fade-in">
+    <div className="pb-32 animate-fade-in">
       {/* Header / Hero */}
       <div className="relative mb-6">
         <div className="absolute top-0 left-0 right-0 flex justify-between z-10">
@@ -74,7 +96,7 @@ export const WineDetails: React.FC = () => {
         
         <div className="pt-10 flex flex-col items-center text-center">
             <div className={`px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 ${typeColor}`}>
-                {wine.type}
+                {wine.type === 'RED' ? 'ROUGE' : wine.type === 'WHITE' ? 'BLANC' : wine.type === 'ROSE' ? 'ROSÉ' : wine.type === 'SPARKLING' ? 'PÉTILLANT' : wine.type}
             </div>
             <h1 className="text-4xl font-serif text-stone-900 dark:text-white mb-2 leading-tight">{wine.name}</h1>
             {wine.cuvee && <p className="text-2xl font-serif text-wine-600 dark:text-wine-400 mb-2 italic">{wine.cuvee}</p>}
@@ -190,7 +212,7 @@ export const WineDetails: React.FC = () => {
                   <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-wine-600 dark:text-wine-500">
-                              <Droplet size={20} />
+                              <WineIcon size={20} />
                           </div>
                           <div>
                               <p className="text-2xl font-bold text-stone-900 dark:text-white">{wine.inventoryCount}</p>
@@ -218,16 +240,26 @@ export const WineDetails: React.FC = () => {
                       <MapPin size={18} />
                       <h3 className="font-serif text-lg text-stone-900 dark:text-white">Emplacement</h3>
                   </div>
-                  {wine.bottles.length > 0 ? (
+                  {wine.bottles.filter(b => !b.isConsumed).length > 0 ? (
                       <div className="space-y-2">
-                          {wine.bottles.map((b, i) => (
-                              <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 dark:bg-stone-950 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
-                                  <span className="text-stone-700 dark:text-stone-300">Bouteille #{i + 1}</span>
-                                  <span className="text-wine-600 dark:text-wine-400 font-mono">
-                                      {typeof b.location === 'string' ? b.location : `Rack ${b.location.rackId} [${b.location.x},${b.location.y}]`}
-                                  </span>
-                              </div>
-                          ))}
+                          {wine.bottles.filter(b => !b.isConsumed).map((b, i) => {
+                              let locationLabel = "Non trié";
+                              if (typeof b.location !== 'string') {
+                                  const rackName = getRackName(b.location.rackId);
+                                  locationLabel = `${rackName} [${getRowLabel(b.location.y)}${b.location.x + 1}]`;
+                              } else {
+                                  locationLabel = b.location;
+                              }
+                              
+                              return (
+                                  <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 dark:bg-stone-950 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
+                                      <span className="text-stone-700 dark:text-stone-300">Bouteille #{i + 1}</span>
+                                      <span className="text-wine-600 dark:text-wine-400 font-mono text-xs">
+                                          {locationLabel}
+                                      </span>
+                                  </div>
+                              );
+                          })}
                       </div>
                   ) : (
                       <p className="text-stone-500 italic">Rupture de stock</p>
@@ -240,41 +272,103 @@ export const WineDetails: React.FC = () => {
                       <Clock size={18} />
                       <h3 className="font-serif text-lg text-stone-900 dark:text-white">Historique</h3>
                   </div>
-                  <div className="relative border-l border-stone-200 dark:border-stone-800 ml-3 space-y-6">
-                      {history.map((event, i) => (
-                          <div key={i} className="relative pl-6">
-                              <div className={`absolute -left-1.5 top-1.5 w-3 h-3 rounded-full border border-white dark:border-stone-900 ${
-                                  event.type === 'IN' ? 'bg-green-500' : 
-                                  event.type === 'OUT' ? 'bg-red-500' : 'bg-blue-500'
-                              }`} />
-                              <div className="flex justify-between items-start">
-                                  <div>
-                                      <p className="text-stone-800 dark:text-stone-200 text-sm font-medium">{event.description}</p>
-                                      <p className="text-stone-500 text-xs">par {event.user}</p>
+                  {history.length > 0 ? (
+                      <div className="relative border-l border-stone-200 dark:border-stone-800 ml-3 space-y-6">
+                          {history.map((event, i) => (
+                              <div key={i} className="relative pl-6">
+                                  <div className={`absolute -left-1.5 top-1.5 w-3 h-3 rounded-full border border-white dark:border-stone-900 ${
+                                      event.type === 'IN' ? 'bg-green-500' : 
+                                      event.type === 'OUT' ? 'bg-red-500' : 
+                                      event.type === 'GIFT' ? 'bg-purple-500' :
+                                      event.type === 'MOVE' ? 'bg-blue-500' : 'bg-stone-500'
+                                  }`} />
+                                  <div className="flex justify-between items-start">
+                                      <div>
+                                          <p className="text-stone-800 dark:text-stone-200 text-sm font-medium">{event.description}</p>
+                                          <p className="text-stone-500 text-xs">par {event.user}</p>
+                                      </div>
+                                      <span className="text-xs text-stone-600 font-mono">
+                                          {new Date(event.date).toLocaleDateString('fr-FR')}
+                                      </span>
                                   </div>
-                                  <span className="text-xs text-stone-600 font-mono">
-                                      {new Date(event.date).toLocaleDateString()}
-                                  </span>
                               </div>
-                          </div>
-                      ))}
-                  </div>
+                          ))}
+                      </div>
+                  ) : (
+                      <p className="text-stone-500 italic text-sm">Aucun historique disponible.</p>
+                  )}
               </div>
+
+              {/* Gift Section */}
+              {wine.inventoryCount > 0 && (
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border border-purple-200 dark:border-purple-900/50 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4 text-purple-600 dark:text-purple-400">
+                          <Gift size={18} />
+                          <h3 className="font-serif text-lg text-stone-900 dark:text-white">Offrir une Bouteille</h3>
+                      </div>
+                      <p className="text-stone-600 dark:text-stone-400 text-sm mb-4">
+                          Gardez une trace des bouteilles offertes à vos proches.
+                      </p>
+                      <button 
+                        onClick={() => setShowGiftModal(true)}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                      >
+                          <Gift size={16} /> Offrir
+                      </button>
+                  </div>
+              )}
            </div>
         )}
 
       </div>
 
-      {/* Floating Action Button */}
-      {wine.inventoryCount > 0 && (
-          <div className="fixed bottom-24 right-6 md:right-auto md:left-1/2 md:-translate-x-1/2 md:bottom-10 z-30">
-              <button 
-                  onClick={handleConsume}
-                  className="bg-wine-600 hover:bg-wine-700 text-white pl-5 pr-6 py-4 rounded-full shadow-2xl shadow-wine-900/50 flex items-center gap-3 transition-transform hover:scale-105 active:scale-95"
-              >
-                  <Droplet size={20} fill="currentColor" />
-                  <span className="font-bold tracking-wide">BOIRE UNE BOUTEILLE</span>
-              </button>
+      {/* Gift Modal */}
+      {showGiftModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
+                  <p className="text-sm text-stone-500 mb-4">{wine.name} {wine.vintage}</p>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">À qui ?</label>
+                          <input 
+                            type="text"
+                            value={giftRecipient}
+                            onChange={(e) => setGiftRecipient(e.target.value)}
+                            placeholder="ex: Marie Dupont"
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                      </div>
+                      <div>
+                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">Pour quelle occasion ?</label>
+                          <input 
+                            type="text"
+                            value={giftOccasion}
+                            onChange={(e) => setGiftOccasion(e.target.value)}
+                            placeholder="ex: Anniversaire, Mariage..."
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                      </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                      <button 
+                        onClick={() => setShowGiftModal(false)}
+                        className="flex-1 py-3 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                      >
+                          Annuler
+                      </button>
+                      <button 
+                        onClick={handleGiftBottle}
+                        disabled={!giftRecipient}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white py-3 rounded-lg font-bold transition-colors"
+                      >
+                          Confirmer
+                      </button>
+                  </div>
+              </div>
           </div>
       )}
     </div>

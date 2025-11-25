@@ -1,82 +1,80 @@
-
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { Dashboard } from './pages/Dashboard';
-import { AddWine } from './pages/AddWine';
-import { EditWine } from './pages/EditWine';
-import { Sommelier } from './pages/Sommelier';
-import { Analytics } from './pages/Analytics';
-import { CellarMap } from './pages/CellarMap';
-import { Bar } from './pages/Bar';
-import { Settings } from './pages/Settings';
-import { WineDetails } from './pages/WineDetails';
-import { SpiritDetails } from './pages/SpiritDetails';
-import { Login } from './pages/Login';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { Loader2 } from 'lucide-react';
+import { Layout } from './components/Layout';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { AddWine } from './pages/AddWine';
+import { WineDetails } from './pages/WineDetails';
+import { EditWine } from './pages/EditWine';
+import { CellarMap } from './pages/CellarMap';
+import { Analytics } from './pages/Analytics';
+import { Settings } from './pages/Settings';
+import { Sommelier } from './pages/Sommelier';
+import { Bar } from './pages/Bar';
+import { SpiritDetails } from './pages/SpiritDetails';
+import { EditSpirit } from './pages/EditSpirit';
+import { TastingNotes } from './pages/TastingNotes';
+import { CellarJournal } from './pages/CellarJournal';
 
-// Protected Route Component
-const ProtectedRoute = () => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, isConfigured } = useAuth();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
-         <Loader2 className="animate-spin text-wine-500" size={48} />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-600"></div>
       </div>
     );
   }
 
-  // If not configured or not logged in, redirect to login
   if (!isConfigured || !user) {
     return <Navigate to="/login" replace />;
   }
 
+  return <>{children}</>;
+};
+
+const AppRoutes: React.FC = () => {
   return (
-    <Layout>
-      <Outlet />
-    </Layout>
+    <Routes>
+      {/* Public Route */}
+      <Route path="/login" element={<Login />} />
+
+      {/* Protected Routes with Layout */}
+      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/add-wine" element={<AddWine />} />
+        <Route path="/wine/:id" element={<WineDetails />} />
+        <Route path="/wine/:id/edit" element={<EditWine />} />
+        <Route path="/cellar-map" element={<CellarMap />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/sommelier" element={<Sommelier />} />
+        <Route path="/bar" element={<Bar />} />
+        <Route path="/spirit/:id" element={<SpiritDetails />} />
+        <Route path="/spirit/:id/edit" element={<EditSpirit />} />
+        <Route path="/tasting" element={<TastingNotes />} />
+        <Route path="/journal" element={<CellarJournal />} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 
-const AppRoutes = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) return null;
-
-  return (
-    <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-        
-        <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/wine/:id" element={<WineDetails />} />
-            <Route path="/wine/:id/edit" element={<EditWine />} />
-            <Route path="/spirit/:id" element={<SpiritDetails />} />
-            <Route path="/map" element={<CellarMap />} />
-            <Route path="/bar" element={<Bar />} />
-            <Route path="/add" element={<AddWine />} />
-            <Route path="/sommelier" element={<Sommelier />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-    </Routes>
-  );
-}
-
-const App: React.FC = () => {
+function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <HashRouter>
+        <BrowserRouter>
           <AppRoutes />
-        </HashRouter>
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );
-};
+}
 
 export default App;

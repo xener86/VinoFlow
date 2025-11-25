@@ -1,6 +1,6 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, SpiritType, FullBackupData, TimelineEvent, BottleLocation, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig } from '../types';
 
-// ... (Keep MOCK_WINES, MOCK_RACKS, MOCK_BOTTLES, MOCK_SPIRITS, MOCK_COCKTAILS, MOCK_SHOPPING, MOCK_TASTE_PROFILE exactly as they are in the previous file content provided by user)
+// --- MOCK DATA ---
 const MOCK_WINES: Wine[] = [
   {
     id: 'w1',
@@ -169,7 +169,19 @@ const MOCK_TASTE_PROFILE: UserTasteProfile = {
   lastUpdated: new Date().toISOString()
 };
 
-// --- Helpers ---
+// --- JOURNAL HELPERS ---
+
+export const addJournalEntry = (entry: Omit<any, 'id'>): void => {
+    const journal = JSON.parse(localStorage.getItem('vf_cellar_journal') || '[]');
+    journal.push({
+        ...entry,
+        id: crypto.randomUUID(),
+        date: new Date().toISOString()
+    });
+    localStorage.setItem('vf_cellar_journal', JSON.stringify(journal));
+};
+
+// --- WINE FUNCTIONS ---
 
 export const getInventory = (): CellarWine[] => {
   const storedWines = localStorage.getItem('vf_wines');
@@ -209,10 +221,11 @@ export const getWineHistory = (wineId: string): TimelineEvent[] => {
     });
 
     if (b.isConsumed && b.consumedDate) {
+       const description = b.giftedTo ? `Offert à ${b.giftedTo}` : 'Consommée';
        events.push({
         date: b.consumedDate,
-        type: 'OUT',
-        description: 'Consommée',
+        type: b.giftedTo ? 'GIFT' : 'OUT',
+        description: description,
         user: 'Moi'
       });
     }
@@ -220,6 +233,335 @@ export const getWineHistory = (wineId: string): TimelineEvent[] => {
 
   return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
+
+export const saveWine = (wine: Wine, quantity: number = 1, location: string | BottleLocation = 'Non trié'): string => {
+  const storedWines = localStorage.getItem('vf_wines');
+  const wines: Wine[] = storedWines ? JSON.parse(storedWines) : [];
+
+  const existingIndex = wines.findIndex(w => w.id === wine.id);
+  if (existingIndex >= 0) {
+    wines[existingIndex] = wine;
+  } else {
+    wines.push(wine);
+  }
+  
+  localStorage.setItem('vf_wines', JSON.stringify(wines));
+
+  if (quantity > 0) {
+    addBottles(wine.id, quantity, location);
+    
+    // Log journal entry
+    let locationLabel = 'Non trié';
+    if (typeof location !== 'string') {
+        const racks = getRacks();
+        const rack = racks.find(r => r.id === location.rackId);
+        const rackName = rack?.name || 'Rack Inconnu';
+        const rowLabel = String.fromCharCode(65 + location.y);
+        locationLabel = `${rackName} [${rowLabel}${location.x + 1}]`;
+    } else {
+        locationLabel = location;
+    }
+    
+    addJournalEntry({
+        type: 'IN',
+        wineId: wine.id,
+        wineName: wine.name,
+        quantity,
+        location: locationLabel,
+        description: `Ajout de ${quantity} bouteille(s) de ${wine.name} ${wine.vintage} (${locationLabel})`,
+        userId: 'current-user'
+    });
+  }
+  
+  return wine.id;
+};
+
+export const updateWine = (id: string, updates: Partial<Wine>): void => {
+  const storedWines = localStorage.getItem('vf_wines');
+  const wines: Wine[] = storedWines ? JSON.parse(storedWines) : [];
+
+  const index = wines.findIndex(w => w.id === id);
+  if (index >= 0) {
+    wines[index] = { ...wines[index], ...updates, updatedAt: new Date().toISOString() };
+    localStorage.setItem('vf_wines', JSON.stringify(wines));
+  }
+};
+
+export const deleteWine = (id: string): void => {
+  const storedWines = localStorage.getItem('vf_wines');
+  const wines: Wine[] = storedWines ? JSON.parse(storedWines) : [];
+  const filtered = wines.filter(w => w.id !== id);
+  localStorage.setItem('vf_wines', JSON.stringify(filtered));
+
+  const storedBottles = localStorage.getItem('vf_bottles');
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+  const filteredBottles = bottles.filter(b => b.wineId !== id);
+  localStorage.setItem('vf_bottles', JSON.stringify(filteredBottles));
+};
+
+export const toggleFavorite = (id: string): void => {
+  const storedWines = localStorage.getItem('vf_wines');
+  const wines: Wine[] = storedWines ? JSON.parse(storedWines) : [];
+  const wine = wines.find(w => w.id === id);
+  if (wine) {
+    wine.isFavorite = !wine.isFavorite;
+    localStorage.setItem('vf_wines', JSON.stringify(wines));
+  }
+};
+
+// --- BOTTLE FUNCTIONS ---
+
+export const addBottles = (wineId: string, count: number, location: string | BottleLocation = 'Non trié'): void => {
+  const storedBottles = localStorage.getItem('vf_bottles');
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+  for (let i = 0; i < count; i++) {
+    bottles.push({
+      id: crypto.randomUUID(),
+      wineId,
+      location,
+      addedByUserId: 'current-user',
+      purchaseDate: new Date().toISOString(),
+      isConsumed: false
+    });
+  }
+
+  localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+};
+
+export const addBottleAtLocation = (wineId: string, location: BottleLocation): void => {
+    const storedBottles = localStorage.getItem('vf_bottles');
+    const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+    bottles.push({
+        id: crypto.randomUUID(),
+        wineId,
+        location,
+        addedByUserId: 'current-user',
+        purchaseDate: new Date().toISOString(),
+        isConsumed: false
+    });
+
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+    
+    // Log journal entry
+    const racks = getRacks();
+    const rack = racks.find(r => r.id === location.rackId);
+    const rackName = rack?.name || 'Rack Inconnu';
+    const rowLabel = String.fromCharCode(65 + location.y);
+    const locationLabel = `${rackName} [${rowLabel}${location.x + 1}]`;
+    
+    const wine = getWineById(wineId);
+    if (wine) {
+        addJournalEntry({
+            type: 'IN',
+            wineId: wine.id,
+            wineName: wine.name,
+            quantity: 1,
+            location: locationLabel,
+            description: `Ajout d'une bouteille de ${wine.name} ${wine.vintage} (${locationLabel})`,
+            userId: 'current-user'
+        });
+    }
+};
+
+export const consumeSpecificBottle = (wineId: string, bottleId: string): void => {
+  const storedBottles = localStorage.getItem('vf_bottles');
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+  const bottle = bottles.find(b => b.id === bottleId && b.wineId === wineId);
+  if (bottle) {
+    bottle.isConsumed = true;
+    bottle.consumedDate = new Date().toISOString();
+    
+    // Log journal entry with location
+    let locationLabel = 'Non trié';
+    if (typeof bottle.location !== 'string') {
+        const racks = getRacks();
+        const rack = racks.find(r => r.id === bottle.location.rackId);
+        const rackName = rack?.name || 'Rack Inconnu';
+        const rowLabel = String.fromCharCode(65 + bottle.location.y);
+        locationLabel = `${rackName} [${rowLabel}${bottle.location.x + 1}]`;
+    } else {
+        locationLabel = bottle.location;
+    }
+    
+    const wine = getWineById(wineId);
+    if (wine) {
+        addJournalEntry({
+            type: 'OUT',
+            wineId: wine.id,
+            wineName: wine.name,
+            quantity: 1,
+            location: locationLabel,
+            description: `Consommation d'une bouteille de ${wine.name} ${wine.vintage} (${locationLabel})`,
+            userId: 'current-user'
+        });
+    }
+    
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+  }
+};
+
+export const moveBottle = (bottleId: string, newLocation: string | BottleLocation): void => {
+  const storedBottles = localStorage.getItem('vf_bottles');
+  const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+  const bottle = bottles.find(b => b.id === bottleId);
+  if (bottle) {
+    const oldLocation = bottle.location;
+    bottle.location = newLocation;
+    
+    // Log journal entry
+    const wine = getWineById(bottle.wineId);
+    if (wine) {
+        let fromLabel = 'Non trié';
+        if (typeof oldLocation !== 'string') {
+            const racks = getRacks();
+            const rack = racks.find(r => r.id === oldLocation.rackId);
+            const rackName = rack?.name || 'Rack Inconnu';
+            const rowLabel = String.fromCharCode(65 + oldLocation.y);
+            fromLabel = `${rackName} [${rowLabel}${oldLocation.x + 1}]`;
+        } else {
+            fromLabel = oldLocation;
+        }
+        
+        let toLabel = 'Non trié';
+        if (typeof newLocation !== 'string') {
+            const racks = getRacks();
+            const rack = racks.find(r => r.id === newLocation.rackId);
+            const rackName = rack?.name || 'Rack Inconnu';
+            const rowLabel = String.fromCharCode(65 + newLocation.y);
+            toLabel = `${rackName} [${rowLabel}${newLocation.x + 1}]`;
+        } else {
+            toLabel = newLocation;
+        }
+        
+        addJournalEntry({
+            type: 'MOVE',
+            wineId: wine.id,
+            wineName: wine.name,
+            quantity: 1,
+            fromLocation: fromLabel,
+            toLocation: toLabel,
+            description: `Déplacement d'une bouteille de ${wine.name} ${wine.vintage} de ${fromLabel} vers ${toLabel}`,
+            userId: 'current-user'
+        });
+    }
+    
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+  }
+};
+
+export const giftBottle = (wineId: string, bottleId: string, recipient: string, occasion: string): void => {
+    const storedBottles = localStorage.getItem('vf_bottles');
+    const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+    const bottle = bottles.find(b => b.id === bottleId && b.wineId === wineId);
+    if (bottle) {
+        bottle.isConsumed = true;
+        bottle.consumedDate = new Date().toISOString();
+        bottle.giftedTo = recipient;
+        bottle.giftOccasion = occasion;
+
+        // Log journal entry
+        const wine = getWineById(wineId);
+        if (wine) {
+            addJournalEntry({
+                type: 'GIFT',
+                wineId: wine.id,
+                wineName: wine.name,
+                quantity: 1,
+                recipient,
+                occasion,
+                description: `Bouteille de ${wine.name} ${wine.vintage} offerte à ${recipient} pour ${occasion}`,
+                userId: 'current-user'
+            });
+        }
+
+        localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+    }
+};
+
+export const fillRackWithWine = (rackId: string, wineId: string): void => {
+    const racks = getRacks();
+    const rack = racks.find(r => r.id === rackId);
+    if (!rack) return;
+
+    const storedBottles = localStorage.getItem('vf_bottles');
+    const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+    let addedCount = 0;
+    for (let y = 0; y < rack.height; y++) {
+        for (let x = 0; x < rack.width; x++) {
+            const isOccupied = bottles.some(b => 
+                !b.isConsumed && 
+                typeof b.location !== 'string' && 
+                b.location.rackId === rackId && 
+                b.location.x === x && 
+                b.location.y === y
+            );
+
+            if (!isOccupied) {
+                bottles.push({
+                    id: crypto.randomUUID(),
+                    wineId,
+                    location: { rackId, x, y },
+                    addedByUserId: 'current-user',
+                    purchaseDate: new Date().toISOString(),
+                    isConsumed: false
+                });
+                addedCount++;
+            }
+        }
+    }
+
+    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
+    
+    // Log journal entry
+    const wine = getWineById(wineId);
+    if (wine && addedCount > 0) {
+        addJournalEntry({
+            type: 'IN',
+            wineId: wine.id,
+            wineName: wine.name,
+            quantity: addedCount,
+            location: rack.name,
+            description: `Remplissage de ${rack.name} avec ${addedCount} bouteille(s) de ${wine.name} ${wine.vintage}`,
+            userId: 'current-user'
+        });
+    }
+};
+
+export const findNextAvailableSlot = (): { location: BottleLocation; rackName: string } | null => {
+    const racks = getRacks();
+    const storedBottles = localStorage.getItem('vf_bottles');
+    const bottles: Bottle[] = storedBottles ? JSON.parse(storedBottles) : [];
+
+    for (const rack of racks) {
+        for (let y = 0; y < rack.height; y++) {
+            for (let x = 0; x < rack.width; x++) {
+                const isOccupied = bottles.some(b => 
+                    !b.isConsumed && 
+                    typeof b.location !== 'string' && 
+                    b.location.rackId === rack.id && 
+                    b.location.x === x && 
+                    b.location.y === y
+                );
+                
+                if (!isOccupied) {
+                    return {
+                        location: { rackId: rack.id, x, y },
+                        rackName: rack.name
+                    };
+                }
+            }
+        }
+    }
+    return null;
+};
+
+// --- RACK FUNCTIONS ---
 
 export const getRacks = (): Rack[] => {
   const storedRacks = localStorage.getItem('vf_racks');
@@ -273,7 +615,8 @@ export const deleteRack = (id: string): void => {
   localStorage.setItem('vf_bottles', JSON.stringify(updatedBottles));
 };
 
-// ... (Rest of the file: getSpirits, getSpiritById, saveSpirit, toggleSpiritLuxury, getCocktails, saveCocktail, getShoppingList, toggleShoppingItem, addToShoppingList, saveWine, updateWine, addBottles, addBottleAtLocation, fillRackWithWine, consumeBottle, consumeSpecificBottle, moveBottle, findNextAvailableSlot, getUserTasteProfile, updateUserTasteProfile, getAIConfig, saveAIConfig, exportFullData, importFullData - KEPT AS IS from previous context)
+// --- SPIRIT FUNCTIONS ---
+
 export const getSpirits = (): Spirit[] => {
   const storedSpirits = localStorage.getItem('vf_spirits');
   return storedSpirits ? JSON.parse(storedSpirits) : MOCK_SPIRITS;
@@ -292,6 +635,11 @@ export const saveSpirit = (spirit: Spirit): void => {
     localStorage.setItem('vf_spirits', JSON.stringify(spirits));
 };
 
+export const deleteSpirit = (id: string): void => {
+    const spirits = getSpirits().filter(s => s.id !== id);
+    localStorage.setItem('vf_spirits', JSON.stringify(spirits));
+};
+
 export const toggleSpiritLuxury = (id: string): void => {
     const spirits = getSpirits();
     const spirit = spirits.find(s => s.id === id);
@@ -300,6 +648,8 @@ export const toggleSpiritLuxury = (id: string): void => {
         saveSpirit(spirit);
     }
 };
+
+// --- COCKTAIL FUNCTIONS ---
 
 export const getCocktails = (): CocktailRecipe[] => {
     const stored = localStorage.getItem('vf_cocktails');
@@ -313,6 +663,8 @@ export const saveCocktail = (recipe: CocktailRecipe): void => {
     else cocktails.push(recipe);
     localStorage.setItem('vf_cocktails', JSON.stringify(cocktails));
 };
+
+// --- SHOPPING LIST FUNCTIONS ---
 
 export const getShoppingList = (): ShoppingListItem[] => {
     const stored = localStorage.getItem('vf_shopping');
@@ -340,151 +692,7 @@ export const addToShoppingList = (name: string, quantity: number, category: any 
     localStorage.setItem('vf_shopping', JSON.stringify(list));
 };
 
-export const saveWine = (wine: Wine, count: number): void => {
-  const currentInventory = getInventory();
-  let wines = JSON.parse(localStorage.getItem('vf_wines') || JSON.stringify(MOCK_WINES));
-  const existingIdx = wines.findIndex((w: Wine) => w.id === wine.id);
-  
-  if (existingIdx >= 0) {
-    wines[existingIdx] = wine;
-  } else {
-    wines.push(wine);
-  }
-  localStorage.setItem('vf_wines', JSON.stringify(wines));
-
-  const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-  for(let i=0; i<count; i++) {
-    bottles.push({
-      id: crypto.randomUUID(),
-      wineId: wine.id,
-      location: 'Non trié',
-      addedByUserId: 'current',
-      purchaseDate: new Date().toISOString(),
-      isConsumed: false
-    });
-  }
-  localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-};
-
-export const updateWine = (wine: Wine): void => {
-    let wines = JSON.parse(localStorage.getItem('vf_wines') || JSON.stringify(MOCK_WINES));
-    const existingIdx = wines.findIndex((w: Wine) => w.id === wine.id);
-    if (existingIdx >= 0) {
-        wines[existingIdx] = { ...wines[existingIdx], ...wine, updatedAt: new Date().toISOString() };
-        localStorage.setItem('vf_wines', JSON.stringify(wines));
-    }
-};
-
-export const addBottles = (wineId: string, count: number): void => {
-    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-    for(let i=0; i<count; i++) {
-        bottles.push({
-            id: crypto.randomUUID(),
-            wineId: wineId,
-            location: 'Non trié',
-            addedByUserId: 'current',
-            purchaseDate: new Date().toISOString(),
-            isConsumed: false
-        });
-    }
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-};
-
-export const addBottleAtLocation = (wineId: string, location: BottleLocation): void => {
-    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-    bottles.push({
-        id: crypto.randomUUID(),
-        wineId: wineId,
-        location: location,
-        addedByUserId: 'current',
-        purchaseDate: new Date().toISOString(),
-        isConsumed: false
-    });
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-};
-
-export const fillRackWithWine = (rackId: string, wineId: string, width: number, height: number): void => {
-    let bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-    
-    for(let y=0; y<height; y++) {
-        for(let x=0; x<width; x++) {
-            const isOccupied = bottles.some((b: Bottle) => 
-                !b.isConsumed && typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y
-            );
-
-            if(!isOccupied) {
-                bottles.push({
-                    id: crypto.randomUUID(),
-                    wineId: wineId,
-                    location: { rackId, x, y },
-                    addedByUserId: 'current',
-                    purchaseDate: new Date().toISOString(),
-                    isConsumed: false
-                });
-            }
-        }
-    }
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-};
-
-export const consumeBottle = (wineId: string): void => {
-  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-  const targetBottle = bottles.find(b => b.wineId === wineId && !b.isConsumed);
-  if (targetBottle) {
-    targetBottle.isConsumed = true;
-    targetBottle.consumedDate = new Date().toISOString();
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-  }
-};
-
-export const consumeSpecificBottle = (bottleId: string): void => {
-  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-  const targetBottle = bottles.find(b => b.id === bottleId);
-  if (targetBottle) {
-    targetBottle.isConsumed = true;
-    targetBottle.consumedDate = new Date().toISOString();
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-  }
-};
-
-export const moveBottle = (bottleId: string, newLocation: BottleLocation): boolean => {
-  const bottles: Bottle[] = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-  const bottleIdx = bottles.findIndex(b => b.id === bottleId);
-  
-  if (bottleIdx >= 0) {
-    bottles[bottleIdx].location = newLocation;
-    localStorage.setItem('vf_bottles', JSON.stringify(bottles));
-    return true;
-  }
-  return false;
-};
-
-export const findNextAvailableSlot = (): { location: BottleLocation; rackName: string } | null => {
-    const racks = getRacks().filter(r => r.type === 'SHELF');
-    const bottles = JSON.parse(localStorage.getItem('vf_bottles') || JSON.stringify(MOCK_BOTTLES));
-
-    for (const rack of racks) {
-        for (let y = 0; y < rack.height; y++) {
-            for (let x = 0; x < rack.width; x++) {
-                const isOccupied = bottles.some((b: Bottle) => 
-                    !b.isConsumed && 
-                    typeof b.location !== 'string' && 
-                    b.location.rackId === rack.id && 
-                    b.location.x === x && 
-                    b.location.y === y
-                );
-                
-                if (!isOccupied) {
-                    return {
-                        location: { rackId: rack.id, x, y },
-                        rackName: rack.name
-                    };
-                }
-            }
-        }
-    }
-    return null;
-};
+// --- USER TASTE PROFILE ---
 
 export const getUserTasteProfile = (): UserTasteProfile => {
   const stored = localStorage.getItem('vf_taste_profile');
@@ -494,6 +702,8 @@ export const getUserTasteProfile = (): UserTasteProfile => {
 export const updateUserTasteProfile = (profile: UserTasteProfile): void => {
   localStorage.setItem('vf_taste_profile', JSON.stringify(profile));
 };
+
+// --- AI CONFIG ---
 
 export const getAIConfig = (): AIConfig => {
     const stored = localStorage.getItem('vf_ai_config');
@@ -514,6 +724,8 @@ export const getAIConfig = (): AIConfig => {
 export const saveAIConfig = (config: AIConfig): void => {
     localStorage.setItem('vf_ai_config', JSON.stringify(config));
 };
+
+// --- BACKUP & RESTORE ---
 
 export const exportFullData = (): string => {
   const data: FullBackupData = {
