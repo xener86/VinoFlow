@@ -132,9 +132,15 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-        moveBottle(moveSource.bottleId, { rackId, x, y });
-        setMoveSource(null);
-        loadData();
+        try {
+            moveBottle(moveSource.bottleId, { rackId, x, y });
+            setMoveSource(null);
+            loadData();
+        } catch (error) {
+            console.error("Failed to move bottle:", error);
+            alert("Une erreur est survenue lors du déplacement de la bouteille.");
+            loadData();
+        }
         return;
      }
 
@@ -174,9 +180,15 @@ export const CellarMap: React.FC = () => {
           }
           if (occupied) return;
 
-            moveBottle(bottleId, { rackId, x, y });
-            setDragSourceId(null);
-            loadData();
+            try {
+                moveBottle(bottleId, { rackId, x, y });
+                setDragSourceId(null);
+                loadData();
+            } catch (error) {
+                console.error("Failed to move bottle:", error);
+                alert("Une erreur est survenue lors du déplacement de la bouteille.");
+                loadData();
+            }
         }
     };
 
@@ -192,9 +204,15 @@ export const CellarMap: React.FC = () => {
 
   const handleConsume = () => {
         if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-            consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
-            setSelectedBottle(null);
-            loadData();
+            try {
+                consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+                setSelectedBottle(null);
+                loadData();
+            } catch (error) {
+                console.error("Failed to consume bottle:", error);
+                alert("Une erreur est survenue lors de la consommation de la bouteille.");
+                loadData();
+            }
         }
   };
 
@@ -268,12 +286,18 @@ export const CellarMap: React.FC = () => {
   const handleQuickFill = (rack: Rack) => {
       setFillTargetRack(rack);
   };
-  
+
   const confirmQuickFill = (wine: CellarWine) => {
         if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
-            fillRackWithWine(fillTargetRack.id, wine.id);
-            setFillTargetRack(null);
-            loadData();
+            try {
+                fillRackWithWine(fillTargetRack.id, wine.id);
+                setFillTargetRack(null);
+                loadData();
+            } catch (error) {
+                console.error("Failed to fill rack:", error);
+                alert("Une erreur est survenue lors du remplissage du casier.");
+                loadData();
+            }
         }
   };
 
