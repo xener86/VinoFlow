@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, getRacks, consumeBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
+import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
 import { CellarWine, Rack, BottleLocation } from '../types';
 import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
@@ -132,13 +132,11 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-       const success = moveBottle(moveSource.bottleId, { rackId, x, y });
-       if (success) {
-           setMoveSource(null);
-           loadData();
-       }
-       return;
-    }
+        moveBottle(moveSource.bottleId, { rackId, x, y });
+        setMoveSource(null);
+        loadData();
+        return;
+     }
 
     if (occupied && targetBottle) {
         setSelectedBottle({
@@ -176,20 +174,18 @@ export const CellarMap: React.FC = () => {
           }
           if (occupied) return; 
 
-          const success = moveBottle(bottleId, { rackId, x, y });
-          if (success) {
-              setDragSourceId(null);
-              loadData();
-          }
-      }
-  };
+            moveBottle(bottleId, { rackId, x, y });
+            setDragSourceId(null);
+            loadData();
+        }
+    };
 
   const handleConsume = () => {
-      if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-          consumeBottle(selectedBottle.wine.id);
-          setSelectedBottle(null);
-          loadData();
-      }
+        if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
+            consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            setSelectedBottle(null);
+            loadData();
+        }
   };
 
   const handleStartMove = () => {
@@ -253,11 +249,11 @@ export const CellarMap: React.FC = () => {
   };
   
   const confirmQuickFill = (wine: CellarWine) => {
-      if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
-          fillRackWithWine(fillTargetRack.id, wine.id, fillTargetRack.width, fillTargetRack.height);
-          setFillTargetRack(null);
-          loadData();
-      }
+        if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
+            fillRackWithWine(fillTargetRack.id, wine.id);
+            setFillTargetRack(null);
+            loadData();
+        }
   };
 
   const handleAddExistingToSlot = (wine: CellarWine) => {
