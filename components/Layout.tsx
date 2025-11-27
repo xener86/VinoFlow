@@ -11,14 +11,55 @@ export const Layout: React.FC = () => {
   const [tastingCount, setTastingCount] = useState(0);
 
   useEffect(() => {
-    // Calculate wines without tasting notes
+    // Calculate wines needing tasting notes (only after consumption and if > 365 days since last note)
     const winesData = localStorage.getItem('vf_wines');
     const wines = winesData ? JSON.parse(winesData) : [];
+    const bottlesData = localStorage.getItem('vf_bottles');
+    const bottles = bottlesData ? JSON.parse(bottlesData) : [];
     const tastingNotes = JSON.parse(localStorage.getItem('vf_tasting_notes') || '[]');
-    const winesWithoutNotes = wines.filter((wine: any) => 
-      !tastingNotes.some((note: any) => note.wineId === wine.id)
-    );
-    setTastingCount(winesWithoutNotes.length);
+    
+    const now = Date.now();
+    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+    
+    const winesToTaste = wines.filter((wine: any) => {
+      // Vérifier si le vin a des bouteilles consommées
+      const consumedBottles = bottles.filter((b: any) => 
+        b.wineId === wine.id && b.isConsumed && b.consumedDate
+      );
+      
+      if (consumedBottles.length === 0) return false;
+      
+      // Trouver la dernière bouteille consommée
+      const lastConsumed = consumedBottles.reduce((latest: any, current: any) => {
+        const currentDate = new Date(current.consumedDate).getTime();
+        const latestDate = new Date(latest.consumedDate).getTime();
+        return currentDate > latestDate ? current : latest;
+      });
+      
+      // Trouver la dernière note de dégustation
+      const wineNotes = tastingNotes.filter((note: any) => note.wineId === wine.id);
+      if (wineNotes.length === 0) {
+        // Pas de note mais bouteille consommée = notification
+        return true;
+      }
+      
+      // Vérifier si la dernière note est > 365 jours
+      const lastNote = wineNotes.reduce((latest: any, current: any) => {
+        const currentDate = new Date(current.date).getTime();
+        const latestDate = new Date(latest.date).getTime();
+        return currentDate > latestDate ? current : latest;
+      });
+      
+      const lastNoteTime = new Date(lastNote.date).getTime();
+      const lastConsumedTime = new Date(lastConsumed.consumedDate).getTime();
+      
+      // Notification si:
+      // - La dernière consommation est après la dernière note
+      // - ET plus de 365 jours depuis la dernière note
+      return lastConsumedTime > lastNoteTime && (now - lastNoteTime) > ONE_YEAR_MS;
+    });
+    
+    setTastingCount(winesToTaste.length);
   }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
