@@ -1,16 +1,14 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, consumeSpecificBottle, getRacks } from '../services/storageService';
+import { getInventory, consumeSpecificBottle, getRacks, toggleFavorite } from '../services/storageService';
 import { CellarWine, BottleLocation } from '../types';
 import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat } from 'lucide-react';
-import { Heart } from 'lucide-react';
-import { toggleFavorite } from '../services/storageService';
 
 interface WineCardProps {
   wine: CellarWine;
   onConsume: (id: string, e: React.MouseEvent) => void;
   onClick: (id: string) => void;
+  onFavoriteToggle: () => void;
 }
 
 const wineTypeLabels: Record<string, string> = {
@@ -22,83 +20,104 @@ const wineTypeLabels: Record<string, string> = {
   'FORTIFIED': 'FORTIFIÉ'
 };
 
-const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick }) => (
-  <div 
-    onClick={() => onClick(wine.id)}
-    className="group relative overflow-hidden rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
-  >
-    
-    {/* Background Accent */}
-    <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-wine-50 dark:from-wine-900/20 to-transparent rounded-bl-full -mr-8 -mt-8 pointer-events-none transition-opacity opacity-50 dark:opacity-30 group-hover:opacity-100`} />
+const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavoriteToggle }) => {
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(wine.id);
+    onFavoriteToggle();
+  };
 
-    <div className="p-5 relative z-10">
+  return (
+    <div 
+      onClick={() => onClick(wine.id)}
+      className="group relative overflow-hidden rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
+    >
       
-      <div className="space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase border
-                ${wine.type === 'RED' ? 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50' : 
-                  wine.type === 'WHITE' ? 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-950/50 dark:text-yellow-200 dark:border-yellow-900/50' : 
-                  'bg-pink-50 text-pink-700 border-pink-100 dark:bg-pink-950/50 dark:text-pink-300 dark:border-pink-900/50'}`}>
-                {wineTypeLabels[wine.type] || wine.type}
-              </span>
-              {wine.enrichedByAI && (
-                <span className="flex items-center gap-1 text-[10px] bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-0.5 rounded-full border dark:border-purple-900/30">
-                  <Sparkles size={8} /> IA
-                </span>
-              )}
-            </div>
-            <h3 className="text-2xl font-serif text-stone-800 dark:text-stone-100 leading-tight mb-1">{wine.name}</h3>
-            {wine.cuvee && <p className="text-sm font-serif text-wine-700 dark:text-wine-400 italic mb-1">{wine.cuvee}</p>}
-            <p className="text-stone-600 dark:text-stone-400 text-sm font-medium">{wine.producer} • {wine.vintage}</p>
-          </div>
-          <div className="text-center bg-stone-50 dark:bg-stone-950 rounded-lg p-2 border border-stone-100 dark:border-stone-800 min-w-[60px]">
-              <span className="block text-2xl font-bold text-wine-700 dark:text-wine-500">{wine.inventoryCount}</span>
-              <span className="text-[9px] uppercase text-stone-500 dark:text-stone-400 tracking-wider">Stock</span>
-          </div>
-        </div>
+      {/* Background Accent */}
+      <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-wine-50 dark:from-wine-900/20 to-transparent rounded-bl-full -mr-8 -mt-8 pointer-events-none transition-opacity opacity-50 dark:opacity-30 group-hover:opacity-100`} />
 
-        <div className="flex flex-wrap gap-3 text-xs text-stone-600 dark:text-stone-500">
-          <div className="flex items-center gap-1">
-            <MapPin size={12} /> {wine.region}, {wine.country}
-          </div>
-          <div className="flex items-center gap-1">
-            <Grape size={12} /> {wine.grapeVarieties.join(', ')}
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-stone-700 dark:text-stone-300 text-sm italic leading-relaxed border-l-2 border-wine-200 dark:border-wine-900 pl-3">
-            "{wine.sensoryDescription}"
-          </p>
-        </div>
+      <div className="p-5 relative z-10">
         
-        <div className="flex items-center gap-2 pt-2">
-          <Utensils size={14} className="text-wine-600/70 dark:text-wine-500/70" />
-          <div className="flex flex-wrap gap-2">
-            {wine.suggestedFoodPairings?.slice(0, 3).map((pair, i) => (
-              <span key={i} className="text-xs bg-stone-100 dark:bg-stone-800 px-2 py-1 rounded-md text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700/50">{pair}</span>
-            ))}
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase border
+                  ${wine.type === 'RED' ? 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50' : 
+                    wine.type === 'WHITE' ? 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-950/50 dark:text-yellow-200 dark:border-yellow-900/50' : 
+                    wine.type === 'ROSE' ? 'bg-pink-50 text-pink-700 border-pink-100 dark:bg-pink-950/50 dark:text-pink-300 dark:border-pink-900/50' :
+                    'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900/50'}`}>
+                  {wineTypeLabels[wine.type] || wine.type}
+                </span>
+                {wine.enrichedByAI && (
+                  <span className="flex items-center gap-1 text-[10px] bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-0.5 rounded-full border dark:border-purple-900/30">
+                    <Sparkles size={8} /> IA
+                  </span>
+                )}
+                <button
+                  onClick={handleFavoriteClick}
+                  className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase border transition-all hover:scale-105 ${
+                    wine.isFavorite 
+                      ? 'bg-red-600 text-white border-red-700 dark:bg-red-600 dark:border-red-500' 
+                      : 'bg-white text-stone-400 border-stone-300 dark:bg-stone-900 dark:text-stone-500 dark:border-stone-700 hover:border-red-600 hover:text-red-600 dark:hover:border-red-500 dark:hover:text-red-400'
+                  }`}
+                  title={wine.isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                >
+                  FAVORIS
+                </button>
+              </div>
+              <h3 className="text-2xl font-serif text-stone-800 dark:text-stone-100 leading-tight mb-1">{wine.name}</h3>
+              {wine.cuvee && <p className="text-sm font-serif text-wine-700 dark:text-wine-400 italic mb-1">{wine.cuvee}</p>}
+              <p className="text-stone-600 dark:text-stone-400 text-sm font-medium">{wine.producer} • {wine.vintage}</p>
+            </div>
+            <div className="text-center bg-stone-50 dark:bg-stone-950 rounded-lg p-2 border border-stone-100 dark:border-stone-800 min-w-[60px]">
+                <span className="block text-2xl font-bold text-wine-700 dark:text-wine-500">{wine.inventoryCount}</span>
+                <span className="text-[9px] uppercase text-stone-500 dark:text-stone-400 tracking-wider">Stock</span>
+            </div>
           </div>
-        </div>
 
-        {wine.inventoryCount > 0 && (
-            <button 
-            onClick={(e) => onConsume(wine.id, e)}
-            className="mt-2 text-xs flex items-center gap-2 text-stone-500 hover:text-wine-700 dark:text-stone-400 dark:hover:text-wine-400 transition-colors z-20 relative font-medium"
-          >
-            <Droplet size={14} /> Consommer
-          </button>
-        )}
+          <div className="flex flex-wrap gap-3 text-xs text-stone-600 dark:text-stone-500">
+            <div className="flex items-center gap-1">
+              <MapPin size={12} /> {wine.region}, {wine.country}
+            </div>
+            <div className="flex items-center gap-1">
+              <Grape size={12} /> {wine.grapeVarieties.join(', ')}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-stone-700 dark:text-stone-300 text-sm italic leading-relaxed border-l-2 border-wine-200 dark:border-wine-900 pl-3">
+              "{wine.sensoryDescription}"
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2 pt-2">
+            <Utensils size={14} className="text-wine-600/70 dark:text-wine-500/70" />
+            <div className="flex flex-wrap gap-2">
+              {wine.suggestedFoodPairings?.slice(0, 3).map((pair, i) => (
+                <span key={i} className="text-xs bg-stone-100 dark:bg-stone-800 px-2 py-1 rounded-md text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700/50">{pair}</span>
+              ))}
+            </div>
+          </div>
+
+          {wine.inventoryCount > 0 && (
+              <button 
+              onClick={(e) => onConsume(wine.id, e)}
+              className="mt-2 text-xs flex items-center gap-2 text-stone-500 hover:text-wine-700 dark:text-stone-400 dark:hover:text-wine-400 transition-colors z-20 relative font-medium"
+            >
+              <Droplet size={14} /> Consommer
+            </button>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const Dashboard: React.FC = () => {
   const [wines, setWines] = useState<CellarWine[]>([]);
-  const [filter, setFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [foodPairingQuery, setFoodPairingQuery] = useState('');
   const [consumingWine, setConsumingWine] = useState<CellarWine | null>(null);
@@ -139,7 +158,18 @@ export const Dashboard: React.FC = () => {
   };
 
   const filteredWines = wines.filter(w => {
-    const matchesType = filter === 'ALL' || w.type === filter;
+    // Filter by type
+    let matchesType = false;
+    if (typeFilter === 'ALL') {
+      matchesType = true;
+    } else if (typeFilter === 'OTHER') {
+      matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(w.type);
+    } else {
+      matchesType = w.type === typeFilter;
+    }
+    
+    // Filter by favorites (cumulatif)
+    const matchesFavorites = !showFavoritesOnly || w.isFavorite;
     
     const query = searchQuery.toLowerCase();
     const matchesSearch = 
@@ -149,8 +179,7 @@ export const Dashboard: React.FC = () => {
         w.vintage.toString().includes(query);
     const hasStock = w.inventoryCount > 0;
 
-  
-    return matchesType && matchesSearch && hasStock;
+    return matchesType && matchesFavorites && matchesSearch && hasStock;
   });
   
   const filterLabels: Record<string, string> = {
@@ -158,13 +187,16 @@ export const Dashboard: React.FC = () => {
       'RED': 'ROUGE',
       'WHITE': 'BLANC',
       'ROSE': 'ROSÉ',
-      'SPARKLING': 'BULLES'
-  }
+      'SPARKLING': 'BULLES',
+      'OTHER': 'AUTRES'
+  };
 
   const getRackName = (rackId: string) => {
       const racks = getRacks();
       return racks.find(r => r.id === rackId)?.name || 'Inconnu';
-  }
+  };
+
+  const favoriteCount = wines.filter(w => w.isFavorite && w.inventoryCount > 0).length;
 
   return (
     <div className="space-y-6 animate-fade-in relative">
@@ -219,21 +251,42 @@ export const Dashboard: React.FC = () => {
             />
         </div>
 
-        {/* Filters */}
+        {/* Filters - Type de vin + Favoris */}
         <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
-           {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING'].map((t) => (
+           {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING', 'OTHER'].map((t) => (
              <button
                key={t}
-               onClick={() => setFilter(t)}
+               onClick={() => setTypeFilter(t)}
                className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap text-xs font-medium tracking-wide ${
-                   filter === t 
-                   ? 'bg-stone-800 text-white dark:bg-stone-700 shadow-md' 
+                   typeFilter === t 
+                   ? 'bg-stone-800 text-white dark:bg-stone-700 shadow-md'
                    : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
                 }`}
              >
                {filterLabels[t]}
              </button>
            ))}
+           
+           {/* Filtre Favoris - Intégré à droite */}
+           <button
+             onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+             className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap text-xs font-medium tracking-wide flex items-center gap-1.5 ${
+               showFavoritesOnly 
+                 ? 'bg-red-600 text-white dark:bg-red-600 shadow-md'
+                 : 'bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-red-600 dark:hover:text-red-400'
+             }`}
+           >
+             FAVORIS
+             {favoriteCount > 0 && (
+               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                 showFavoritesOnly 
+                   ? 'bg-red-700 text-white'
+                   : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
+               }`}>
+                 {favoriteCount}
+               </span>
+             )}
+           </button>
         </div>
       </div>
 
@@ -244,6 +297,7 @@ export const Dashboard: React.FC = () => {
             wine={wine} 
             onConsume={handleConsume} 
             onClick={handleCardClick}
+            onFavoriteToggle={loadData}
           />
         ))}
         {filteredWines.length === 0 && (
