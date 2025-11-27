@@ -12,15 +12,30 @@ interface RackGridProps {
     inventory: CellarWine[];
     searchQuery?: string;
     moveSource?: SelectedBottleState | null;
+    isArchitectMode?: boolean;
+    suggestions?: any[];
+    selectedBottle?: SelectedBottleState | null;
+    dragSourceId?: string | null;
     onSlotClick: (rackId: string, x: number, y: number, rackName: string) => void;
+    onDragStart?: (e: React.DragEvent, bottleId: string) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent, rackId: string, x: number, y: number) => void;
+    onFill?: (rack: Rack) => void;
+    onEdit?: (rack: Rack) => void;
+    onDelete?: (id: string) => void;
+    onReorder?: (id: string, direction: 'left' | 'right') => void;
 }
 
-export const RackGrid: React.FC<RackGridProps> = ({ 
-    rack, 
-    inventory, 
-    searchQuery = '', 
+export const RackGrid: React.FC<RackGridProps> = ({
+    rack,
+    inventory,
+    searchQuery = '',
     moveSource = null,
-    onSlotClick
+    dragSourceId = null,
+    onSlotClick,
+    onDragStart,
+    onDragOver,
+    onDrop
 }) => {
     
     // Vérification de sécurité
@@ -85,12 +100,19 @@ export const RackGrid: React.FC<RackGridProps> = ({
 
                            content = <span className="text-[10px] font-bold">{wine.vintage === 0 ? 'NM' : wine.vintage}</span>;
 
+                           const isDragging = dragSourceId === bottle.id;
+                           const draggableClass = isDragging ? 'opacity-50' : 'cursor-grab active:cursor-grabbing';
+
                            return (
-                              <div 
+                              <div
                                    key={`${x}-${y}`}
                                    onClick={() => onSlotClick(rack.id, x, y, rack.name)}
+                                   draggable
+                                   onDragStart={(e) => onDragStart?.(e, bottle.id)}
+                                   onDragOver={onDragOver}
+                                   onDrop={(e) => onDrop?.(e, rack.id, x, y)}
                                    title={`${wine.name} (${wine.vintage})`}
-                                   className={`aspect-square rounded-xl border flex items-center justify-center relative transition-all duration-200 cursor-pointer hover:scale-105 ${bgClass}`}
+                                   className={`aspect-square rounded-xl border flex items-center justify-center relative transition-all duration-200 hover:scale-105 ${bgClass} ${draggableClass}`}
                                >
                                    {content}
                                    {wine.isFavorite && <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-sm" />}

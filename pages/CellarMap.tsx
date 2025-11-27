@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, getRacks, consumeBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
+import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
 import { CellarWine, Rack, BottleLocation } from '../types';
 import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
@@ -132,13 +132,11 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-       const success = moveBottle(moveSource.bottleId, { rackId, x, y });
-       if (success) {
-           setMoveSource(null);
-           loadData();
-       }
-       return;
-    }
+        moveBottle(moveSource.bottleId, { rackId, x, y });
+        setMoveSource(null);
+        loadData();
+        return;
+     }
 
     if (occupied && targetBottle) {
         setSelectedBottle({
@@ -169,32 +167,51 @@ export const CellarMap: React.FC = () => {
           // Check occupancy
           let occupied = false;
           for (const w of inventory) {
-              if(w.bottles.some(b => typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y && !b.isConsumed)) {
+              if(w.bottles.some(b => typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y && !b.isConsumed && b.id !== bottleId)) {
                   occupied = true;
                   break;
               }
           }
-          if (occupied) return; 
+          if (occupied) return;
 
-          const success = moveBottle(bottleId, { rackId, x, y });
-          if (success) {
-              setDragSourceId(null);
-              loadData();
-          }
+            moveBottle(bottleId, { rackId, x, y });
+            setDragSourceId(null);
+            loadData();
+        }
+    };
+
+  const handleDropToDock = (e: React.DragEvent) => {
+      e.preventDefault();
+      const bottleId = e.dataTransfer.getData("bottleId");
+      if (bottleId) {
+          moveBottle(bottleId, 'Non trié');
+          setDragSourceId(null);
+          loadData();
       }
   };
 
   const handleConsume = () => {
-      if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-          consumeBottle(selectedBottle.wine.id);
-          setSelectedBottle(null);
-          loadData();
-      }
+        if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
+            consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            setSelectedBottle(null);
+            loadData();
+        }
   };
 
   const handleStartMove = () => {
       setMoveSource(selectedBottle);
       setSelectedBottle(null);
+  };
+
+  const handleGift = () => {
+        if (!selectedBottle) return;
+        const recipient = window.prompt('Nom et prénom du destinataire ?');
+        if (!recipient) return;
+        const occasion = window.prompt("Occasion (ex: anniversaire, merci, ...)") || 'Cadeau';
+        giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, recipient, occasion);
+        alert(`Bouteille offerte à ${recipient}`);
+        setSelectedBottle(null);
+        loadData();
   };
 
   // --- Architect Logic ---
@@ -253,11 +270,11 @@ export const CellarMap: React.FC = () => {
   };
   
   const confirmQuickFill = (wine: CellarWine) => {
-      if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
-          fillRackWithWine(fillTargetRack.id, wine.id, fillTargetRack.width, fillTargetRack.height);
-          setFillTargetRack(null);
-          loadData();
-      }
+        if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
+            fillRackWithWine(fillTargetRack.id, wine.id);
+            setFillTargetRack(null);
+            loadData();
+        }
   };
 
   const handleAddExistingToSlot = (wine: CellarWine) => {
@@ -402,7 +419,11 @@ export const CellarMap: React.FC = () => {
       {/* UNSORTED BOTTLES DOCK */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
+           <div
+            className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative"
+            onDragOver={handleDragOver}
+            onDrop={handleDropToDock}
+           >
                <button 
                 onClick={() => setShowUnsortedDock(false)}
                 className="absolute -left-8 top-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-2 rounded-l-lg text-stone-400 hover:text-stone-800 dark:hover:text-white"
@@ -416,10 +437,11 @@ export const CellarMap: React.FC = () => {
                </div>
                <p className="text-[10px] text-stone-500 italic">Glissez ces bouteilles vers les étagères pour les ranger.</p>
                {unsortedBottles.map((b, i) => (
-                   <div 
+                   <div
                     key={b.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, b.id)}
+                    title={`${b.wineName} • ${b.wineVintage}`}
                     className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
                    >
                        <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName}</div>
@@ -520,7 +542,7 @@ export const CellarMap: React.FC = () => {
                       <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
                           <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
                       </button>
-                      <button className="bg-stone-100 dark:bg-stone-800 opacity-50 cursor-not-allowed text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2">
+                      <button onClick={handleGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
                           <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
                       </button>
                   </div>
