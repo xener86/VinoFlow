@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack } from '../services/storageService';
+import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, ChevronLeft } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
 
@@ -44,32 +44,32 @@ export const CellarMap: React.FC = () => {
   const [inventory, setInventory] = useState<CellarWine[]>([]);
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   
-  // Advanced Features State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBottle, setSelectedBottle] = useState<SelectedBottleState | null>(null);
   const [moveSource, setMoveSource] = useState<SelectedBottleState | null>(null);
   const [dragSourceId, setDragSourceId] = useState<string | null>(null);
   
-  // Architect Mode State
   const [isArchitectMode, setIsArchitectMode] = useState(false);
   const [showAddRackModal, setShowAddRackModal] = useState(false);
   const [createRackName, setCreateRackName] = useState('');
-  const [newRackW, setNewRackW] = useState(6); // Default 6
-  const [newRackH, setNewRackH] = useState(9); // Default 9
+  const [newRackW, setNewRackW] = useState(6);
+  const [newRackH, setNewRackH] = useState(9);
   const [newRackType, setNewRackType] = useState<'SHELF' | 'BOX'>('SHELF');
 
-  // Edit Rack State
   const [editingRack, setEditingRack] = useState<Rack | null>(null);
   const [editRackName, setEditRackName] = useState('');
   
-  // Quick Fill / Empty Slot Action State
   const [fillTargetRack, setFillTargetRack] = useState<Rack | null>(null);
   const [emptySlotTarget, setEmptySlotTarget] = useState<EmptySlotTarget | null>(null);
   const [showUnsortedDock, setShowUnsortedDock] = useState(true);
 
-  // Optimization State
   const [optimizing, setOptimizing] = useState(false);
   const [suggestions, setSuggestions] = useState<OptimizationSuggestion[]>([]);
+
+  // Gift Modal State
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftRecipient, setGiftRecipient] = useState('');
+  const [giftOccasion, setGiftOccasion] = useState('');
 
   useEffect(() => {
     loadData();
@@ -80,7 +80,6 @@ export const CellarMap: React.FC = () => {
     setRacks(loadedRacks);
     setInventory(getInventory());
     
-    // Default selection logic
     if (loadedRacks.length > 0 && !selectedTabId) {
         const firstShelf = loadedRacks.find(r => r.type !== 'BOX');
         if (firstShelf) setSelectedTabId(firstShelf.id);
@@ -106,12 +105,9 @@ export const CellarMap: React.FC = () => {
       return count;
   };
 
-  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineName: w.name, wineVintage: w.vintage, wineType: w.type })));
-
-  // --- Interactions ---
+  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
 
   const handleSlotClick = (rackId: string, x: number, y: number, rackName: string) => {
-    // Check if slot occupied
     let occupied = false;
     let targetBottle: any = null;
     
@@ -164,7 +160,6 @@ export const CellarMap: React.FC = () => {
       e.preventDefault();
       const bottleId = e.dataTransfer.getData("bottleId");
       if (bottleId) {
-          // Check occupancy
           let occupied = false;
           for (const w of inventory) {
               if(w.bottles.some(b => typeof b.location !== 'string' && b.location.rackId === rackId && b.location.x === x && b.location.y === y && !b.isConsumed)) {
@@ -193,7 +188,22 @@ export const CellarMap: React.FC = () => {
       setSelectedBottle(null);
   };
 
-  // --- Architect Logic ---
+  const handleStartGift = () => {
+      setShowGiftModal(true);
+  };
+
+  const handleConfirmGift = () => {
+      if (!selectedBottle || !giftRecipient) return;
+      
+      giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion);
+      setShowGiftModal(false);
+      setSelectedBottle(null);
+      setGiftRecipient('');
+      setGiftOccasion('');
+      loadData();
+      alert(`Bouteille offerte à ${giftRecipient} !`);
+  };
+
   const handleCreateRack = () => {
       const newRack: Rack = {
           id: crypto.randomUUID(),
@@ -299,7 +309,6 @@ export const CellarMap: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in pb-24 relative min-h-screen">
       
-      {/* HEADER & TOOLBAR */}
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
             <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Plan de Cave</h2>
@@ -323,7 +332,6 @@ export const CellarMap: React.FC = () => {
             </div>
         </div>
 
-        {/* Global Search */}
         <div className="relative">
             <Search className="absolute left-3 top-3 text-stone-400" size={18} />
             <input 
@@ -335,9 +343,7 @@ export const CellarMap: React.FC = () => {
             />
         </div>
 
-        {/* RACK NAVIGATOR (Tabs) */}
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {/* Shelf Tabs */}
             {shelves.map(rack => {
                 const matchCount = getMatchesForRack(rack.id);
                 const isSelected = selectedTabId === rack.id;
@@ -363,7 +369,6 @@ export const CellarMap: React.FC = () => {
                 )
             })}
 
-            {/* Boxes Tab */}
             {boxes.length > 0 && (
                 <button
                     onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
@@ -395,7 +400,6 @@ export const CellarMap: React.FC = () => {
         </div>
       </div>
 
-      {/* UNSORTED BOTTLES DOCK */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
@@ -416,9 +420,10 @@ export const CellarMap: React.FC = () => {
                     key={b.id}
                     draggable
                     onDragStart={(e) => handleDragStart(e, b.id)}
+                    title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
                     className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
                    >
-                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName}</div>
+                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
                        <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
                    </div>
                ))}
@@ -435,7 +440,6 @@ export const CellarMap: React.FC = () => {
          </button>
       )}
 
-      {/* VIEW CONTENT */}
       <div className={`grid gap-6 ${selectedTabId === 'VIEW_ALL_BOXES' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
           {(() => {
               if (selectedTabId === 'VIEW_ALL_BOXES') {
@@ -444,20 +448,12 @@ export const CellarMap: React.FC = () => {
                         key={box.id}
                         rack={box}
                         inventory={inventory}
-                        isArchitectMode={isArchitectMode}
                         searchQuery={searchQuery}
                         moveSource={moveSource}
-                        selectedBottle={selectedBottle}
-                        dragSourceId={dragSourceId}
-                        suggestions={suggestions}
                         onSlotClick={handleSlotClick}
                         onDragStart={handleDragStart}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
-                        onFill={handleQuickFill}
-                        onEdit={handleEditRack}
-                        onDelete={handleDeleteRack}
-                        onReorder={handleReorderRack}
                       />
                   ));
               } else {
@@ -471,27 +467,18 @@ export const CellarMap: React.FC = () => {
                       <RackGrid 
                         rack={rack}
                         inventory={inventory}
-                        isArchitectMode={isArchitectMode}
                         searchQuery={searchQuery}
                         moveSource={moveSource}
-                        selectedBottle={selectedBottle}
-                        dragSourceId={dragSourceId}
-                        suggestions={suggestions}
                         onSlotClick={handleSlotClick}
                         onDragStart={handleDragStart}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
-                        onFill={handleQuickFill}
-                        onEdit={handleEditRack}
-                        onDelete={handleDeleteRack}
-                        onReorder={handleReorderRack}
                       />
                   );
               }
           })()}
       </div>
 
-      {/* BOTTLE ACTION MODAL */}
       {selectedBottle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
@@ -516,7 +503,7 @@ export const CellarMap: React.FC = () => {
                       <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
                           <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
                       </button>
-                      <button className="bg-stone-100 dark:bg-stone-800 opacity-50 cursor-not-allowed text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2">
+                      <button onClick={handleStartGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
                           <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
                       </button>
                   </div>
@@ -524,7 +511,55 @@ export const CellarMap: React.FC = () => {
           </div>
       )}
 
-      {/* QUICK FILL MODAL (CRATES) */}
+      {showGiftModal && selectedBottle && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
+                  <p className="text-sm text-stone-500 mb-4">{selectedBottle.wine.name} {selectedBottle.wine.vintage}</p>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">À qui ?</label>
+                          <input 
+                            type="text"
+                            value={giftRecipient}
+                            onChange={(e) => setGiftRecipient(e.target.value)}
+                            placeholder="ex: Marie Dupont"
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                      </div>
+                      <div>
+                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">Pour quelle occasion ?</label>
+                          <input 
+                            type="text"
+                            value={giftOccasion}
+                            onChange={(e) => setGiftOccasion(e.target.value)}
+                            placeholder="ex: Anniversaire, Mariage..."
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                          />
+                      </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-6">
+                      <button 
+                        onClick={() => setShowGiftModal(false)}
+                        className="flex-1 py-3 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                      >
+                          Annuler
+                      </button>
+                      <button 
+                        onClick={handleConfirmGift}
+                        disabled={!giftRecipient}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white py-3 rounded-lg font-bold transition-colors"
+                      >
+                          Confirmer
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {fillTargetRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setFillTargetRack(null)} />
@@ -548,7 +583,6 @@ export const CellarMap: React.FC = () => {
           </div>
       )}
 
-      {/* EMPTY SLOT MODAL */}
       {emptySlotTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setEmptySlotTarget(null)} />
@@ -560,7 +594,7 @@ export const CellarMap: React.FC = () => {
                   
                   <div className="grid gap-3">
                       <button 
-                        onClick={() => navigate('/add')}
+                        onClick={() => navigate('/add-wine')}
                         className="bg-wine-600 hover:bg-wine-700 text-white p-3 rounded-xl flex items-center gap-3 transition-colors"
                       >
                           <div className="bg-wine-800 p-2 rounded-lg"><Plus size={18}/></div>
@@ -594,7 +628,6 @@ export const CellarMap: React.FC = () => {
           </div>
       )}
 
-      {/* ADD RACK MODAL */}
       {showAddRackModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setShowAddRackModal(false)} />
@@ -609,7 +642,6 @@ export const CellarMap: React.FC = () => {
                           </div>
                       </div>
 
-                      {/* Presets for Boxes */}
                       {newRackType === 'BOX' && (
                           <div className="flex gap-2 mb-2">
                               <button onClick={() => handleBoxPreset(3, 2, "Caisse de 6")} className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 py-2 text-xs text-stone-500 rounded hover:bg-stone-100 dark:hover:text-white">6 Bouteilles</button>
@@ -638,7 +670,6 @@ export const CellarMap: React.FC = () => {
           </div>
       )}
 
-      {/* EDIT RACK MODAL */}
       {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setEditingRack(null)} />

@@ -13,6 +13,9 @@ interface RackGridProps {
     searchQuery?: string;
     moveSource?: SelectedBottleState | null;
     onSlotClick: (rackId: string, x: number, y: number, rackName: string) => void;
+    onDragStart?: (e: React.DragEvent, bottleId: string) => void;
+    onDragOver?: (e: React.DragEvent) => void;
+    onDrop?: (e: React.DragEvent, rackId: string, x: number, y: number) => void;
 }
 
 export const RackGrid: React.FC<RackGridProps> = ({ 
@@ -20,15 +23,16 @@ export const RackGrid: React.FC<RackGridProps> = ({
     inventory, 
     searchQuery = '', 
     moveSource = null,
-    onSlotClick
+    onSlotClick,
+    onDragStart,
+    onDragOver,
+    onDrop
 }) => {
     
-    // Vérification de sécurité
     if (!inventory || !rack) {
         return <div className="p-4">Chargement...</div>;
     }
 
-    // Helper to find bottle at specific coordinates
     const getBottleDataAt = (x: number, y: number): { wine: CellarWine, bottle: Bottle } | null => {
         for (const wine of inventory) {
           const bottle = wine.bottles?.find(b => {
@@ -41,7 +45,6 @@ export const RackGrid: React.FC<RackGridProps> = ({
         return null;
     };
 
-    // Styling based on type
     const containerClass = rack.type === 'BOX' 
         ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50' 
         : 'bg-white dark:bg-stone-900/50 border-stone-200 dark:border-stone-800';
@@ -72,12 +75,10 @@ export const RackGrid: React.FC<RackGridProps> = ({
                            const { wine, bottle } = cellData;
                            const isMatch = searchQuery && (wine.name.toLowerCase().includes(searchQuery.toLowerCase()) || wine.vintage.toString().includes(searchQuery));
                            
-                           // Standard Colors
                            if (wine.type === 'RED') bgClass = "bg-red-100 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-400";
                            else if (wine.type === 'WHITE') bgClass = "bg-yellow-100 border-yellow-200 text-yellow-800 dark:bg-yellow-950 dark:border-yellow-900 dark:text-yellow-400";
                            else if (wine.type === 'ROSE') bgClass = "bg-pink-100 border-pink-200 text-pink-800 dark:bg-pink-950 dark:border-pink-900 dark:text-pink-400";
                            
-                           // Highlights
                            if (wine.isFavorite) bgClass += " ring-2 ring-purple-400 dark:ring-purple-500";
                            if (searchQuery && !isMatch) bgClass += " opacity-20 grayscale";
                            if (searchQuery && isMatch) bgClass += " ring-2 ring-green-500 scale-105 z-10 shadow-lg";
@@ -88,16 +89,19 @@ export const RackGrid: React.FC<RackGridProps> = ({
                            return (
                               <div 
                                    key={`${x}-${y}`}
+                                   draggable={!!onDragStart}
+                                   onDragStart={onDragStart ? (e) => onDragStart(e, bottle.id) : undefined}
+                                   onDragOver={onDragOver}
+                                   onDrop={onDrop ? (e) => onDrop(e, rack.id, x, y) : undefined}
                                    onClick={() => onSlotClick(rack.id, x, y, rack.name)}
-                                   title={`${wine.name} (${wine.vintage})`}
-                                   className={`aspect-square rounded-xl border flex items-center justify-center relative transition-all duration-200 cursor-pointer hover:scale-105 ${bgClass}`}
+                                   title={`${wine.name} ${wine.cuvee ? `- ${wine.cuvee}` : ''} (${wine.vintage})`}
+                                   className={`aspect-square rounded-xl border flex items-center justify-center relative transition-all duration-200 cursor-pointer hover:scale-105 ${bgClass} ${onDragStart ? 'cursor-grab active:cursor-grabbing' : ''}`}
                                >
                                    {content}
                                    {wine.isFavorite && <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full shadow-sm" />}
                                </div>
                            );
                        } else {
-                           // Empty Slot Logic
                            if (moveSource) {
                                bgClass = "bg-blue-100 border-blue-300 dark:bg-blue-900/20 dark:border-blue-500/30 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 hover:border-blue-400 animate-pulse";
                                content = <div className="w-2 h-2 bg-blue-500/50 rounded-full" />
@@ -108,6 +112,8 @@ export const RackGrid: React.FC<RackGridProps> = ({
                            return (
                                <div 
                                    key={`${x}-${y}`}
+                                   onDragOver={onDragOver}
+                                   onDrop={onDrop ? (e) => onDrop(e, rack.id, x, y) : undefined}
                                    onClick={() => onSlotClick(rack.id, x, y, rack.name)}
                                    className={`aspect-square rounded-xl border flex items-center justify-center relative transition-all duration-200 ${bgClass}`}
                                >
