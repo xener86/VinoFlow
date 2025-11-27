@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSpiritById, deleteSpirit } from '../services/storageService';
+import { getSpiritById, deleteSpirit, saveSpirit } from '../services/storageService';
 import { Spirit } from '../types';
-import { ArrowLeft, Edit, Trash2, Calendar, Percent, Flame, Droplets, MapPin, Clock, Sparkles, Wine, GlassWater } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Percent, Droplets, Clock, Sparkles, Wine, GlassWater, Gem, Martini, Flame } from 'lucide-react';
 
 export const SpiritDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,37 +33,11 @@ export const SpiritDetails: React.FC = () => {
     }
   };
 
-  const getCategoryIcon = (category: string) => {
-    switch (category.toUpperCase()) {
-      case 'WHISKY': case 'WHISKEY': case 'BOURBON': case 'SCOTCH':
-        return <Flame size={20} className="text-amber-600 dark:text-amber-400" />;
-      case 'GIN':
-        return <Sparkles size={20} className="text-green-600 dark:text-green-400" />;
-      case 'VODKA':
-        return <Droplets size={20} className="text-blue-600 dark:text-blue-400" />;
-      case 'RUM': case 'RHUM':
-        return <Wine size={20} className="text-orange-600 dark:text-orange-400" />;
-      case 'TEQUILA': case 'MEZCAL':
-        return <Sparkles size={20} className="text-yellow-600 dark:text-yellow-400" />;
-      default:
-        return <GlassWater size={20} className="text-purple-600 dark:text-purple-400" />;
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category.toUpperCase()) {
-      case 'WHISKY': case 'WHISKEY': case 'BOURBON': case 'SCOTCH':
-        return 'from-amber-500 to-orange-600';
-      case 'GIN':
-        return 'from-green-500 to-emerald-600';
-      case 'VODKA':
-        return 'from-blue-500 to-cyan-600';
-      case 'RUM': case 'RHUM':
-        return 'from-orange-500 to-red-600';
-      case 'TEQUILA': case 'MEZCAL':
-        return 'from-yellow-500 to-amber-600';
-      default:
-        return 'from-purple-500 to-pink-600';
+  const toggleLuxury = () => {
+    if (spirit) {
+      const updated = { ...spirit, isLuxury: !spirit.isLuxury };
+      setSpirit(updated);
+      saveSpirit(updated);
     }
   };
 
@@ -92,67 +66,56 @@ export const SpiritDetails: React.FC = () => {
 
   return (
     <div className="pb-32 animate-fade-in">
-      {/* Header with gradient background */}
-      <div className={`relative mb-6 -mx-6 -mt-6 px-6 pt-6 pb-10 bg-gradient-to-br ${getCategoryColor(spirit.category)}`}>
-        <div className="absolute top-0 left-0 right-0 flex justify-between z-10 p-6">
+      {/* Header / Hero */}
+      <div className="relative mb-6">
+        <div className="absolute top-0 left-0 right-0 flex justify-between z-10">
           <button 
-            onClick={() => navigate('/bar')} 
-            className="p-2 text-white hover:bg-white/20 rounded-full backdrop-blur-sm transition-colors"
+            onClick={() => navigate(-1)} 
+            className="p-2 text-stone-400 hover:text-stone-800 dark:hover:text-white bg-white/80 dark:bg-stone-900/50 rounded-full backdrop-blur-sm shadow-sm border border-stone-200 dark:border-stone-800"
           >
             <ArrowLeft size={24} />
           </button>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => navigate(`/spirit/${spirit.id}/edit`)}
-              className="p-2 text-white hover:bg-white/20 rounded-full backdrop-blur-sm transition-colors"
-            >
-              <Edit size={20} />
-            </button>
-            <button 
-              onClick={() => setShowDeleteModal(true)}
-              className="p-2 text-white hover:bg-white/20 rounded-full backdrop-blur-sm transition-colors"
-            >
-              <Trash2 size={20} />
-            </button>
-          </div>
+          <button 
+            onClick={() => navigate(`/spirit/${spirit.id}/edit`)}
+            className="p-2 text-stone-400 hover:text-stone-800 dark:hover:text-white bg-white/80 dark:bg-stone-900/50 rounded-full backdrop-blur-sm shadow-sm border border-stone-200 dark:border-stone-800"
+          >
+            <Edit size={20} />
+          </button>
         </div>
         
-        <div className="pt-16 flex flex-col items-center text-center text-white">
-          <div className="mb-4 p-4 bg-white/20 backdrop-blur-md rounded-full">
-            {getCategoryIcon(spirit.category)}
-          </div>
-          <div className="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 bg-white/20 backdrop-blur-sm">
+        <div className="pt-10 flex flex-col items-center text-center">
+          <div className="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-200 border border-amber-100 dark:border-amber-900/50">
             {spirit.category}
           </div>
-          <h1 className="text-4xl font-serif mb-2 leading-tight">{spirit.name}</h1>
-          <p className="text-xl font-medium opacity-90">{brand}</p>
-          {origin && (
-            <p className="text-sm opacity-75 mt-2">{origin}</p>
-          )}
-        </div>
+          <h1 className="text-4xl font-serif text-stone-900 dark:text-white mb-2 leading-tight">{spirit.name}</h1>
+          
+          {/* Badges Collection / Disponibilité */}
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={toggleLuxury}
+              className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all ${
+                spirit.isLuxury
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 flex items-center gap-1.5'
+                  : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-500/30 flex items-center gap-1.5'
+              }`}
+            >
+              {spirit.isLuxury ? (
+                <>
+                  <Gem size={12} />
+                  <span>Collection Prestige</span>
+                </>
+              ) : (
+                <>
+                  <Martini size={12} />
+                  <span>Disponible pour cocktails</span>
+                </>
+              )}
+            </button>
+          </div>
 
-        {/* Quick Stats */}
-        <div className="mt-8 grid grid-cols-3 gap-4">
-          {alcoholContent !== undefined && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-              <Percent size={20} className="mx-auto mb-2 opacity-75" />
-              <p className="text-2xl font-bold">{alcoholContent}%</p>
-              <p className="text-xs opacity-75 uppercase tracking-wide">Alcool</p>
-            </div>
-          )}
-          {volume !== undefined && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-              <Droplets size={20} className="mx-auto mb-2 opacity-75" />
-              <p className="text-2xl font-bold">{volume}ml</p>
-              <p className="text-xs opacity-75 uppercase tracking-wide">Volume</p>
-            </div>
-          )}
-          {formattedQuantity !== undefined && (
-            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 text-center border border-white/20">
-              <Wine size={20} className="mx-auto mb-2 opacity-75" />
-              <p className="text-2xl font-bold">{formattedQuantity}</p>
-              <p className="text-xs opacity-75 uppercase tracking-wide">Stock</p>
-            </div>
+          <p className="text-stone-600 dark:text-stone-400 text-lg">{brand}</p>
+          {origin && (
+            <p className="text-stone-500 text-sm">{origin}</p>
           )}
         </div>
       </div>
@@ -198,76 +161,108 @@ export const SpiritDetails: React.FC = () => {
               </div>
             )}
 
-            {/* Details Grid */}
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-4">
+              {alcoholContent !== undefined && (
+                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                      <Percent size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-stone-900 dark:text-white">{alcoholContent}%</p>
+                      <p className="text-xs text-stone-500">Alcool</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {volume !== undefined && (
+                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      <Droplets size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-stone-900 dark:text-white">{volume}ml</p>
+                      <p className="text-xs text-stone-500">Volume</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formattedQuantity !== undefined && (
+                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-wine-600 dark:text-wine-500">
+                      <Wine size={20} />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-stone-900 dark:text-white">{formattedQuantity}</p>
+                      <p className="text-xs text-stone-500">Stock</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {spirit.age && (
                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <Clock size={16} />
-                    <span className="text-xs uppercase font-bold">Âge</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-orange-600 dark:text-orange-400">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-stone-900 dark:text-white">{spirit.age}</p>
+                      <p className="text-xs text-stone-500">Âge</p>
+                    </div>
                   </div>
-                  <p className="text-stone-800 dark:text-stone-200 font-medium">{spirit.age} ans</p>
-                </div>
-              )}
-
-              {spirit.distillery && (
-                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <Flame size={16} />
-                    <span className="text-xs uppercase font-bold">Distillerie</span>
-                  </div>
-                  <p className="text-stone-800 dark:text-stone-200 text-sm">{spirit.distillery}</p>
-                </div>
-              )}
-
-              {barrelType && (
-                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm col-span-2">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <Wine size={16} />
-                    <span className="text-xs uppercase font-bold">Type de Fût</span>
-                  </div>
-                  <p className="text-stone-800 dark:text-stone-200">{barrelType}</p>
-                </div>
-              )}
-
-              {(spirit as any).purchaseDate && (
-                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <Calendar size={16} />
-                    <span className="text-xs uppercase font-bold">Date d'Achat</span>
-                  </div>
-                  <p className="text-stone-800 dark:text-stone-200 text-sm">
-                    {new Date((spirit as any).purchaseDate).toLocaleDateString('fr-FR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </p>
-                </div>
-              )}
-
-              {(spirit as any).price !== undefined && (
-                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <span className="text-xs uppercase font-bold">Prix d'Achat</span>
-                  </div>
-                  <p className="text-stone-800 dark:text-stone-200 font-medium">{(spirit as any).price} €</p>
-                </div>
-              )}
-
-              {(spirit as any).location && (
-                <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm col-span-2">
-                  <div className="flex items-center gap-2 text-stone-500 mb-2">
-                    <MapPin size={16} />
-                    <span className="text-xs uppercase font-bold">Emplacement</span>
-                  </div>
-                  <p className="text-stone-800 dark:text-stone-200">{(spirit as any).location}</p>
                 </div>
               )}
             </div>
 
-            {/* Notes */}
+            {/* Détails Grid */}
+            {(spirit.distillery || barrelType) && (
+              <div className="grid gap-4">
+                {spirit.distillery && (
+                  <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                    <div className="flex items-center gap-2 text-stone-500 mb-2">
+                      <Flame size={16} />
+                      <span className="text-xs uppercase font-bold">Distillerie</span>
+                    </div>
+                    <p className="text-stone-800 dark:text-stone-200 text-sm">{spirit.distillery}</p>
+                  </div>
+                )}
+
+                {barrelType && (
+                  <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                    <div className="flex items-center gap-2 text-stone-500 mb-2">
+                      <Wine size={16} />
+                      <span className="text-xs uppercase font-bold">Type de Fût</span>
+                    </div>
+                    <p className="text-stone-800 dark:text-stone-200">{barrelType}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Histoire du Producteur */}
+            {spirit.producerHistory && (
+              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 relative overflow-hidden shadow-sm">
+                <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
+                  <GlassWater size={120} />
+                </div>
+                <div className="relative z-10">
+                  <h3 className="font-serif text-xl text-stone-900 dark:text-white mb-4">Histoire du Producteur</h3>
+                  <div className="prose prose-invert prose-stone max-w-none">
+                    <p className="text-stone-700 dark:text-stone-300 leading-relaxed">
+                      {spirit.producerHistory}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Notes Personnelles */}
             {notes && (
               <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-200 dark:border-amber-900/50">
                 <h3 className="font-serif text-lg text-amber-900 dark:text-amber-200 mb-3">Notes Personnelles</h3>
@@ -320,6 +315,24 @@ export const SpiritDetails: React.FC = () => {
                 <p className="text-orange-800 dark:text-orange-300 leading-relaxed">
                   {finish}
                 </p>
+              </div>
+            )}
+
+            {/* Suggestions de Cocktails */}
+            {spirit.suggestedCocktails && spirit.suggestedCocktails.length > 0 && (
+              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-indigo-600 dark:text-indigo-400">
+                  <Martini size={18} />
+                  <h3 className="font-serif text-lg text-stone-900 dark:text-white">Suggestions de Cocktails</h3>
+                </div>
+                <ul className="space-y-3">
+                  {spirit.suggestedCocktails.map((cocktail, i) => (
+                    <li key={i} className="flex items-start gap-3 text-stone-700 dark:text-stone-300">
+                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500/50"></span>
+                      {cocktail}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

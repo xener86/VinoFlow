@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { getInventory, consumeSpecificBottle, getRacks } from '../services/storageService';
 import { CellarWine, BottleLocation } from '../types';
 import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat } from 'lucide-react';
+import { Heart } from 'lucide-react';
+import { toggleFavorite } from '../services/storageService';
 
 interface WineCardProps {
   wine: CellarWine;

@@ -14,6 +14,7 @@ export const Bar: React.FC = () => {
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
   const [apiResults, setApiResults] = useState<CocktailRecipe[]>([]);
   const [isSearchingApi, setIsSearchingApi] = useState(false);
 
@@ -58,6 +59,83 @@ export const Bar: React.FC = () => {
         default:
             return GlassWater;
     }
+  };
+
+  const getCategoryColor = (category: SpiritType): string => {
+    switch (category) {
+      case SpiritType.WHISKY:
+        return 'bg-amber-500'; // Ambre/Orange
+      case SpiritType.GIN:
+        return 'bg-green-500'; // Vert
+      case SpiritType.VODKA:
+        return 'bg-blue-500'; // Bleu
+      case SpiritType.RUM:
+        return 'bg-orange-700'; // Marron/Caramel
+      case SpiritType.TEQUILA:
+        return 'bg-yellow-500'; // Jaune
+      case SpiritType.COGNAC:
+        return 'bg-red-800'; // Bordeaux
+      case SpiritType.VERMOUTH:
+        return 'bg-red-600'; // Rouge
+      case SpiritType.LIQUEUR:
+        return 'bg-purple-500'; // Violet/Rose
+      case SpiritType.BITTER:
+        return 'bg-stone-800'; // Noir/Gris foncé
+      case SpiritType.OTHER:
+      default:
+        return 'bg-stone-500'; // Gris
+    }
+  };
+
+  const getInventoryLevelColor = (level: number): string => {
+    if (level > 50) return 'bg-green-500';
+    if (level >= 20) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const normalizeCategory = (category: string): string => {
+    const normalized = category.toLowerCase();
+    if (normalized === 'rhum') return 'rum';
+    if (normalized === 'whiskey') return 'whisky';
+    return normalized;
+  };
+
+  const handleInventoryLevelChange = (spirit: Spirit, newLevel: number) => {
+    const updated = { ...spirit, inventoryLevel: Math.max(0, Math.min(100, newLevel)) };
+    saveSpirit(updated);
+    loadData();
+  };
+
+  const handleInventoryBarClick = (e: React.MouseEvent<HTMLDivElement>, spirit: Spirit) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.round((x / rect.width) * 100);
+    handleInventoryLevelChange(spirit, percentage);
+  };
+
+  const filterSpirits = () => {
+    if (!stockSearchQuery.trim()) return spirits;
+
+    const query = stockSearchQuery.toLowerCase();
+    const normalizedQuery = normalizeCategory(query);
+
+    return spirits.filter(spirit => {
+      const name = spirit.name.toLowerCase();
+      const category = spirit.category.toLowerCase();
+      const normalizedCategory = normalizeCategory(category);
+      const distillery = spirit.distillery.toLowerCase();
+
+      return (
+        name.includes(query) ||
+        category.includes(query) ||
+        distillery.includes(query) ||
+        normalizedCategory.includes(normalizedQuery) ||
+        (query === 'rhum' && category === 'rum') ||
+        (query === 'rum' && category === 'rum') ||
+        (query === 'whiskey' && category === 'whisky') ||
+        (query === 'whisky' && category === 'whisky')
+      );
+    });
   };
 
   // --- Handlers ---
@@ -177,6 +255,8 @@ export const Bar: React.FC = () => {
       );
   };
 
+  const filteredSpirits = filterSpirits();
+
   return (
     <div className="space-y-6 animate-fade-in pb-24">
       
@@ -204,6 +284,18 @@ export const Bar: React.FC = () => {
       {/* --- TAB: STOCK --- */}
       {activeTab === 'STOCK' && (
           <div className="space-y-4">
+               {/* Barre de Recherche */}
+               <div className="relative">
+                   <Search className="absolute left-3 top-3 text-stone-400" size={18} />
+                   <input
+                       type="text"
+                       value={stockSearchQuery}
+                       onChange={(e) => setStockSearchQuery(e.target.value)}
+                       placeholder="Rechercher par nom, type, distillerie..."
+                       className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none shadow-sm"
+                   />
+               </div>
+
                <button 
                 onClick={() => setShowAddModal(true)}
                 className="w-full py-3 border border-dashed border-stone-400 dark:border-stone-700 text-stone-500 dark:text-stone-400 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-900/50 hover:text-stone-800 dark:hover:text-stone-300 transition-colors flex items-center justify-center gap-2 bg-stone-50 dark:bg-transparent"
@@ -212,58 +304,86 @@ export const Bar: React.FC = () => {
                </button>
 
                <div className="grid gap-4">
-                  {spirits.map(spirit => {
+                  {filteredSpirits.map(spirit => {
                       const SpiritIcon = getCategoryIcon(spirit.category);
                       return (
                       <div 
                         key={spirit.id} 
-                        className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex gap-4 items-start hover:border-stone-400 dark:hover:border-stone-700 transition-all relative group shadow-sm"
+                        className="bg-white dark:bg-stone-900/50 rounded-xl border border-stone-200 dark:border-stone-800 flex hover:border-stone-400 dark:hover:border-stone-700 transition-all relative group shadow-sm overflow-hidden"
                       >
-                          <div className="w-16 h-16 bg-stone-100 dark:bg-stone-950 rounded-lg flex items-center justify-center border border-stone-200 dark:border-stone-800 text-stone-600 relative">
-                              <SpiritIcon size={24} />
-                              {spirit.isLuxury && <div className="absolute -top-2 -left-2 bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-200 p-1 rounded-full border border-purple-200 dark:border-purple-500 shadow-sm"><Gem size={10} /></div>}
-                          </div>
-                          <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                  <h3 className="text-lg font-serif text-stone-900 dark:text-white">{spirit.name}</h3>
-                                  <span className="text-[10px] bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-700">{spirit.category}</span>
-                              </div>
-                              <p className="text-xs text-stone-500 mb-2">{spirit.distillery} • {spirit.age} • {spirit.abv}%</p>
-                              
-                              <div className="w-full h-1.5 bg-stone-100 dark:bg-stone-950 rounded-full overflow-hidden mb-2">
-                                  <div 
-                                    className={`h-full rounded-full ${spirit.inventoryLevel < 20 ? 'bg-red-500' : 'bg-amber-500'}`} 
-                                    style={{width: `${spirit.inventoryLevel}%`}} 
-                                  />
-                              </div>
+                          {/* Bande Latérale Colorée */}
+                          <div className={`w-1.5 ${getCategoryColor(spirit.category)} flex-shrink-0`} />
 
-                              <div className="flex flex-wrap gap-1">
-                                  {spirit.aromaProfile.slice(0,3).map((a,i) => (
-                                      <span key={i} className="text-[9px] bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">{a}</span>
-                                  ))}
+                          {/* Contenu Principal */}
+                          <div className="flex-1 p-4 flex gap-4 items-start">
+                              <div className="w-16 h-16 bg-stone-100 dark:bg-stone-950 rounded-lg flex items-center justify-center border border-stone-200 dark:border-stone-800 text-stone-600 relative flex-shrink-0">
+                                  <SpiritIcon size={24} />
+                                  {spirit.isLuxury && <div className="absolute -top-2 -left-2 bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-200 p-1 rounded-full border border-purple-200 dark:border-purple-500 shadow-sm"><Gem size={10} /></div>}
                               </div>
-                          </div>
-                          
-                          <div className="flex flex-col gap-2">
-                              <button 
-                                  onClick={() => navigate(`/spirit/${spirit.id}`)}
-                                  className="p-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
-                                  title="Voir les détails"
-                              >
-                                  <Eye size={16} className="text-stone-600 dark:text-stone-400" />
-                              </button>
-                              <button 
-                                  onClick={() => handleDeleteSpirit(spirit.id)}
-                                  className="p-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
-                                  title="Supprimer"
-                              >
-                                  <Trash2 size={16} className="text-red-600 dark:text-red-400" />
-                              </button>
+                              
+                              <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start mb-2">
+                                      <div className="flex-1 min-w-0">
+                                          <h3 className="text-lg font-serif text-stone-900 dark:text-white truncate">{spirit.name}</h3>
+                                          <p className="text-xs text-stone-500 truncate">{spirit.distillery} • {spirit.age} • {spirit.abv}%</p>
+                                      </div>
+                                      <span className="text-[10px] bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded text-stone-600 dark:text-stone-400 border border-stone-200 dark:border-stone-700 ml-2 flex-shrink-0">{spirit.category}</span>
+                                  </div>
+                                  
+                                  {/* Slider Interactif de Niveau */}
+                                  <div className="mb-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                          <span className="text-xs text-stone-500 dark:text-stone-400">Niveau restant</span>
+                                          <span className={`text-xs font-bold ${
+                                              spirit.inventoryLevel > 50 ? 'text-green-600 dark:text-green-500' :
+                                              spirit.inventoryLevel >= 20 ? 'text-yellow-600 dark:text-yellow-500' :
+                                              'text-red-600 dark:text-red-500'
+                                          }`}>
+                                              {spirit.inventoryLevel}%
+                                          </span>
+                                      </div>
+                                      <div 
+                                          className="relative w-full h-3 bg-stone-100 dark:bg-stone-950 rounded-full overflow-hidden cursor-pointer border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-600 transition-all group/bar"
+                                          onClick={(e) => handleInventoryBarClick(e, spirit)}
+                                      >
+                                          <div 
+                                              className={`h-full ${getInventoryLevelColor(spirit.inventoryLevel)} transition-all duration-300`}
+                                              style={{ width: `${spirit.inventoryLevel}%` }}
+                                          />
+                                          <div className="absolute inset-0 bg-white/0 group-hover/bar:bg-white/10 transition-colors pointer-events-none" />
+                                      </div>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-1">
+                                      {spirit.aromaProfile.slice(0,3).map((a,i) => (
+                                          <span key={i} className="text-[9px] bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 px-1.5 py-0.5 rounded">{a}</span>
+                                      ))}
+                                  </div>
+                              </div>
+                              
+                              <div className="flex flex-col gap-2 flex-shrink-0">
+                                  <button 
+                                      onClick={() => navigate(`/spirit/${spirit.id}`)}
+                                      className="p-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+                                      title="Voir les détails"
+                                  >
+                                      <Eye size={16} className="text-stone-600 dark:text-stone-400" />
+                                  </button>
+                                  <button 
+                                      onClick={() => handleDeleteSpirit(spirit.id)}
+                                      className="p-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+                                      title="Supprimer"
+                                  >
+                                      <Trash2 size={16} className="text-red-600 dark:text-red-400" />
+                                  </button>
+                              </div>
                           </div>
                       </div>
                   )})}
-                  {spirits.length === 0 && (
-                      <p className="text-center text-stone-500 text-sm py-10">Votre bar est vide.</p>
+                  {filteredSpirits.length === 0 && (
+                      <p className="text-center text-stone-500 text-sm py-10">
+                          {stockSearchQuery ? 'Aucun spiritueux trouvé pour cette recherche.' : 'Votre bar est vide.'}
+                      </p>
                   )}
                </div>
           </div>
