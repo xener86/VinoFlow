@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getInventory, toggleFavorite } from '../services/storageService';
 import { CellarWine } from '../types';
-import { FileText, Plus, Calendar, ChevronRight, X } from 'lucide-react';
+import { FileText, Plus, Calendar, ChevronRight, X, Search } from 'lucide-react';
 import { TastingQuestionnaireCompact, TastingFormData } from '../components/TastingQuestionnaireCompact';
 import { TastingNoteEditor, TastingNote } from '../components/TastingNoteEditor';
 
@@ -17,6 +17,14 @@ const getApiSettings = () => {
         model: 'claude-sonnet-4-20250514',
         openaiModel: 'gpt-4'
     };
+};
+
+// Fonction pour normaliser le texte (enlever les accents)
+const normalizeText = (text: string): string => {
+    return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 };
 
 // Service IA pour générer des questionnaires personnalisés
@@ -113,6 +121,9 @@ export const TastingNotes: React.FC = () => {
     const [aiQuestionnaire, setAiQuestionnaire] = useState<any>(null);
     const [initialFormData, setInitialFormData] = useState<Partial<TastingFormData> | undefined>(undefined);
     const [editingNote, setEditingNote] = useState<TastingNote | null>(null);
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         loadData();
@@ -300,6 +311,73 @@ export const TastingNotes: React.FC = () => {
         loadData();
     };
 
+    // Filtrage des vins à déguster
+    const filteredWinesToTaste = winesToTaste.filter(w => {
+        // Filter by type
+        let matchesType = false;
+        if (typeFilter === 'ALL') {
+            matchesType = true;
+        } else if (typeFilter === 'OTHER') {
+            matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(w.type);
+        } else {
+            matchesType = w.type === typeFilter;
+        }
+        
+        // Filter by favorites
+        const matchesFavorites = !showFavoritesOnly || w.isFavorite;
+        
+        // Filter by search (insensible aux accents)
+        const normalizedQuery = normalizeText(searchQuery);
+        const matchesSearch = 
+            normalizeText(w.name).includes(normalizedQuery) ||
+            normalizeText(w.producer).includes(normalizedQuery) ||
+            normalizeText(w.region).includes(normalizedQuery) ||
+            w.vintage.toString().includes(normalizedQuery);
+
+        return matchesType && matchesFavorites && matchesSearch;
+    });
+
+    // Filtrage des notes de dégustation affichées
+    const filteredTastingNotes = tastingNotes.filter(note => {
+        const inventory = getInventory();
+        const wine = inventory.find(w => w.id === note.wineId);
+        if (!wine) return false;
+
+        // Filter by type
+        let matchesType = false;
+        if (typeFilter === 'ALL') {
+            matchesType = true;
+        } else if (typeFilter === 'OTHER') {
+            matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(wine.type);
+        } else {
+            matchesType = wine.type === typeFilter;
+        }
+        
+        // Filter by favorites
+        const matchesFavorites = !showFavoritesOnly || wine.isFavorite;
+        
+        // Filter by search (insensible aux accents)
+        const normalizedQuery = normalizeText(searchQuery);
+        const matchesSearch = 
+            normalizeText(note.wineName).includes(normalizedQuery) ||
+            normalizeText(wine.producer).includes(normalizedQuery) ||
+            normalizeText(wine.region).includes(normalizedQuery) ||
+            (note.wineVintage && note.wineVintage.toString().includes(normalizedQuery));
+
+        return matchesType && matchesFavorites && matchesSearch;
+    });
+
+    const filterLabels: Record<string, string> = {
+        'ALL': 'TOUS',
+        'RED': 'ROUGE',
+        'WHITE': 'BLANC',
+        'ROSE': 'ROSÉ',
+        'SPARKLING': 'BULLES',
+        'OTHER': 'AUTRES'
+    };
+
+    const favoriteCount = winesToTaste.filter(w => w.isFavorite).length;
+
     return (
         <div className="pb-24 animate-fade-in space-y-6">
             <div className="flex items-center justify-between">
@@ -315,14 +393,64 @@ export const TastingNotes: React.FC = () => {
                 </button>
             </div>
 
+            {/* Inventory Search */}
+            <div className="relative">
+                <Search className="absolute left-3 top-3 text-stone-400" size={18} />
+                <input 
+                    type="text"
+                    placeholder="Chercher une bouteille..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-stone-300 dark:focus:ring-stone-600 outline-none placeholder-stone-400 dark:placeholder-stone-600 transition-all shadow-sm"
+                />
+            </div>
+
+            {/* Filters - Type de vin + Favoris */}
+            <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
+               {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING', 'OTHER'].map((t) => (
+                 <button
+                   key={t}
+                   onClick={() => setTypeFilter(t)}
+                   className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap text-xs font-medium tracking-wide ${
+                       typeFilter === t 
+                       ? 'bg-stone-800 text-white dark:bg-stone-700 shadow-md'
+                       : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
+                    }`}
+                 >
+                   {filterLabels[t]}
+                 </button>
+               ))}
+               
+               {/* Filtre Favoris - Intégré à droite */}
+               <button
+                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                 className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap text-xs font-medium tracking-wide flex items-center gap-1.5 ${
+                   showFavoritesOnly 
+                     ? 'bg-red-600 text-white dark:bg-red-600 shadow-md'
+                     : 'bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-red-600 dark:hover:text-red-400'
+                 }`}
+               >
+                 FAVORIS
+                 {favoriteCount > 0 && (
+                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                     showFavoritesOnly 
+                       ? 'bg-red-700 text-white'
+                       : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
+                   }`}>
+                     {favoriteCount}
+                   </span>
+                 )}
+               </button>
+            </div>
+
             {/* Wines to Taste Alert */}
-            {winesToTaste.length > 0 && (
+            {filteredWinesToTaste.length > 0 && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl">
                     <div className="flex items-center gap-3">
                         <FileText className="text-amber-600 dark:text-amber-400" size={24} />
                         <div>
                             <p className="font-bold text-amber-900 dark:text-amber-200">
-                                {winesToTaste.length} vin{winesToTaste.length > 1 ? 's' : ''} à déguster
+                                {filteredWinesToTaste.length} vin{filteredWinesToTaste.length > 1 ? 's' : ''} à déguster
                             </p>
                             <p className="text-xs text-amber-700 dark:text-amber-300">
                                 Créez vos premières impressions
@@ -334,6 +462,12 @@ export const TastingNotes: React.FC = () => {
 
             {/* Tasting Notes List */}
             <div className="space-y-4">
+                {filteredTastingNotes.length === 0 && tastingNotes.length > 0 && (
+                    <div className="text-center py-20 text-stone-500 dark:text-stone-600 border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col items-center gap-2">
+                        <Search size={32} className="opacity-50" />
+                        <p>Aucune fiche de dégustation trouvée pour cette recherche.</p>
+                    </div>
+                )}
                 {tastingNotes.length === 0 ? (
                     <div className="text-center py-20 text-stone-500">
                         <FileText size={48} className="mx-auto mb-4 opacity-50" />
@@ -341,7 +475,7 @@ export const TastingNotes: React.FC = () => {
                         <p className="text-sm">Créez votre première note !</p>
                     </div>
                 ) : (
-                    tastingNotes.map(note => (
+                    filteredTastingNotes.map(note => (
                         <div key={note.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 shadow-sm">
                             <div className="flex justify-between items-start mb-3">
                                 <h3 className="text-lg font-serif text-stone-900 dark:text-white">{note.wineName}</h3>
@@ -390,7 +524,7 @@ export const TastingNotes: React.FC = () => {
                         {!selectedWine ? (
                             <div className="space-y-2">
                                 <p className="text-sm text-stone-500 mb-4">Sélectionnez un vin à déguster :</p>
-                                {winesToTaste.map(wine => (
+                                {filteredWinesToTaste.map(wine => (
                                     <button
                                         key={wine.id}
                                         onClick={() => handleSelectWine(wine)}
@@ -403,6 +537,12 @@ export const TastingNotes: React.FC = () => {
                                         <ChevronRight className="text-stone-400 group-hover:text-wine-600 transition-colors" size={20} />
                                     </button>
                                 ))}
+                                {filteredWinesToTaste.length === 0 && (
+                                    <div className="text-center py-10 text-stone-500 dark:text-stone-600">
+                                        <Search size={32} className="mx-auto mb-4 opacity-50" />
+                                        <p>Aucun vin trouvé pour cette recherche.</p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <TastingQuestionnaireCompact

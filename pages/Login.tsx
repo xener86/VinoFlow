@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { signInWithEmail, signUpWithEmail, saveSupabaseConfig } from '../services/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Wine, Lock, Mail, Server, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { isConfigured } = useAuth();
+  const { isConfigured, refreshUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -25,9 +24,11 @@ export const Login: React.FC = () => {
     try {
       if (isLogin) {
         await signInWithEmail(email, password);
+        await refreshUser(); // Rafraîchit l'utilisateur dans le contexte
       } else {
         await signUpWithEmail(email, password);
-        alert("Compte créé ! Vérifiez vos emails ou connectez-vous.");
+        await refreshUser(); // Rafraîchit l'utilisateur dans le contexte
+        alert("Compte créé avec succès !");
         setIsLogin(true);
       }
     } catch (err: any) {
@@ -57,23 +58,23 @@ export const Login: React.FC = () => {
                  </div>
                  <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Configuration Système</h2>
                  <p className="text-stone-500 text-sm text-center mt-2">
-                     Connectez VinoFlow à votre projet Supabase pour activer l'authentification.
+                     Connectez VinoFlow à votre serveur d'authentification.
                  </p>
              </div>
 
              <form onSubmit={handleConfig} className="space-y-4">
                  <div>
-                     <label className="text-xs uppercase text-stone-500 font-bold">Supabase URL</label>
+                     <label className="text-xs uppercase text-stone-500 font-bold">URL d'authentification</label>
                      <input 
                        type="text" 
                        value={url}
                        onChange={e => setUrl(e.target.value)}
-                       placeholder="https://xyz.supabase.co"
+                       placeholder="https://supabase-auth.lauziere17.com"
                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white mt-1 focus:border-indigo-500 outline-none"
                      />
                  </div>
                  <div>
-                     <label className="text-xs uppercase text-stone-500 font-bold">Anon Public Key</label>
+                     <label className="text-xs uppercase text-stone-500 font-bold">Clé API</label>
                      <input 
                        type="password" 
                        value={key}
@@ -152,9 +153,9 @@ export const Login: React.FC = () => {
            <button 
              type="submit" 
              disabled={loading}
-             className="w-full bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-wine-500/30 dark:shadow-wine-900/30"
+             className="w-full bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-wine-500/30 dark:shadow-wine-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
            >
-             {loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Se Connecter' : 'S\'inscrire')}
+             {loading ? <Loader2 className="animate-spin" size={20} /> : (isLogin ? 'Se Connecter' : 'S\'inscrire')}
            </button>
         </form>
 

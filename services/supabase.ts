@@ -1,7 +1,5 @@
-
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let supabase: SupabaseClient | null = null;
+let supabaseUrl: string | null = null;
+let supabaseKey: string | null = null;
 
 // --- Configuration Management ---
 export const getSupabaseConfig = () => {
@@ -14,48 +12,106 @@ export const getSupabaseConfig = () => {
 export const saveSupabaseConfig = (url: string, key: string) => {
   localStorage.setItem('vf_supabase_url', url);
   localStorage.setItem('vf_supabase_key', key);
-  // Re-init client
   initSupabase();
 };
 
 export const initSupabase = () => {
   const { url, key } = getSupabaseConfig();
-  if (url && key) {
-    supabase = createClient(url, key);
-  } else {
-    supabase = null;
-  }
-  return supabase;
+  supabaseUrl = url;
+  supabaseKey = key;
 };
 
 // Initialize immediately if config exists
 initSupabase();
 
-export const getClient = () => supabase;
+export const getClient = () => null; // Not used anymore
 
-// --- Auth API ---
+// --- Auth API avec GoTrue direct ---
 
 export const signInWithEmail = async (email: string, password: string) => {
-  if (!supabase) throw new Error("Supabase non configuré");
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
+  if (!supabaseUrl || !supabaseKey) throw new Error("Supabase non configuré");
+  
+  const response = await fetch(`${supabaseUrl}/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.msg || error.error_description || 'Connexion échouée');
+  }
+
+  const data = await response.json();
+  localStorage.setItem('auth_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  
+  return { user: data.user, session: data };
 };
 
 export const signUpWithEmail = async (email: string, password: string) => {
-  if (!supabase) throw new Error("Supabase non configuré");
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) throw error;
-  return data;
+  if (!supabaseUrl || !supabaseKey) throw new Error("Supabase non configuré");
+  
+  const response = await fetch(`${supabaseUrl}/signup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.msg || error.error_description || 'Inscription échouée');
+  }
+
+  const data = await response.json();
+  localStorage.setItem('auth_token', data.access_token);
+  localStorage.setItem('refresh_token', data.refresh_token);
+  localStorage.setItem('user', JSON.stringify(data.user));
+  
+  return { user: data.user, session: data };
 };
 
 export const signOut = async () => {
-  if (!supabase) return;
-  await supabase.auth.signOut();
+  const token = localStorage.getItem('auth_token');
+  
+  if (token && supabaseUrl && supabaseKey) {
+    try {
+      await fetch(`${supabaseUrl}/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'apikey': supabaseKey,
+        },
+      });
+    } catch (e) {
+      console.error('Logout error:', e);
+    }
+  }
+
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
 };
 
 export const getCurrentUser = async () => {
-  if (!supabase) return null;
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null;
+  
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+};
+
+// Helper pour les requêtes API authentifiées
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('auth_token');
 };

@@ -1,18 +1,24 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getClient, initSupabase } from '../services/supabase';
-import { User } from '@supabase/supabase-js';
+import { getCurrentUser, getSupabaseConfig } from '../services/supabase';
+
+interface User {
+  id: string;
+  email: string;
+  [key: string]: any;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isConfigured: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isConfigured: false,
+  refreshUser: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -20,31 +26,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(false);
 
+  const refreshUser = async () => {
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
+  };
+
   useEffect(() => {
-    const client = getClient(); // Try to get existing client
-    
-    if (client) {
-      setIsConfigured(true);
-      // Check active session
-      client.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      });
-
-      // Listen for changes
-      const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-      });
-
-      return () => subscription.unsubscribe();
-    } else {
-      setIsConfigured(false);
+    const checkAuth = async () => {
+      const config = getSupabaseConfig();
+      
+      if (config.url && config.key) {
+        setIsConfigured(true);
+        
+        // Get user from localStorage
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } else {
+        setIsConfigured(false);
+      }
+      
       setLoading(false);
-    }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (useful for multi-tab sync)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user' || e.key === 'auth_token') {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured }}>
+    <AuthContext.Provider value={{ user, loading, isConfigured, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

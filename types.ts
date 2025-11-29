@@ -151,6 +151,16 @@ export interface SommelierRecommendation {
   decanting: boolean;
   foodPairingMatch: string;
   alternative?: string;
+  peakStatus: 'DRINK_NOW' | 'KEEP_2_3_YEARS' | 'DRINK_SOON' | 'PAST_PEAK';
+  peakExplanation: string;
+  locations: string[];
+}
+
+export interface OutOfCellarSuggestion {
+  appellation: string;
+  reason: string;
+  recommendedDomains: string[];
+  recommendedVintages: string[];
 }
 
 export interface EveningPlan {

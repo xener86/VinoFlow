@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { getSommelierRecommendations, getPairingAdvice, planEvening, chatWithSommelier, analyzeCellarForWineFair } from '../services/geminiService';
 import { getInventory, getSpirits, getUserTasteProfile } from '../services/storageService';
-import { CellarWine, SommelierRecommendation, EveningPlan, UserTasteProfile, CellarGapAnalysis } from '../types';
+import { CellarWine, SommelierRecommendation, EveningPlan, UserTasteProfile, CellarGapAnalysis, OutOfCellarSuggestion } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
-import { Sparkles, ChefHat, Calendar, Wine, MessageSquare, Utensils, Moon, ArrowRight, Loader2, Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers } from 'lucide-react';
+import { Sparkles, ChefHat, Calendar, Wine, MessageSquare, Utensils, Moon, ArrowRight, Loader2, Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers, Star, MapPin, Thermometer, Droplet, Heart, Award } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export const Sommelier: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'ADVICE' | 'PAIRING' | 'SHOPPING' | 'CHAT'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'ADVICE' | 'PAIRING' | 'SHOPPING' | 'CHAT'>('ADVICE');
   const [tasteProfile, setTasteProfile] = useState<UserTasteProfile | null>(null);
   
-  // Advice State (Unified Tonight/Planner)
+  // Advice State
   const [adviceMode, setAdviceMode] = useState<'BOTTLE' | 'MENU'>('BOTTLE');
-  const [adviceContext, setAdviceContext] = useState({ meal: '', mood: '', occasion: 'Dîner' });
+  const [adviceContext, setAdviceContext] = useState({ meal: '', mood: '' });
   
   // Results
   const [recommendations, setRecommendations] = useState<{ rec: SommelierRecommendation, wine: CellarWine }[]>([]);
+  const [outOfCellarSuggestion, setOutOfCellarSuggestion] = useState<OutOfCellarSuggestion | null>(null);
   const [eveningPlan, setEveningPlan] = useState<EveningPlan | null>(null);
   const [loadingAdvice, setLoadingAdvice] = useState(false);
 
@@ -40,7 +41,6 @@ export const Sommelier: React.FC = () => {
     setTasteProfile(getUserTasteProfile());
   }, []);
 
-  // Auto-execution from URL params
   useEffect(() => {
       const mode = searchParams.get('mode');
       const q = searchParams.get('q');
@@ -55,8 +55,6 @@ export const Sommelier: React.FC = () => {
       }
   }, [searchParams]);
 
-  // --- Shared Logic ---
-  
   const executePairing = async (query: string, mode: 'FOOD_TO_WINE' | 'WINE_TO_FOOD') => {
       if(!query) return;
       setLoadingPairing(true);
@@ -66,26 +64,24 @@ export const Sommelier: React.FC = () => {
       setLoadingPairing(false);
   };
 
-  // --- Handlers ---
-
   const handleGetAdvice = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoadingAdvice(true);
       setRecommendations([]);
       setEveningPlan(null);
+      setOutOfCellarSuggestion(null);
       
       const inventory = getInventory();
 
       if (adviceMode === 'BOTTLE') {
-          // Mode: Just a Bottle (ex-Tonight)
-          const recs = await getSommelierRecommendations(inventory, adviceContext);
-          const enrichedRecs = recs.map(rec => ({
+          const result = await getSommelierRecommendations(inventory, adviceContext);
+          const enrichedRecs = result.recommendations.map(rec => ({
               rec,
               wine: inventory.find(w => w.id === rec.wineId)!
           })).filter(r => r.wine);
           setRecommendations(enrichedRecs);
+          setOutOfCellarSuggestion(result.outOfCellarSuggestion || null);
       } else {
-          // Mode: Full Menu (ex-Planner)
           const spirits = getSpirits();
           const plan = await planEvening(adviceContext, inventory, spirits);
           setEveningPlan(plan);
@@ -121,6 +117,26 @@ export const Sommelier: React.FC = () => {
       setLoadingChat(false);
   };
 
+  const getPeakIcon = (status: string) => {
+      switch(status) {
+          case 'DRINK_NOW': return '🎯';
+          case 'KEEP_2_3_YEARS': return '⏳';
+          case 'DRINK_SOON': return '⚠️';
+          case 'PAST_PEAK': return '🚨';
+          default: return '🍷';
+      }
+  };
+
+  const getPeakColor = (status: string) => {
+      switch(status) {
+          case 'DRINK_NOW': return 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/50';
+          case 'KEEP_2_3_YEARS': return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/50';
+          case 'DRINK_SOON': return 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-900/50';
+          case 'PAST_PEAK': return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/50';
+          default: return 'bg-stone-50 dark:bg-stone-900/20 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-900/50';
+      }
+  };
+
   return (
     <div className="pb-24 animate-fade-in space-y-6">
       
@@ -138,7 +154,6 @@ export const Sommelier: React.FC = () => {
       {/* Tabs */}
       <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar">
           {[
-              { id: 'DASHBOARD', label: 'Profil', icon: Sparkles },
               { id: 'ADVICE', label: 'Conseil', icon: Layers },
               { id: 'PAIRING', label: 'Accords', icon: Utensils },
               { id: 'SHOPPING', label: 'Achats', icon: ShoppingBag },
@@ -157,40 +172,7 @@ export const Sommelier: React.FC = () => {
           ))}
       </div>
 
-      {/* --- DASHBOARD MODE --- */}
-      {activeTab === 'DASHBOARD' && tasteProfile && (
-          <div className="space-y-6 animate-fade-in">
-              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row gap-8 items-center shadow-sm">
-                  <div className="w-full md:w-1/2">
-                      <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4">Votre Profil Gustatif</h3>
-                      <div className="h-64 bg-stone-50 dark:bg-stone-950/50 rounded-xl p-4 border border-stone-100 dark:border-stone-800/50">
-                          <FlavorRadar data={tasteProfile.stylePreferences} />
-                      </div>
-                  </div>
-                  <div className="w-full md:w-1/2 space-y-4">
-                      <h4 className="text-sm font-bold uppercase text-stone-500">Cépages Favoris</h4>
-                      <div className="flex flex-wrap gap-2">
-                          {Object.entries(tasteProfile.favoriteGrapes).map(([grape, score]) => (
-                              <span key={grape} className="px-3 py-1 bg-stone-100 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 rounded-full text-xs">
-                                  {grape} <span className="text-wine-600 dark:text-wine-500 font-bold ml-1">{score}%</span>
-                              </span>
-                          ))}
-                      </div>
-
-                      <h4 className="text-sm font-bold uppercase text-stone-500 mt-4">Régions de Cœur</h4>
-                      <div className="flex flex-wrap gap-2">
-                          {Object.entries(tasteProfile.favoriteRegions).map(([region, score]) => (
-                              <span key={region} className="px-3 py-1 bg-stone-100 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-300 rounded-full text-xs">
-                                  {region} <span className="text-indigo-600 dark:text-indigo-400 font-bold ml-1">{score}%</span>
-                              </span>
-                          ))}
-                      </div>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- ADVICE MODE (Merged TONIGHT & PLANNER) --- */}
+      {/* --- ADVICE MODE --- */}
       {activeTab === 'ADVICE' && (
           <div className="space-y-6 animate-fade-in">
               
@@ -224,31 +206,15 @@ export const Sommelier: React.FC = () => {
                             className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
                           />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                          <div>
-                              <label className="text-sm text-stone-500 dark:text-stone-400">Humeur / Ambiance</label>
-                              <input 
-                                type="text" 
-                                placeholder="ex: Festif, Détendu..."
-                                value={adviceContext.mood}
-                                onChange={(e) => setAdviceContext({...adviceContext, mood: e.target.value})}
-                                className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                              />
-                          </div>
-                          <div>
-                              <label className="text-sm text-stone-500 dark:text-stone-400">Occasion</label>
-                              <select 
-                                value={adviceContext.occasion}
-                                onChange={(e) => setAdviceContext({...adviceContext, occasion: e.target.value})}
-                                className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
-                              >
-                                  <option>Dîner Quotidien</option>
-                                  <option>Dîner Amis</option>
-                                  <option>Rendez-vous Romantique</option>
-                                  <option>Grande Occasion</option>
-                                  <option>Apéro</option>
-                              </select>
-                          </div>
+                      <div>
+                          <label className="text-sm text-stone-500 dark:text-stone-400">Contrainte</label>
+                          <input 
+                            type="text" 
+                            placeholder="ex: Besoin de fraîcheur, Soirée décontractée, Impression à faire..."
+                            value={adviceContext.mood}
+                            onChange={(e) => setAdviceContext({...adviceContext, mood: e.target.value})}
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
+                          />
                       </div>
                       <button 
                         type="submit"
@@ -267,33 +233,142 @@ export const Sommelier: React.FC = () => {
               {adviceMode === 'BOTTLE' && recommendations.length > 0 && (
                   <div className="space-y-4 animate-fade-in-up">
                       <h3 className="text-stone-500 dark:text-stone-400 text-sm font-bold uppercase tracking-wider">Top Suggestions</h3>
-                      {recommendations.map(({rec, wine}) => (
-                          <div key={rec.wineId} className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-xl p-5 hover:border-wine-300 dark:hover:border-wine-800/50 transition-colors shadow-sm">
-                              <div className="flex justify-between items-start mb-3">
-                                  <div>
-                                      <h4 className="text-lg font-serif text-stone-800 dark:text-white">{wine.name}</h4>
-                                      <p className="text-xs text-stone-500">{wine.vintage} • {wine.region}</p>
-                                  </div>
-                                  <div className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-1 rounded text-xs font-bold border border-green-200 dark:border-green-900/50">
-                                      Match {rec.score}%
-                                  </div>
-                              </div>
-                              <p className="text-stone-600 dark:text-stone-300 italic text-sm mb-3">"{rec.reasoning}"</p>
-                              
-                              <div className="grid grid-cols-2 gap-2 text-xs text-stone-600 dark:text-stone-500 bg-stone-100 dark:bg-stone-950/50 p-3 rounded-lg mb-3">
-                                  <div>🌡️ {rec.servingTemp}</div>
-                                  <div>🍷 {rec.decanting ? "Carafer" : "Pas de carafage"}</div>
-                                  <div className="col-span-2">🍽️ {rec.foodPairingMatch}</div>
-                              </div>
+                      {recommendations.map(({rec, wine}) => {
+                          const isPerfectMatch = rec.score >= 95;
+                          return (
+                          <div 
+                            key={rec.wineId} 
+                            className={`bg-white dark:bg-stone-900/50 border rounded-xl p-5 transition-all shadow-sm relative overflow-hidden ${
+                                isPerfectMatch 
+                                ? 'border-yellow-400 dark:border-yellow-500 shadow-xl shadow-yellow-500/20 animate-pulse-slow' 
+                                : 'border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-800/50'
+                            }`}
+                          >
+                              {/* Perfect Match Animation Background */}
+                              {isPerfectMatch && (
+                                  <>
+                                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 via-amber-50/30 to-orange-50/50 dark:from-yellow-900/20 dark:via-amber-900/10 dark:to-orange-900/20 pointer-events-none animate-gradient-shift" />
+                                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/40 px-3 py-1 rounded-full border border-yellow-300 dark:border-yellow-700 z-10">
+                                          <Award size={14} className="text-yellow-700 dark:text-yellow-400" />
+                                          <span className="text-xs font-bold text-yellow-700 dark:text-yellow-400">MATCH PARFAIT</span>
+                                      </div>
+                                  </>
+                              )}
 
-                              <button 
-                                onClick={() => navigate(`/wine/${wine.id}`)}
-                                className="w-full py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-medium"
-                              >
-                                  Voir la fiche
-                              </button>
+                              <div className="relative z-10">
+                                  <div className="flex justify-between items-start mb-3">
+                                      <div className="flex-1">
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <h4 className="text-lg font-serif text-stone-800 dark:text-white">{wine.name}</h4>
+                                              {wine.isFavorite && (
+                                                  <Heart size={16} className="text-red-500 fill-red-500" />
+                                              )}
+                                          </div>
+                                          <p className="text-xs text-stone-500">{wine.vintage} • {wine.region}</p>
+                                      </div>
+                                      <div className={`px-3 py-1 rounded-lg text-xs font-bold border ${
+                                          isPerfectMatch 
+                                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700' 
+                                          : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50'
+                                      }`}>
+                                          Match {rec.score}%
+                                      </div>
+                                  </div>
+
+                                  {isPerfectMatch && (
+                                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg p-3 mb-3">
+                                          <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium flex items-center gap-2">
+                                              🏆 Vous avez LA bouteille idéale en cave !
+                                          </p>
+                                      </div>
+                                  )}
+
+                                  <p className="text-stone-600 dark:text-stone-300 italic text-sm mb-3">"{rec.reasoning}"</p>
+                                  
+                                  {/* Locations */}
+                                  {rec.locations && rec.locations.length > 0 && (
+                                      <div className="flex items-center gap-2 mb-3 text-xs text-stone-600 dark:text-stone-400">
+                                          <MapPin size={14} className="text-wine-500" />
+                                          <span>{rec.locations.join(' • ')}</span>
+                                      </div>
+                                  )}
+
+                                  {/* Peak Status */}
+                                  <div className={`mb-3 px-3 py-2 rounded-lg border text-xs flex items-center gap-2 ${getPeakColor(rec.peakStatus)}`}>
+                                      <span className="text-base">{getPeakIcon(rec.peakStatus)}</span>
+                                      <span className="font-medium">{rec.peakExplanation}</span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-2 text-xs text-stone-600 dark:text-stone-500 bg-stone-100 dark:bg-stone-950/50 p-3 rounded-lg mb-3">
+                                      <div className="flex items-center gap-1">
+                                          <Thermometer size={12} /> {rec.servingTemp}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                          <Droplet size={12} /> {rec.decanting ? "Carafer" : "Pas de carafage"}
+                                      </div>
+                                      <div className="col-span-2 flex items-start gap-1">
+                                          <Utensils size={12} className="mt-0.5" /> {rec.foodPairingMatch}
+                                      </div>
+                                  </div>
+
+                                  <button 
+                                    onClick={() => navigate(`/wine/${wine.id}`)}
+                                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-medium"
+                                  >
+                                      Voir la fiche
+                                  </button>
+                              </div>
                           </div>
-                      ))}
+                      )})}
+
+                      {/* Out of Cellar Suggestion */}
+                      {outOfCellarSuggestion && (
+                          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-xl p-6 shadow-lg animate-fade-in">
+                              <div className="flex items-center gap-2 mb-3">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                      <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                  </div>
+                                  <h4 className="text-lg font-serif text-indigo-900 dark:text-indigo-200">Si vous souhaitez acheter...</h4>
+                              </div>
+                              
+                              <p className="text-indigo-800 dark:text-indigo-300 text-sm mb-4 italic">
+                                  "{outOfCellarSuggestion.reason}"
+                              </p>
+
+                              <div className="bg-white/50 dark:bg-stone-900/30 rounded-lg p-4 space-y-3">
+                                  <div>
+                                      <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Appellation recommandée</h5>
+                                      <p className="text-indigo-900 dark:text-indigo-100 font-serif text-lg">{outOfCellarSuggestion.appellation}</p>
+                                  </div>
+
+                                  {outOfCellarSuggestion.recommendedDomains.length > 0 && (
+                                      <div>
+                                          <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Domaines suggérés</h5>
+                                          <div className="flex flex-wrap gap-2">
+                                              {outOfCellarSuggestion.recommendedDomains.map((domain, i) => (
+                                                  <span key={i} className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 rounded-full text-xs border border-indigo-200 dark:border-indigo-800">
+                                                      {domain}
+                                                  </span>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
+
+                                  {outOfCellarSuggestion.recommendedVintages.length > 0 && (
+                                      <div>
+                                          <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Millésimes conseillés</h5>
+                                          <div className="flex flex-wrap gap-2">
+                                              {outOfCellarSuggestion.recommendedVintages.map((vintage, i) => (
+                                                  <span key={i} className="px-3 py-1 bg-white dark:bg-stone-900/50 text-indigo-900 dark:text-indigo-100 rounded-lg text-xs font-mono border border-indigo-200 dark:border-indigo-800">
+                                                      {vintage}
+                                                  </span>
+                                              ))}
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      )}
                   </div>
               )}
 
@@ -514,6 +589,18 @@ export const Sommelier: React.FC = () => {
           </div>
       )}
 
+      <style>{`
+        @keyframes gradient-shift {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
+        }
+        .animate-gradient-shift {
+          animation: gradient-shift 3s ease-in-out infinite;
+        }
+        .animate-pulse-slow {
+          animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
     </div>
   );
 };

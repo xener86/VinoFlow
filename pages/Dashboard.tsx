@@ -20,6 +20,14 @@ const wineTypeLabels: Record<string, string> = {
   'FORTIFIED': 'FORTIFIÉ'
 };
 
+// Fonction pour normaliser le texte (enlever les accents)
+const normalizeText = (text: string): string => {
+    return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+};
+
 const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavoriteToggle }) => {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -171,12 +179,13 @@ export const Dashboard: React.FC = () => {
     // Filter by favorites (cumulatif)
     const matchesFavorites = !showFavoritesOnly || w.isFavorite;
     
-    const query = searchQuery.toLowerCase();
+    // Filter by search (insensible aux accents)
+    const normalizedQuery = normalizeText(searchQuery);
     const matchesSearch = 
-        w.name.toLowerCase().includes(query) ||
-        w.producer.toLowerCase().includes(query) ||
-        w.region.toLowerCase().includes(query) ||
-        w.vintage.toString().includes(query);
+        normalizeText(w.name).includes(normalizedQuery) ||
+        normalizeText(w.producer).includes(normalizedQuery) ||
+        normalizeText(w.region).includes(normalizedQuery) ||
+        w.vintage.toString().includes(normalizedQuery);
     const hasStock = w.inventoryCount > 0;
 
     return matchesType && matchesFavorites && matchesSearch && hasStock;
