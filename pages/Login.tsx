@@ -24,12 +24,16 @@ export const Login: React.FC = () => {
     try {
       if (isLogin) {
         await signInWithEmail(email, password);
-        await refreshUser(); // Rafraîchit l'utilisateur dans le contexte
+        await refreshUser();
+        // Forcer le rechargement pour que le contexte détecte la connexion
+        window.location.href = '/';
       } else {
         await signUpWithEmail(email, password);
-        await refreshUser(); // Rafraîchit l'utilisateur dans le contexte
-        alert("Compte créé avec succès !");
+        await refreshUser();
+        alert("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
         setIsLogin(true);
+        setEmail('');
+        setPassword('');
       }
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue");
@@ -45,7 +49,7 @@ export const Login: React.FC = () => {
       return;
     }
     saveSupabaseConfig(url, key);
-    window.location.reload(); // Force reload to init client in Context
+    window.location.reload();
   };
 
   if (!isConfigured) {
@@ -83,7 +87,11 @@ export const Login: React.FC = () => {
                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white mt-1 focus:border-indigo-500 outline-none"
                      />
                  </div>
-                 {error && <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-900/50">{error}</div>}
+                 {error && (
+                   <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-900/50">
+                     {error}
+                   </div>
+                 )}
                  
                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition-all">
                      Connecter
@@ -155,13 +163,23 @@ export const Login: React.FC = () => {
              disabled={loading}
              className="w-full bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-wine-500/30 dark:shadow-wine-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
            >
-             {loading ? <Loader2 className="animate-spin" size={20} /> : (isLogin ? 'Se Connecter' : 'S\'inscrire')}
+             {loading ? (
+               <>
+                 <Loader2 className="animate-spin" size={20} />
+                 <span>Connexion...</span>
+               </>
+             ) : (
+               isLogin ? 'Se Connecter' : 'S\'inscrire'
+             )}
            </button>
         </form>
 
         <div className="mt-6 text-center">
             <button 
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
               className="text-stone-500 hover:text-stone-800 dark:hover:text-white text-sm transition-colors"
             >
                 {isLogin ? "Pas encore de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
