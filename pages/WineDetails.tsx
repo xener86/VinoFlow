@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getWineHistory, addBottles, giftBottle, toggleFavorite } from '../services/storageService';
 import { generateTastingQuestionnaire } from '../services/geminiService'; // Import direct si disponible, sinon conserver la fonction locale
 import { useWines } from '../hooks/useWines'; // ✅ Hook Async
-import { useRacks } from '../hooks/useRacks'; // ✅ Hook Async
+import { useRacks } from '../hooks/Useracks'; // ✅ Hook Async
 import { useTastingNotes } from '../hooks/useTastingNotes'; // ✅ Hook Async
 import { saveTastingNote, deleteTastingNote } from '../services/storageService';
 import { CellarWine, TimelineEvent } from '../types';
