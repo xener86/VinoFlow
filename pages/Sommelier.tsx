@@ -1,14 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { getSommelierRecommendations, getPairingAdvice, planEvening, chatWithSommelier, analyzeCellarForWineFair } from '../services/geminiService';
-import { getInventory, getSpirits, getUserTasteProfile } from '../services/storageService';
-import { CellarWine, SommelierRecommendation, EveningPlan, UserTasteProfile, CellarGapAnalysis, OutOfCellarSuggestion } from '../types';
-import { FlavorRadar } from '../components/FlavorRadar';
-import { Sparkles, ChefHat, Calendar, Wine, MessageSquare, Utensils, Moon, ArrowRight, Loader2, Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers, Star, MapPin, Thermometer, Droplet, Heart, Award } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+    getSommelierRecommendations, 
+    getPairingAdvice, 
+    planEvening, 
+    chatWithSommelier, 
+    analyzeCellarForWineFair 
+} from '../services/geminiService';
+import { getUserTasteProfile } from '../services/storageService'; // On garde celui-ci s'il est toujours en localStorage, sinon créer un hook useProfile
+import { useWines } from '../hooks/useWines'; // ✅ Nouveau Hook
+import { useSpirits } from '../hooks/useSpirits'; // ✅ Nouveau Hook
+import { CellarWine, SommelierRecommendation, EveningPlan, UserTasteProfile, CellarGapAnalysis, OutOfCellarSuggestion } from '../types';
+import { 
+    Sparkles, Calendar, MessageSquare, Utensils, Moon, ArrowRight, Loader2, 
+    Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers, 
+    Thermometer, Droplet, Heart, Award, MapPin 
+} from 'lucide-react';
 
 export const Sommelier: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // ✅ Utilisation des Hooks pour les données
+  const { wines: inventory, loading: loadingWines } = useWines();
+  const { spirits, loading: loadingSpirits } = useSpirits();
+
   const [activeTab, setActiveTab] = useState<'ADVICE' | 'PAIRING' | 'SHOPPING' | 'CHAT'>('ADVICE');
   const [tasteProfile, setTasteProfile] = useState<UserTasteProfile | null>(null);
   
@@ -38,6 +54,8 @@ export const Sommelier: React.FC = () => {
   const [loadingChat, setLoadingChat] = useState(false);
 
   useEffect(() => {
+    // Si getUserTasteProfile est toujours synchrone (localStorage), on peut le laisser ici.
+    // Sinon, il faudrait aussi créer un hook useUser().
     setTasteProfile(getUserTasteProfile());
   }, []);
 
@@ -50,15 +68,18 @@ export const Sommelier: React.FC = () => {
           if (q) {
               setPairingQuery(q);
               setPairingMode('FOOD_TO_WINE');
-              executePairing(q, 'FOOD_TO_WINE');
+              // On attend que l'inventaire soit chargé avant de lancer l'auto-pairing
+              if (!loadingWines && inventory.length > 0) {
+                  executePairing(q, 'FOOD_TO_WINE');
+              }
           }
       }
-  }, [searchParams]);
+  }, [searchParams, loadingWines]); // Ajout de dépendance loadingWines
 
   const executePairing = async (query: string, mode: 'FOOD_TO_WINE' | 'WINE_TO_FOOD') => {
       if(!query) return;
       setLoadingPairing(true);
-      const inventory = getInventory();
+      // ✅ On utilise 'inventory' du hook, plus d'appel direct à getInventory()
       const result = await getPairingAdvice(query, mode, inventory);
       setPairingResult(result);
       setLoadingPairing(false);
@@ -71,18 +92,19 @@ export const Sommelier: React.FC = () => {
       setEveningPlan(null);
       setOutOfCellarSuggestion(null);
       
-      const inventory = getInventory();
-
+      // ✅ Utilisation des variables du hook (inventory / spirits)
       if (adviceMode === 'BOTTLE') {
           const result = await getSommelierRecommendations(inventory, adviceContext);
           const enrichedRecs = result.recommendations.map(rec => ({
               rec,
+              // On cherche le vin dans l'inventaire déjà chargé
               wine: inventory.find(w => w.id === rec.wineId)!
           })).filter(r => r.wine);
+          
           setRecommendations(enrichedRecs);
           setOutOfCellarSuggestion(result.outOfCellarSuggestion || null);
       } else {
-          const spirits = getSpirits();
+          // On passe l'inventaire et les spiritueux chargés par les hooks
           const plan = await planEvening(adviceContext, inventory, spirits);
           setEveningPlan(plan);
       }
@@ -96,7 +118,7 @@ export const Sommelier: React.FC = () => {
 
   const handleAnalyzeCellar = async () => {
       setLoadingShopping(true);
-      const inventory = getInventory();
+      // ✅ Utilisation de l'inventaire du hook
       const analysis = await analyzeCellarForWineFair(inventory);
       setShoppingAnalysis(analysis);
       setLoadingShopping(false);
@@ -136,6 +158,16 @@ export const Sommelier: React.FC = () => {
           default: return 'bg-stone-50 dark:bg-stone-900/20 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-900/50';
       }
   };
+
+  // ✅ Affichage d'un loader global si les données initiales ne sont pas prêtes
+  if (loadingWines || loadingSpirits) {
+      return (
+          <div className="flex justify-center items-center h-[60vh]">
+              <Loader2 className="animate-spin text-wine-600" size={32} />
+              <span className="ml-3 text-stone-500">Initialisation du Sommelier...</span>
+          </div>
+      );
+  }
 
   return (
     <div className="pb-24 animate-fade-in space-y-6">

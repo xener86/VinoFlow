@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { getSpirits, getCocktails, saveSpirit, saveCocktail, deleteSpirit } from '../services/storageService';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { saveSpirit, saveCocktail, deleteSpirit } from '../services/storageService';
 import { Spirit, SpiritType, CocktailRecipe } from '../types';
 import { searchCocktailsByName } from '../services/cocktailDbService';
 import { createCustomCocktail, enrichSpiritData } from '../services/geminiService';
+import { useSpirits } from '../hooks/useSpirits';     // ✅ Hook Async
+import { useCocktails } from '../hooks/useCocktails'; // ✅ Hook Async
 import { Search, Plus, GlassWater, Zap, CheckCircle2, PartyPopper, ArrowRight, Loader2, X, AlertCircle, MessageSquare, Gem, Martini, Wine, Coffee, Eye, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export const Bar: React.FC = () => {
   const navigate = useNavigate();
+  
+  // ✅ Remplacement des états locaux de données par les Hooks
+  const { spirits, loading: loadingSpirits, refresh: refreshSpirits } = useSpirits();
+  const { cocktails, loading: loadingCocktails, refresh: refreshCocktails } = useCocktails();
+
   const [activeTab, setActiveTab] = useState<'STOCK' | 'COCKTAILS'>('STOCK');
-  const [spirits, setSpirits] = useState<Spirit[]>([]);
-  const [cocktails, setCocktails] = useState<CocktailRecipe[]>([]);
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,15 +38,6 @@ export const Bar: React.FC = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatQuery, setChatQuery] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, [activeTab]);
-
-  const loadData = () => {
-      setSpirits(getSpirits());
-      setCocktails(getCocktails());
-  };
-
   const getCategoryIcon = (category: SpiritType) => {
     switch (category) {
         case SpiritType.GIN:
@@ -63,27 +59,17 @@ export const Bar: React.FC = () => {
 
   const getCategoryColor = (category: SpiritType): string => {
     switch (category) {
-      case SpiritType.WHISKY:
-        return 'bg-amber-500'; // Ambre/Orange
-      case SpiritType.GIN:
-        return 'bg-green-500'; // Vert
-      case SpiritType.VODKA:
-        return 'bg-blue-500'; // Bleu
-      case SpiritType.RUM:
-        return 'bg-orange-700'; // Marron/Caramel
-      case SpiritType.TEQUILA:
-        return 'bg-yellow-500'; // Jaune
-      case SpiritType.COGNAC:
-        return 'bg-red-800'; // Bordeaux
-      case SpiritType.VERMOUTH:
-        return 'bg-red-600'; // Rouge
-      case SpiritType.LIQUEUR:
-        return 'bg-purple-500'; // Violet/Rose
-      case SpiritType.BITTER:
-        return 'bg-stone-800'; // Noir/Gris foncé
+      case SpiritType.WHISKY: return 'bg-amber-500';
+      case SpiritType.GIN: return 'bg-green-500';
+      case SpiritType.VODKA: return 'bg-blue-500';
+      case SpiritType.RUM: return 'bg-orange-700';
+      case SpiritType.TEQUILA: return 'bg-yellow-500';
+      case SpiritType.COGNAC: return 'bg-red-800';
+      case SpiritType.VERMOUTH: return 'bg-red-600';
+      case SpiritType.LIQUEUR: return 'bg-purple-500';
+      case SpiritType.BITTER: return 'bg-stone-800';
       case SpiritType.OTHER:
-      default:
-        return 'bg-stone-500'; // Gris
+      default: return 'bg-stone-500';
     }
   };
 
@@ -100,10 +86,11 @@ export const Bar: React.FC = () => {
     return normalized;
   };
 
-  const handleInventoryLevelChange = (spirit: Spirit, newLevel: number) => {
+  // ✅ Async Update
+  const handleInventoryLevelChange = async (spirit: Spirit, newLevel: number) => {
     const updated = { ...spirit, inventoryLevel: Math.max(0, Math.min(100, newLevel)) };
-    saveSpirit(updated);
-    loadData();
+    await saveSpirit(updated);
+    refreshSpirits();
   };
 
   const handleInventoryBarClick = (e: React.MouseEvent<HTMLDivElement>, spirit: Spirit) => {
@@ -168,8 +155,8 @@ export const Bar: React.FC = () => {
               isLuxury: false
           };
 
-          saveSpirit(newSpirit);
-          loadData();
+          await saveSpirit(newSpirit); // ✅ Async
+          refreshSpirits(); // ✅ Refresh hook
           setShowAddModal(false);
           setNewSpiritName('');
       } catch (error) {
@@ -180,10 +167,10 @@ export const Bar: React.FC = () => {
       }
   };
 
-  const handleDeleteSpirit = (id: string) => {
+  const handleDeleteSpirit = async (id: string) => {
       if (window.confirm("Supprimer définitivement cette bouteille ?")) {
-          deleteSpirit(id);
-          loadData();
+          await deleteSpirit(id); // ✅ Async
+          refreshSpirits(); // ✅ Refresh hook
       }
   };
 
@@ -192,14 +179,15 @@ export const Bar: React.FC = () => {
       if(!searchQuery) return;
       
       setIsSearchingApi(true);
+      // Service externe (CocktailDB), déjà async
       const results = await searchCocktailsByName(searchQuery);
       setApiResults(results);
       setIsSearchingApi(false);
   };
 
-  const handleImportRecipe = (recipe: CocktailRecipe) => {
-      saveCocktail({ ...recipe, isFavorite: true });
-      loadData();
+  const handleImportRecipe = async (recipe: CocktailRecipe) => {
+      await saveCocktail({ ...recipe, isFavorite: true }); // ✅ Async
+      refreshCocktails(); // ✅ Refresh hook
       alert("Recette importée !");
   };
 
@@ -225,8 +213,8 @@ export const Bar: React.FC = () => {
                   isFavorite: true,
                   ...recipe as any
               };
-              saveCocktail(fullRecipe);
-              loadData();
+              await saveCocktail(fullRecipe); // ✅ Async
+              refreshCocktails(); // ✅ Refresh hook
               setShowAIChat(false);
               setChatQuery('');
               alert("Recette créée par l'IA !");
@@ -254,6 +242,16 @@ export const Bar: React.FC = () => {
           s.category.toLowerCase().includes(req.name.toLowerCase()))
       );
   };
+
+  // ✅ Affichage du loader pendant le chargement initial
+  if (loadingSpirits || loadingCocktails) {
+      return (
+          <div className="flex justify-center items-center h-[60vh]">
+              <Loader2 className="animate-spin text-indigo-600" size={32} />
+              <span className="ml-3 text-stone-500">Ouverture du Bar...</span>
+          </div>
+      );
+  }
 
   const filteredSpirits = filterSpirits();
 

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Schema, Type } from "@google/genai";
-import { Wine, Spirit, CocktailRecipe, SommelierRecommendation, EveningPlan, CellarGapAnalysis, AIConfig, AIProvider, OutOfCellarSuggestion } from '../types';
+import { Wine, Spirit, CocktailRecipe, SommelierRecommendation, EveningPlan, CellarGapAnalysis, AIConfig, OutOfCellarSuggestion, CellarWine } from '../types';
 import { getAIConfig, getRacks } from './storageService';
 
 // --- JSON SCHEMAS (Shared definition) ---
@@ -20,7 +20,7 @@ const wineSchemaStructure = {
         cuvee: { type: Type.STRING, description: "Nom spécifique de la cuvée (ex: 'Orgasme', 'Réserve'). Vide si générique." },
         parcel: { type: Type.STRING, description: "Lieu-dit, Climat ou Parcelle spécifique (ex: 'Monts de Milieu')." },
         vintage: { type: Type.INTEGER },
-        confidence: { type: Type.STRING, enum: ["HIGH", "MEDIUM", "LOW"], description: "Niveau de certitude. Si des infos manquent (cuvée, parcelle) sur une étiquette complexe, mettre MEDIUM ou LOW." },
+        confidence: { type: Type.STRING, enum: ["HIGH", "MEDIUM", "LOW"], description: "Niveau de certitude." },
         sensoryProfile: {
             type: Type.OBJECT,
             properties: {
@@ -49,6 +49,7 @@ interface AIAdapter {
     chatWithSommelier(history: any[], message: string): Promise<string>;
     analyzeCellarForWineFair(inventory: Wine[]): Promise<CellarGapAnalysis | null>;
     optimizeCellarStorage(boxWines: any[], shelfWines: any[]): Promise<{bottleId: string, reason: string}[]>;
+    generateTastingQuestionnaire(wine: CellarWine): Promise<any>;
 }
 
 // --- GEMINI ADAPTER (SDK) ---
@@ -83,7 +84,7 @@ class GeminiAdapter implements AIAdapter {
         if (imageBase64) {
             contents = [
                 { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-                { text: "Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique. Extrais TOUS les détails : Domaine, Appellation, Millésime, mais SURTOUT la 'Cuvée' (ex: Orgasme, Vieilles Vignes) et la 'Parcelle/Climat' (ex: Monts de Milieu). Remplis le JSON EN FRANÇAIS. Si l'info est floue, baisse la 'confidence'." }
+                { text: "Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique. Extrais TOUS les détails : Domaine, Appellation, Millésime, mais SURTOUT la 'Cuvée' et la 'Parcelle/Climat'. Remplis le JSON EN FRANÇAIS." }
             ];
         } else {
             contents = `Analyse ce vin : "${name}" (${vintage}) ${hint || ''}. Cherche spécifiquement s'il y a une Cuvée ou un Lieu-dit associé. Retourne un JSON complet EN FRANÇAIS.`;
@@ -150,7 +151,9 @@ class GeminiAdapter implements AIAdapter {
     async getSommelierRecommendations(inventory: Wine[], context: any) {
         if(inventory.length===0) return {recommendations: []};
         
-        const racks = getRacks();
+        // ✅ AWAIT car getRacks est async maintenant
+        const racks = await getRacks();
+        
         const invStr = inventory.map(w => {
             const bottleLocations = (w as any).bottles
                 ?.filter((b: any) => !b.isConsumed && typeof b.location !== 'string')
@@ -163,60 +166,20 @@ class GeminiAdapter implements AIAdapter {
                     return `${rackName} [${row}${col}]`;
                 }) || [];
             
-            return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) - Type:${w.type} Region:${w.region} Cépages:${w.grapeVarieties.join(',')} Favorite:${(w as any).isFavorite ? 'OUI' : 'NON'} Emplacements:[${bottleLocations.join(', ')}]`;
+            return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) - Type:${w.type} Region:${w.region} Favorite:${(w as any).isFavorite ? 'OUI' : 'NON'} Emplacements:[${bottleLocations.join(', ')}]`;
         }).join('\n');
         
         const prompt = `Tu es sommelier expert français. Année actuelle : 2025.
-
-Contexte de la demande :
-- Repas : ${context.meal || 'Non spécifié'}
-- Contrainte : ${context.mood || 'Aucune'}
-
-Vins disponibles en cave :
+Contexte : Repas: ${context.meal || 'Non spécifié'}, Mood: ${context.mood || 'Aucune'}
+Vins dispos :
 ${invStr}
 
 MISSION :
-1. Sélectionne les 3 MEILLEURS vins pour ce moment
-2. Pour chaque vin, calcule son statut d'apogée EN 2025 :
-   - DRINK_NOW : à l'apogée maintenant (parfait pour boire)
-   - KEEP_2_3_YEARS : jeune, garder 2-3 ans
-   - DRINK_SOON : proche fin d'apogée, boire dans l'année
-   - PAST_PEAK : passé son apogée
-   
-   Règles d'apogée :
-   - Bordeaux rouge : apogée 10-20 ans (ex: 2015 = DRINK_NOW, 2020 = KEEP)
-   - Bourgogne rouge : apogée 8-15 ans
-   - Beaujolais : apogée 2-4 ans
-   - Blanc sec : apogée 3-7 ans
-   - Blanc liquoreux : apogée 10-30 ans
-   - Champagne non millésimé : boire rapidement
-   - Tiens compte de la structure (tannins élevés = garde longue)
+1. Sélectionne 3 vins.
+2. Calcule apogée 2025 (DRINK_NOW, KEEP_2_3_YEARS, DRINK_SOON, PAST_PEAK).
+3. Suggère 1 appellation hors cave si besoin.
 
-3. Pour chaque vin, extrais 1-2 emplacements depuis les données (déjà fournis)
-4. Si aucun vin n'atteint 95% de match, suggère UNE appellation hors cave avec domaines et millésimes
-
-Réponds UNIQUEMENT en JSON avec cette structure :
-{
-  "recommendations": [
-    {
-      "wineId": "string",
-      "score": number (0-100),
-      "reasoning": "string (1 phrase en français expliquant pourquoi ce vin)",
-      "servingTemp": "string (ex: 16-18°C)",
-      "decanting": boolean,
-      "foodPairingMatch": "string (accord mets-vin en 1 phrase)",
-      "peakStatus": "DRINK_NOW | KEEP_2_3_YEARS | DRINK_SOON | PAST_PEAK",
-      "peakExplanation": "string (1 phrase courte expliquant le statut)",
-      "locations": ["string", "string"] (1-2 emplacements depuis les données)
-    }
-  ],
-  "outOfCellarSuggestion": {
-    "appellation": "string",
-    "reason": "string (pourquoi cette appellation)",
-    "recommendedDomains": ["string", "string"],
-    "recommendedVintages": ["string", "string"]
-  } OU null si un vin >= 95%
-}`;
+JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, foodPairingMatch, peakStatus, peakExplanation, locations}], outOfCellarSuggestion: {appellation, reason, recommendedDomains, recommendedVintages} | null }`;
 
         const schema = {
             type: Type.OBJECT,
@@ -310,9 +273,32 @@ Réponds UNIQUEMENT en JSON avec cette structure :
         } as Schema;
         return this.generateJSON(prompt, schema) || [];
     }
+
+    // ✅ Nouvelle méthode pour générer le questionnaire de dégustation
+    async generateTastingQuestionnaire(wine: CellarWine) {
+        const prompt = `Tu es un sommelier expert. Génère un questionnaire de dégustation personnalisé pour ce vin :
+VIN : ${wine.name} ${wine.cuvee || ''} (${wine.vintage}) - ${wine.type} - ${wine.region}.
+Réponds UNIQUEMENT avec un objet JSON. Inclure: visualIntensity, visualDescription, bodyDefault, acidityDefault, tanninDefault, tastingTips, pairingSuggestions.`;
+
+        const schema = {
+            type: Type.OBJECT,
+            properties: {
+                visualIntensity: { type: Type.INTEGER },
+                visualDescription: { type: Type.STRING },
+                bodyDefault: { type: Type.INTEGER },
+                acidityDefault: { type: Type.INTEGER },
+                tanninDefault: { type: Type.INTEGER },
+                tastingTips: { type: Type.STRING },
+                pairingSuggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ["visualIntensity", "visualDescription", "bodyDefault", "acidityDefault", "tastingTips", "pairingSuggestions"]
+        } as Schema;
+
+        return this.generateJSON(prompt, schema);
+    }
 }
 
-// --- OPENAI / MISTRAL ADAPTER (REST) ---
+// --- REST ADAPTER (OpenAI / Mistral) ---
 class RestAdapter implements AIAdapter {
     private apiKey: string;
     private baseUrl: string;
@@ -355,16 +341,12 @@ class RestAdapter implements AIAdapter {
 
         if (imageBase64 && this.provider === 'OPENAI') {
             userContent = [
-                { type: "text", text: "Analyse cette étiquette. Extrais les données. Si flou, confidence=LOW." },
+                { type: "text", text: "Analyse cette étiquette. Extrais les données." },
                 { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
             ];
         }
 
-        const res = await this.call([
-            { role: "system", content: system },
-            { role: "user", content: userContent }
-        ]);
-
+        const res = await this.call([{ role: "system", content: system }, { role: "user", content: userContent }]);
         if(res) return { ...res, enrichedByAI: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
         return null;
     }
@@ -386,14 +368,11 @@ class RestAdapter implements AIAdapter {
     }
 
     async generateEducationalContent(itemName: string) {
-        return this.call([
-            { role: "system", content: "Expert Vin. Anecdote courte." },
-            { role: "user", content: itemName }
-        ], false);
+        return this.call([{ role: "system", content: "Expert Vin. Anecdote courte." }, { role: "user", content: itemName }], false);
     }
 
     async getSommelierRecommendations(inventory: Wine[], context: any) {
-        const racks = getRacks();
+        const racks = await getRacks();
         const invStr = inventory.map(w => {
             const bottleLocations = (w as any).bottles
                 ?.filter((b: any) => !b.isConsumed && typeof b.location !== 'string')
@@ -409,28 +388,22 @@ class RestAdapter implements AIAdapter {
             return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) Emplacements:[${bottleLocations.join(', ')}]`;
         }).join('\n');
 
-        const system = `Sommelier expert français. Année 2025. Réponds en JSON avec {recommendations: [...], outOfCellarSuggestion: {...} ou null}. 
-        
-Chaque recommendation doit avoir: wineId, score (0-100), reasoning, servingTemp, decanting, foodPairingMatch, peakStatus (DRINK_NOW/KEEP_2_3_YEARS/DRINK_SOON/PAST_PEAK), peakExplanation, locations (array de 1-2 strings).
-
-Si aucun vin >= 95%, ajoute outOfCellarSuggestion avec appellation, reason, recommendedDomains, recommendedVintages.`;
-        
+        const system = `Sommelier expert. JSON output only.`;
         const user = `Context: ${JSON.stringify(context)}. Inventory:\n${invStr}`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
         
         if (res && res.recommendations && Array.isArray(res.recommendations)) return res;
-        if (res && Array.isArray(res)) return {recommendations: res};
         return {recommendations: []};
     }
 
     async getPairingAdvice(query: string, mode: string, inventory: Wine[]) {
-        const system = "Sommelier. Markdown réponse courte.";
+        const system = "Sommelier. Markdown response.";
         const user = `Mode: ${mode}. Query: ${query}. Inventory: ${inventory.map(w=>w.name).join(',')}`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }], false);
     }
 
     async planEvening(context: any, wines: Wine[], spirits: Spirit[]) {
-        const system = "Event Planner. JSON {theme, aperitif, mainCourse, digestif}";
+        const system = "Event Planner. JSON.";
         const user = `Context: ${JSON.stringify(context)}. Wines: ${wines.map(w=>w.name).join(',')}. Spirits: ${spirits.map(s=>s.name).join(',')}`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
@@ -442,22 +415,24 @@ Si aucun vin >= 95%, ajoute outOfCellarSuggestion avec appellation, reason, reco
     }
 
     async analyzeCellarForWineFair(inventory: Wine[]) {
-        const system = "Wine Buyer. JSON {generalAnalysis, gaps, suggestions:[{region, type, priority, reason, budgetRecommendation, specificTarget}]}";
+        const system = "Wine Buyer. JSON.";
         const user = `Inventory: ${inventory.map(w=>`${w.region} ${w.type}`).join(',')}`;
-        const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
-        if(res && res.suggestions) {
-            res.suggestions = res.suggestions.map((s:any) => ({...s, id: crypto.randomUUID()}));
-        }
-        return res;
+        return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
 
     async optimizeCellarStorage(boxWines: any[], shelfWines: any[]) {
-        const system = "Cellar Manager. JSON Array {bottleId, reason}";
+        const system = "Cellar Manager. JSON Array.";
         const user = `Box: ${JSON.stringify(boxWines)}. Shelf: ${JSON.stringify(shelfWines)}.`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
         if (Array.isArray(res)) return res;
-        if (res && res.moves) return res.moves;
         return [];
+    }
+
+    // ✅ Implémentation manquante pour REST
+    async generateTastingQuestionnaire(wine: CellarWine) {
+        const system = "Sommelier Expert. JSON Response Only.";
+        const user = `Generate tasting questionnaire for ${wine.name} (${wine.vintage}). Include visualIntensity, visualDescription, bodyDefault, acidityDefault, tanninDefault, tastingTips, pairingSuggestions.`;
+        return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
 }
 
@@ -476,7 +451,7 @@ export const getAiProvider = (): AIAdapter => {
     return new GeminiAdapter(key);
 };
 
-// --- EXPORTED FUNCTIONS (Proxy to Provider) ---
+// --- EXPORTED FUNCTIONS ---
 export const enrichWineData = (n: string, v: number, h?: string, img?: string) => getAiProvider().enrichWine(n, v, h, img);
 export const enrichSpiritData = (n: string, h?: string) => getAiProvider().enrichSpirit(n, h);
 export const createCustomCocktail = (i: string[], q: string) => getAiProvider().createCustomCocktail(i, q);
@@ -487,3 +462,5 @@ export const planEvening = (c: any, w: any[], s: any[]) => getAiProvider().planE
 export const chatWithSommelier = (h: any[], m: string) => getAiProvider().chatWithSommelier(h, m);
 export const analyzeCellarForWineFair = (i: any[]) => getAiProvider().analyzeCellarForWineFair(i);
 export const optimizeCellarStorage = (b: any[], s: any[]) => getAiProvider().optimizeCellarStorage(b, s);
+// ✅ Nouvel export
+export const generateTastingQuestionnaire = (w: CellarWine) => getAiProvider().generateTastingQuestionnaire(w);

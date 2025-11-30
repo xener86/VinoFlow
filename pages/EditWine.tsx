@@ -1,38 +1,60 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getWineById, updateWine } from '../services/storageService';
+import { updateWine } from '../services/storageService';
+import { useWines } from '../hooks/useWines'; // ✅ Import du Hook
 import { Wine } from '../types';
-import { Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { Save, ArrowLeft, Loader2 } from 'lucide-react';
 
 export const EditWine: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  // ✅ Utilisation du Hook pour récupérer l'inventaire
+  const { wines, loading, refresh } = useWines();
+  
+  // État local pour le formulaire
   const [wine, setWine] = useState<Wine | null>(null);
 
+  // ✅ Effet pour trouver le vin une fois les données chargées
   useEffect(() => {
-    if (id) {
-        const w = getWineById(id);
-        if (w) setWine(w);
-        else navigate('/');
-    }
-  }, [id, navigate]);
-
-    const handleSave = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (wine) {
-            updateWine(wine.id, wine);
-            navigate(`/wine/${wine.id}`);
+    if (!loading && id) {
+        const found = wines.find(w => w.id === id);
+        if (found) {
+            // On clone pour ne pas muter le cache du hook directement
+            setWine({ ...found });
+        } else {
+            navigate('/');
         }
-    };
+    }
+  }, [id, loading, wines, navigate]);
 
-  if (!wine) return null;
+  // ✅ Sauvegarde Asynchrone
+  const handleSave = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (wine) {
+          await updateWine(wine.id, wine); // Await de la mise à jour
+          await refresh(); // Rafraîchissement des données globales
+          navigate(`/wine/${wine.id}`);
+      }
+  };
+
+  // Loader pendant le chargement
+  if (loading || !wine) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
+              <Loader2 className="animate-spin text-wine-600" size={32} />
+          </div>
+      );
+  }
 
   return (
     <div className="max-w-2xl mx-auto pb-24 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-            <button onClick={() => navigate(-1)} className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm">
+            <button 
+                onClick={() => navigate(-1)} 
+                className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
                 <ArrowLeft size={20} />
             </button>
             <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Éditer la Fiche</h2>

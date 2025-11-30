@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, getRacks, consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
+import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
+import { useWines } from '../hooks/useWines';
+import { useRacks } from '../hooks/UseRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2 } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
 
@@ -40,8 +42,10 @@ const getRowLabel = (index: number) => {
 
 export const CellarMap: React.FC = () => {
   const navigate = useNavigate();
-  const [racks, setRacks] = useState<Rack[]>([]);
-  const [inventory, setInventory] = useState<CellarWine[]>([]);
+  // Utilisation des Hooks pour les données
+  const { racks, loading: loadingRacks, refresh: refreshRacks } = useRacks();
+  const { wines: inventory, loading: loadingWines, refresh: refreshWines } = useWines();
+
   const [selectedTabId, setSelectedTabId] = useState<string | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,22 +75,20 @@ export const CellarMap: React.FC = () => {
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
 
+  // Initialisation de la sélection du rack une fois les données chargées
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = () => {
-    const loadedRacks = getRacks();
-    setRacks(loadedRacks);
-    setInventory(getInventory());
-    
-    if (loadedRacks.length > 0 && !selectedTabId) {
-        const firstShelf = loadedRacks.find(r => r.type !== 'BOX');
+    if (!loadingRacks && racks.length > 0 && !selectedTabId) {
+        const firstShelf = racks.find(r => r.type !== 'BOX');
         if (firstShelf) setSelectedTabId(firstShelf.id);
         else setSelectedTabId('VIEW_ALL_BOXES');
-    } else if (loadedRacks.length > 0 && selectedTabId && !loadedRacks.find(r => r.id === selectedTabId) && selectedTabId !== 'VIEW_ALL_BOXES') {
+    } else if (!loadingRacks && racks.length > 0 && selectedTabId && !racks.find(r => r.id === selectedTabId) && selectedTabId !== 'VIEW_ALL_BOXES') {
         setSelectedTabId('VIEW_ALL_BOXES');
     }
+  }, [loadingRacks, racks, selectedTabId]);
+
+  const refreshAll = () => {
+      refreshRacks();
+      refreshWines();
   };
 
   const getMatchesForRack = (rackId: string): number => {
@@ -107,7 +109,7 @@ export const CellarMap: React.FC = () => {
 
   const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
 
-  const handleSlotClick = (rackId: string, x: number, y: number, rackName: string) => {
+  const handleSlotClick = async (rackId: string, x: number, y: number, rackName: string) => {
     let occupied = false;
     let targetBottle: any = null;
     
@@ -128,9 +130,9 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-        moveBottle(moveSource.bottleId, { rackId, x, y });
+        await moveBottle(moveSource.bottleId, { rackId, x, y });
         setMoveSource(null);
-        loadData();
+        refreshWines();
         return;
      }
 
@@ -156,7 +158,7 @@ export const CellarMap: React.FC = () => {
       e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDrop = (e: React.DragEvent, rackId: string, x: number, y: number) => {
+  const handleDrop = async (e: React.DragEvent, rackId: string, x: number, y: number) => {
       e.preventDefault();
       const bottleId = e.dataTransfer.getData("bottleId");
       if (bottleId) {
@@ -169,17 +171,17 @@ export const CellarMap: React.FC = () => {
           }
           if (occupied) return; 
 
-            moveBottle(bottleId, { rackId, x, y });
+            await moveBottle(bottleId, { rackId, x, y });
             setDragSourceId(null);
-            loadData();
+            refreshWines();
         }
     };
 
-  const handleConsume = () => {
+  const handleConsume = async () => {
         if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-            consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
             setSelectedBottle(null);
-            loadData();
+            refreshWines();
         }
   };
 
@@ -192,19 +194,19 @@ export const CellarMap: React.FC = () => {
       setShowGiftModal(true);
   };
 
-  const handleConfirmGift = () => {
+  const handleConfirmGift = async () => {
       if (!selectedBottle || !giftRecipient) return;
       
-      giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion);
+      await giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion);
       setShowGiftModal(false);
       setSelectedBottle(null);
       setGiftRecipient('');
       setGiftOccasion('');
-      loadData();
+      refreshWines();
       alert(`Bouteille offerte à ${giftRecipient} !`);
   };
 
-  const handleCreateRack = () => {
+  const handleCreateRack = async () => {
       const newRack: Rack = {
           id: crypto.randomUUID(),
           name: createRackName,
@@ -212,8 +214,8 @@ export const CellarMap: React.FC = () => {
           height: newRackH,
           type: newRackType
       };
-      saveRack(newRack);
-      setRacks(getRacks());
+      await saveRack(newRack);
+      refreshRacks();
       setShowAddRackModal(false);
       
       if (newRack.type === 'BOX') {
@@ -223,12 +225,10 @@ export const CellarMap: React.FC = () => {
       }
   };
 
-  const handleDeleteRack = (id: string) => {
+  const handleDeleteRack = async (id: string) => {
       if(window.confirm("Supprimer ce rangement ? Les bouteilles seront marquées 'Non triées'.")) {
-          deleteRack(id);
-          const updatedRacks = getRacks();
-          setRacks(updatedRacks);
-          loadData(); 
+          await deleteRack(id);
+          refreshAll();
           
           if (selectedTabId === id) {
               setSelectedTabId('VIEW_ALL_BOXES');
@@ -241,36 +241,36 @@ export const CellarMap: React.FC = () => {
       setEditRackName(rack.name);
   };
 
-  const handleSaveRackEdit = () => {
+  const handleSaveRackEdit = async () => {
       if (editingRack && editRackName) {
-          updateRack(editingRack.id, { name: editRackName });
+          await updateRack(editingRack.id, { name: editRackName });
           setEditingRack(null);
-          loadData();
+          refreshRacks();
       }
   };
 
-  const handleReorderRack = (id: string, direction: 'left' | 'right') => {
-      reorderRack(id, direction);
-      loadData();
+  const handleReorderRack = async (id: string, direction: 'left' | 'right') => {
+      await reorderRack(id, direction);
+      refreshRacks();
   };
   
   const handleQuickFill = (rack: Rack) => {
       setFillTargetRack(rack);
   };
   
-  const confirmQuickFill = (wine: CellarWine) => {
+  const confirmQuickFill = async (wine: CellarWine) => {
         if(fillTargetRack && window.confirm(`Remplir ${fillTargetRack.name} avec ${wine.name} ?`)) {
-            fillRackWithWine(fillTargetRack.id, wine.id);
+            await fillRackWithWine(fillTargetRack.id, wine.id);
             setFillTargetRack(null);
-            loadData();
+            refreshWines();
         }
   };
 
-  const handleAddExistingToSlot = (wine: CellarWine) => {
+  const handleAddExistingToSlot = async (wine: CellarWine) => {
       if(emptySlotTarget) {
-          addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y });
+          await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y });
           setEmptySlotTarget(null);
-          loadData();
+          refreshWines();
       }
   };
 
@@ -302,12 +302,18 @@ export const CellarMap: React.FC = () => {
       setCreateRackName(name);
   };
 
+  if (loadingRacks || loadingWines) {
+      return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-wine-600" size={48} /></div>;
+  }
+
   const shelves = racks.filter(r => r.type !== 'BOX');
   const boxes = racks.filter(r => r.type === 'BOX');
   const boxesMatchCount = boxes.reduce((acc, box) => acc + getMatchesForRack(box.id), 0);
 
   return (
     <div className="space-y-6 animate-fade-in pb-24 relative min-h-screen">
+      {/* ... (Reste du JSX identique) ... */}
+      {/* Veillez juste à conserver la structure existante en utilisant les variables shelves, boxes, etc. qui sont dérivées des data du hook */}
       
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
@@ -400,6 +406,7 @@ export const CellarMap: React.FC = () => {
         </div>
       </div>
 
+      {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
@@ -479,6 +486,8 @@ export const CellarMap: React.FC = () => {
           })()}
       </div>
 
+      {/* Modals & Popups (SelectedBottle, Gift, etc.) */}
+      {/* ... [Code des modales identique au fichier d'origine mais utilisant les handlers async] ... */}
       {selectedBottle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />

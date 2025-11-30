@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { getInventory, toggleFavorite } from '../services/storageService';
+import React, { useState, useMemo } from 'react';
+import { useWines } from '../hooks/useWines'; // ✅ Hook Async
+import { useTastingNotes } from '../hooks/useTastingNotes'; // ✅ Hook Async
+import { saveTastingNote, deleteTastingNote, toggleFavorite } from '../services/storageService'; // ✅ Fonctions Async du service
 import { CellarWine } from '../types';
-import { FileText, Plus, Calendar, ChevronRight, X, Search } from 'lucide-react';
+import { FileText, Plus, Calendar, ChevronRight, X, Search, Loader2 } from 'lucide-react';
 import { TastingQuestionnaireCompact, TastingFormData } from '../components/TastingQuestionnaireCompact';
 import { TastingNoteEditor, TastingNote } from '../components/TastingNoteEditor';
 
-// Récupérer les paramètres API depuis les settings
+// Récupérer les paramètres API (reste local pour l'instant ou via un hook de settings si dispo)
 const getApiSettings = () => {
     const stored = localStorage.getItem('vf_api_settings');
     if (stored) {
@@ -19,7 +21,6 @@ const getApiSettings = () => {
     };
 };
 
-// Fonction pour normaliser le texte (enlever les accents)
 const normalizeText = (text: string): string => {
     return text
         .toLowerCase()
@@ -27,7 +28,7 @@ const normalizeText = (text: string): string => {
         .replace(/[\u0300-\u036f]/g, '');
 };
 
-// Service IA pour générer des questionnaires personnalisés
+// Service IA (inchangé, déjà async)
 const generateTastingQuestionnaire = async (wine: CellarWine) => {
     try {
         const settings = getApiSettings();
@@ -102,7 +103,6 @@ IMPORTANT :
             content = data.choices[0].message.content.trim();
         }
         
-        // Nettoyer les backticks markdown si présents
         const jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
         return JSON.parse(jsonContent);
@@ -113,8 +113,10 @@ IMPORTANT :
 };
 
 export const TastingNotes: React.FC = () => {
-    const [tastingNotes, setTastingNotes] = useState<TastingNote[]>([]);
-    const [winesToTaste, setWinesToTaste] = useState<CellarWine[]>([]);
+    // ✅ Utilisation des Hooks
+    const { wines: inventory, loading: loadingWines, refresh: refreshWines } = useWines();
+    const { notes: tastingNotes, loading: loadingNotes, refresh: refreshNotes } = useTastingNotes();
+
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedWine, setSelectedWine] = useState<CellarWine | null>(null);
     const [isLoadingQuestionnaire, setIsLoadingQuestionnaire] = useState(false);
@@ -125,36 +127,13 @@ export const TastingNotes: React.FC = () => {
     const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = () => {
-        const stored = localStorage.getItem('vf_tasting_notes');
-        let notes: TastingNote[] = stored ? JSON.parse(stored) : [];
-        
-        // Migration: convertir les anciennes notes si nécessaire
-        notes = notes.map(note => {
-            if (typeof note.nose === 'string') {
-                return { ...note, nose: note.nose ? [note.nose] : [] };
-            }
-            if (!note.nose) {
-                return { ...note, nose: [] };
-            }
-            return note;
-        });
-        
-        if (stored) {
-            localStorage.setItem('vf_tasting_notes', JSON.stringify(notes));
-        }
-        
-        setTastingNotes(notes);
-
-        const inventory = getInventory();
-        const tastedWineIds = notes.map((n: TastingNote) => n.wineId);
-        const needsTasting = inventory.filter(w => !tastedWineIds.includes(w.id) && w.inventoryCount > 0);
-        setWinesToTaste(needsTasting);
-    };
+    // Calcul des vins à déguster (ceux en stock sans note récente)
+    const winesToTaste = useMemo(() => {
+        if (!inventory || !tastingNotes) return [];
+        const tastedWineIds = tastingNotes.map((n) => n.wineId);
+        // On pourrait affiner la logique "récente" ici si besoin
+        return inventory.filter(w => !tastedWineIds.includes(w.id) && w.inventoryCount > 0);
+    }, [inventory, tastingNotes]);
 
     const getVisualDefault = (wine: CellarWine): number => {
         const visualMap: Record<string, number> = {
@@ -190,14 +169,15 @@ export const TastingNotes: React.FC = () => {
         setIsLoadingQuestionnaire(true);
         setEditingNote(null);
         
-        // Générer le questionnaire personnalisé via IA
         const questionnaire = await generateTastingQuestionnaire(wine);
         setAiQuestionnaire(questionnaire);
         
+        const defaultVisual = getVisualDefault(wine);
+        
         if (questionnaire) {
             setInitialFormData({
-                visual: questionnaire.visualIntensity || getVisualDefault(wine),
-                visualNotes: questionnaire.visualDescription || getVisualDescription(wine, questionnaire.visualIntensity || getVisualDefault(wine)),
+                visual: questionnaire.visualIntensity || defaultVisual,
+                visualNotes: questionnaire.visualDescription || getVisualDescription(wine, questionnaire.visualIntensity || defaultVisual),
                 nose: [],
                 body: questionnaire.bodyDefault || wine.sensoryProfile?.body || 50,
                 acidity: questionnaire.acidityDefault || wine.sensoryProfile?.acidity || 50,
@@ -211,8 +191,8 @@ export const TastingNotes: React.FC = () => {
             });
         } else {
             setInitialFormData({
-                visual: getVisualDefault(wine),
-                visualNotes: getVisualDescription(wine, getVisualDefault(wine)),
+                visual: defaultVisual,
+                visualNotes: getVisualDescription(wine, defaultVisual),
                 nose: wine.aromaProfile?.slice(0, 3) || [],
                 body: wine.sensoryProfile?.body || 50,
                 acidity: wine.sensoryProfile?.acidity || 50,
@@ -230,7 +210,7 @@ export const TastingNotes: React.FC = () => {
     };
 
     const handleEditNote = (note: TastingNote) => {
-        const wine = winesToTaste.find(w => w.id === note.wineId) || getInventory().find(w => w.id === note.wineId);
+        const wine = winesToTaste.find(w => w.id === note.wineId) || inventory.find(w => w.id === note.wineId);
         if (wine) {
             setSelectedWine(wine);
             setEditingNote(note);
@@ -253,80 +233,62 @@ export const TastingNotes: React.FC = () => {
         }
     };
 
-    const handleSaveTasting = (formData: TastingFormData) => {
+    // ✅ Sauvegarde Asynchrone
+    const handleSaveTasting = async (formData: TastingFormData) => {
         if (!selectedWine) return;
 
-        const stored = localStorage.getItem('vf_tasting_notes');
-        const allNotes: TastingNote[] = stored ? JSON.parse(stored) : [];
+        let noteToSave: TastingNote;
 
         if (editingNote) {
-            // Update existing note
-            const updatedNotes = allNotes.map(note => 
-                note.id === editingNote.id 
-                    ? { ...note, ...formData, date: new Date().toISOString() }
-                    : note
-            );
-            localStorage.setItem('vf_tasting_notes', JSON.stringify(updatedNotes));
+            noteToSave = { ...editingNote, ...formData, date: new Date().toISOString() };
         } else {
-            // Create new note
-            const newNote: TastingNote = {
-                id: `tasting_${Date.now()}`,
+            noteToSave = {
+                id: crypto.randomUUID(), // ou laisser le backend générer l'ID
                 wineId: selectedWine.id,
                 wineName: `${selectedWine.name} ${selectedWine.cuvee || ''}`.trim(),
                 wineVintage: selectedWine.vintage,
                 date: new Date().toISOString(),
                 ...formData
             };
-            allNotes.push(newNote);
-            localStorage.setItem('vf_tasting_notes', JSON.stringify(allNotes));
         }
 
+        await saveTastingNote(noteToSave); // Await
+        
         setShowAddModal(false);
         setSelectedWine(null);
         setEditingNote(null);
         setAiQuestionnaire(null);
         setInitialFormData(undefined);
-        loadData();
+        refreshNotes(); // Refresh hook
     };
 
-    const handleDeleteNote = (noteId: string) => {
-        const stored = localStorage.getItem('vf_tasting_notes');
-        if (stored) {
-            const allNotes: TastingNote[] = JSON.parse(stored) ;
-            const updatedNotes = allNotes.filter(note => note.id !== noteId);
-            localStorage.setItem('vf_tasting_notes', JSON.stringify(updatedNotes));
-            loadData();
+    // ✅ Suppression Asynchrone
+    const handleDeleteNote = async (noteId: string) => {
+        if (window.confirm("Supprimer cette note de dégustation ?")) {
+            await deleteTastingNote(noteId); // Await
+            refreshNotes(); // Refresh hook
         }
     };
 
-    const handleToggleFavorite = (wineId: string) => {
-        toggleFavorite(wineId);
-        // Recharger le vin sélectionné si c'est lui
+    // ✅ Favoris Asynchrone
+    const handleToggleFavorite = async (wineId: string) => {
+        await toggleFavorite(wineId); // Await
+        refreshWines(); // Refresh wines
+        // Mettre à jour le vin sélectionné localement si nécessaire
         if (selectedWine && selectedWine.id === wineId) {
-            const updatedWine = getInventory().find(w => w.id === wineId);
-            if (updatedWine) {
-                setSelectedWine(updatedWine);
-            }
+             // Astuce : on peut laisser le refreshWines propager la mise à jour ou mettre à jour localement
+             setSelectedWine(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : null);
         }
-        loadData();
     };
 
     // Filtrage des vins à déguster
     const filteredWinesToTaste = winesToTaste.filter(w => {
-        // Filter by type
         let matchesType = false;
-        if (typeFilter === 'ALL') {
-            matchesType = true;
-        } else if (typeFilter === 'OTHER') {
-            matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(w.type);
-        } else {
-            matchesType = w.type === typeFilter;
-        }
+        if (typeFilter === 'ALL') matchesType = true;
+        else if (typeFilter === 'OTHER') matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(w.type);
+        else matchesType = w.type === typeFilter;
         
-        // Filter by favorites
         const matchesFavorites = !showFavoritesOnly || w.isFavorite;
-        
-        // Filter by search (insensible aux accents)
         const normalizedQuery = normalizeText(searchQuery);
         const matchesSearch = 
             normalizeText(w.name).includes(normalizedQuery) ||
@@ -337,46 +299,51 @@ export const TastingNotes: React.FC = () => {
         return matchesType && matchesFavorites && matchesSearch;
     });
 
-    // Filtrage des notes de dégustation affichées
+    // Filtrage des notes
     const filteredTastingNotes = tastingNotes.filter(note => {
-        const inventory = getInventory();
         const wine = inventory.find(w => w.id === note.wineId);
-        if (!wine) return false;
+        // Si le vin n'est plus dans l'inventaire, on affiche quand même la note (historique) ?
+        // Ici on filtre pour correspondre aux filtres UI, donc on a besoin des infos du vin
+        // Si vin supprimé, on peut baser le filtrage sur les infos dans la note elle-même si dispo, 
+        // ou l'exclure si on veut être strict.
+        
+        // Pour simplifier et éviter le crash si wine est undefined :
+        const wineType = wine?.type || 'OTHER';
+        const isFav = wine?.isFavorite || false;
+        const producer = wine?.producer || '';
+        const region = wine?.region || '';
 
-        // Filter by type
         let matchesType = false;
-        if (typeFilter === 'ALL') {
-            matchesType = true;
-        } else if (typeFilter === 'OTHER') {
-            matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(wine.type);
-        } else {
-            matchesType = wine.type === typeFilter;
-        }
+        if (typeFilter === 'ALL') matchesType = true;
+        else if (typeFilter === 'OTHER') matchesType = !['RED', 'WHITE', 'ROSE', 'SPARKLING'].includes(wineType);
+        else matchesType = wineType === typeFilter;
         
-        // Filter by favorites
-        const matchesFavorites = !showFavoritesOnly || wine.isFavorite;
-        
-        // Filter by search (insensible aux accents)
+        const matchesFavorites = !showFavoritesOnly || isFav;
         const normalizedQuery = normalizeText(searchQuery);
+        
         const matchesSearch = 
             normalizeText(note.wineName).includes(normalizedQuery) ||
-            normalizeText(wine.producer).includes(normalizedQuery) ||
-            normalizeText(wine.region).includes(normalizedQuery) ||
+            normalizeText(producer).includes(normalizedQuery) ||
+            normalizeText(region).includes(normalizedQuery) ||
             (note.wineVintage && note.wineVintage.toString().includes(normalizedQuery));
 
         return matchesType && matchesFavorites && matchesSearch;
     });
 
     const filterLabels: Record<string, string> = {
-        'ALL': 'TOUS',
-        'RED': 'ROUGE',
-        'WHITE': 'BLANC',
-        'ROSE': 'ROSÉ',
-        'SPARKLING': 'BULLES',
-        'OTHER': 'AUTRES'
+        'ALL': 'TOUS', 'RED': 'ROUGE', 'WHITE': 'BLANC', 'ROSE': 'ROSÉ', 'SPARKLING': 'BULLES', 'OTHER': 'AUTRES'
     };
 
     const favoriteCount = winesToTaste.filter(w => w.isFavorite).length;
+
+    // Loader global
+    if (loadingWines || loadingNotes) {
+        return (
+            <div className="flex justify-center items-center h-[60vh]">
+                <Loader2 className="animate-spin text-wine-600" size={32} />
+            </div>
+        );
+    }
 
     return (
         <div className="pb-24 animate-fade-in space-y-6">
@@ -405,7 +372,7 @@ export const TastingNotes: React.FC = () => {
                 />
             </div>
 
-            {/* Filters - Type de vin + Favoris */}
+            {/* Filters */}
             <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
                {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING', 'OTHER'].map((t) => (
                  <button
@@ -421,7 +388,6 @@ export const TastingNotes: React.FC = () => {
                  </button>
                ))}
                
-               {/* Filtre Favoris - Intégré à droite */}
                <button
                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
                  className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap text-xs font-medium tracking-wide flex items-center gap-1.5 ${
@@ -468,31 +434,30 @@ export const TastingNotes: React.FC = () => {
                         <p>Aucune fiche de dégustation trouvée pour cette recherche.</p>
                     </div>
                 )}
-                {tastingNotes.length === 0 ? (
+                {tastingNotes.length === 0 && (
                     <div className="text-center py-20 text-stone-500">
                         <FileText size={48} className="mx-auto mb-4 opacity-50" />
                         <p>Aucune fiche de dégustation pour le moment.</p>
                         <p className="text-sm">Créez votre première note !</p>
                     </div>
-                ) : (
-                    filteredTastingNotes.map(note => (
-                        <div key={note.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 shadow-sm">
-                            <div className="flex justify-between items-start mb-3">
-                                <h3 className="text-lg font-serif text-stone-900 dark:text-white">{note.wineName}</h3>
-                                <div className="flex items-center gap-2 text-xs text-stone-500">
-                                    <Calendar size={12} />
-                                    {new Date(note.date).toLocaleDateString('fr-FR')}
-                                </div>
-                            </div>
-                            <TastingNoteEditor
-                                note={note}
-                                onEdit={handleEditNote}
-                                onDelete={handleDeleteNote}
-                                showActions={true}
-                            />
-                        </div>
-                    ))
                 )}
+                {filteredTastingNotes.map(note => (
+                    <div key={note.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 shadow-sm">
+                        <div className="flex justify-between items-start mb-3">
+                            <h3 className="text-lg font-serif text-stone-900 dark:text-white">{note.wineName}</h3>
+                            <div className="flex items-center gap-2 text-xs text-stone-500">
+                                <Calendar size={12} />
+                                {new Date(note.date).toLocaleDateString('fr-FR')}
+                            </div>
+                        </div>
+                        <TastingNoteEditor
+                            note={note}
+                            onEdit={handleEditNote}
+                            onDelete={handleDeleteNote}
+                            showActions={true}
+                        />
+                    </div>
+                ))}
             </div>
 
             {/* Add/Edit Tasting Note Modal */}

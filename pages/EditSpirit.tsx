@@ -1,37 +1,61 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getSpiritById, saveSpirit } from '../services/storageService';
+import { saveSpirit } from '../services/storageService';
+import { useSpirits } from '../hooks/useSpirits'; // ✅ Import du Hook
 import { Spirit, SpiritType } from '../types';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, Loader2 } from 'lucide-react';
 
 export const EditSpirit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  // ✅ Utilisation du Hook pour récupérer la liste (async)
+  const { spirits, loading, refresh } = useSpirits();
+  
+  // État local pour le formulaire
   const [spirit, setSpirit] = useState<Spirit | null>(null);
 
+  // ✅ Effet pour trouver le spiritueux une fois les données chargées
   useEffect(() => {
-    if (id) {
-        const s = getSpiritById(id);
-        if (s) setSpirit(s);
-        else navigate('/bar');
+    if (!loading && id) {
+        const found = spirits.find(s => s.id === id);
+        if (found) {
+            // On clone l'objet pour éviter de muter directement le cache du hook
+            setSpirit({ ...found });
+        } else {
+            // Si pas trouvé après chargement, redirection
+            navigate('/bar');
+        }
     }
-  }, [id, navigate]);
+  }, [id, loading, spirits, navigate]);
 
-  const handleSave = (e: React.FormEvent) => {
+  // ✅ Sauvegarde Asynchrone
+  const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
       if (spirit) {
-          saveSpirit(spirit);
+          await saveSpirit(spirit); // Await de la sauvegarde
+          await refresh(); // Rafraîchissement des données globales
           navigate(`/spirit/${spirit.id}`);
       }
   };
 
-  if (!spirit) return null;
+  // Loader pendant le chargement des données
+  if (loading || !spirit) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
+              <Loader2 className="animate-spin text-amber-600" size={32} />
+          </div>
+      );
+  }
 
   return (
     <div className="max-w-2xl mx-auto pb-24 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-            <button onClick={() => navigate(-1)} className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm">
+            <button 
+                onClick={() => navigate(-1)} 
+                className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm"
+            >
                 <ArrowLeft size={20} />
             </button>
             <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Éditer le Spiritueux</h2>

@@ -1,41 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { getInventory, getRacks } from '../services/storageService';
-import { BookOpen, TrendingUp, TrendingDown, Calendar, Filter, Download, Wine, Package, MapPin, Droplet, Gift } from 'lucide-react';
-
-interface JournalEntry {
-    id: string;
-    date: string;
-    type: 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
-    wineId?: string;
-    wineName: string;
-    wineVintage?: number;
-    quantity?: number;
-    fromLocation?: string;
-    toLocation?: string;
-    recipient?: string;
-    occasion?: string;
-    note?: string;
-    userId: string;
-}
+import React, { useState } from 'react';
+import { useJournal, JournalEntry } from '../hooks/useJournal'; // ✅ Utilisation du Hook
+import { BookOpen, TrendingUp, TrendingDown, Calendar, Filter, Download, Wine, Package, MapPin, Droplet, Gift, Loader2 } from 'lucide-react';
 
 type FilterType = 'ALL' | 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
 
 export const CellarJournal: React.FC = () => {
-    const [entries, setEntries] = useState<JournalEntry[]>([]);
+    // ✅ Récupération des données via le Hook async
+    const { entries, loading, error, refresh } = useJournal();
+    
     const [filter, setFilter] = useState<FilterType>('ALL');
     const [searchQuery, setSearchQuery] = useState('');
     const [dateRange, setDateRange] = useState<'7' | '30' | '90' | 'ALL'>('ALL');
 
-    useEffect(() => {
-        loadJournal();
-    }, []);
-
-    const loadJournal = () => {
-        const stored = localStorage.getItem('vf_cellar_journal');
-        const journal: JournalEntry[] = stored ? JSON.parse(stored) : [];
-        setEntries(journal.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    };
-
+    // La logique de filtrage s'applique maintenant sur 'entries' provenant du hook
     const filterEntries = () => {
         let filtered = entries;
 
@@ -101,7 +78,7 @@ export const CellarJournal: React.FC = () => {
     const getEntryDescription = (entry: JournalEntry) => {
         switch (entry.type) {
             case 'IN':
-                return `Ajout de ${entry.quantity} bouteille${entry.quantity! > 1 ? 's' : ''} ${entry.toLocation ? `en ${entry.toLocation}` : ''}`;
+                return `Ajout de ${entry.quantity} bouteille${(entry.quantity || 0) > 1 ? 's' : ''} ${entry.toLocation ? `en ${entry.toLocation}` : ''}`;
             case 'OUT':
                 return `Consommation d'une bouteille${entry.fromLocation ? ` depuis ${entry.fromLocation}` : ''}`;
             case 'MOVE':
@@ -115,6 +92,8 @@ export const CellarJournal: React.FC = () => {
         }
     };
 
+    const filteredEntries = filterEntries();
+
     const stats = {
         total: entries.length,
         in: entries.filter(e => e.type === 'IN').reduce((sum, e) => sum + (e.quantity || 0), 0),
@@ -122,7 +101,23 @@ export const CellarJournal: React.FC = () => {
         gifts: entries.filter(e => e.type === 'GIFT').length,
     };
 
-    const filteredEntries = filterEntries();
+    // Affichage Loader
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-[50vh]">
+                <Loader2 className="animate-spin text-wine-600" size={32} />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center py-20 text-red-500">
+                <p>{error}</p>
+                <button onClick={refresh} className="mt-4 text-sm underline hover:text-red-700">Réessayer</button>
+            </div>
+        );
+    }
 
     return (
         <div className="pb-24 animate-fade-in space-y-6">

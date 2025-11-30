@@ -1,52 +1,69 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSpiritById, deleteSpirit, saveSpirit } from '../services/storageService';
+import { deleteSpirit, saveSpirit } from '../services/storageService';
+import { useSpirits } from '../hooks/useSpirits'; // ✅ Import du Hook
 import { Spirit } from '../types';
-import { ArrowLeft, Edit, Trash2, Percent, Droplets, Clock, Sparkles, Wine, GlassWater, Gem, Martini, Flame } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Percent, Droplets, Clock, Sparkles, Wine, GlassWater, Gem, Martini, Flame, Loader2 } from 'lucide-react';
 
 export const SpiritDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
+  // ✅ Utilisation du Hook pour récupérer la liste
+  const { spirits, loading, refresh } = useSpirits();
+  
   const [spirit, setSpirit] = useState<Spirit | null>(null);
   const [activeTab, setActiveTab] = useState<'INFO' | 'TASTING'>('INFO');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // ✅ Effet pour trouver le spiritueux une fois les données chargées
   useEffect(() => {
-    if (id) {
-      loadSpiritData(id);
+    if (!loading && id) {
+        const found = spirits.find(s => s.id === id);
+        if (found) {
+            setSpirit(found);
+        } else {
+            navigate('/bar');
+        }
     }
-  }, [id]);
+  }, [id, spirits, loading, navigate]);
 
-  const loadSpiritData = (spiritId: string) => {
-    const s = getSpiritById(spiritId);
-    if (s) {
-      setSpirit(s);
-    } else {
-      navigate('/bar');
-    }
-  };
-
-  const handleDelete = () => {
+  // ✅ Suppression Asynchrone
+  const handleDelete = async () => {
     if (spirit) {
-      deleteSpirit(spirit.id);
+      await deleteSpirit(spirit.id); // Await
+      await refresh(); // Refresh global list
       navigate('/bar');
     }
   };
 
-  const toggleLuxury = () => {
+  // ✅ Modification Asynchrone (Toggle Luxury)
+  const toggleLuxury = async () => {
     if (spirit) {
       const updated = { ...spirit, isLuxury: !spirit.isLuxury };
-      setSpirit(updated);
-      saveSpirit(updated);
+      // Optimistic update pour réactivité immédiate
+      setSpirit(updated); 
+      
+      await saveSpirit(updated);
+      await refresh(); 
     }
   };
 
-  if (!spirit) return null;
+  // Gestion du loading
+  if (loading || !spirit) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
+              <Loader2 className="animate-spin text-amber-600" size={32} />
+          </div>
+      );
+  }
 
+  // Mapping des champs (support rétrocompatible des anciens noms si nécessaire)
   const alcoholContent = (spirit as any).alcoholContent ?? (spirit as any).abv;
   const volume = (spirit as any).volume ?? (spirit as any).format;
   const quantity = (spirit as any).quantity ?? (spirit as any).inventoryLevel;
   const isInventoryPercentage = (spirit as any).quantity === undefined && (spirit as any).inventoryLevel !== undefined;
+  
   const formattedQuantity = (() => {
     if (quantity === undefined) return undefined;
     if (typeof quantity === 'number') {
@@ -55,6 +72,7 @@ export const SpiritDetails: React.FC = () => {
     }
     return quantity;
   })();
+
   const origin =
     (spirit as any).origin ??
     [(spirit as any).region, (spirit as any).country].filter(Boolean).join(' • ');

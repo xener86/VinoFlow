@@ -1,14 +1,13 @@
-
 import React, { useEffect, useState } from 'react';
-import { getInventory } from '../services/storageService';
-import { CellarWine, SensoryProfile } from '../types';
+import { useWines } from '../hooks/useWines';
+import { SensoryProfile } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, TooltipProps } from 'recharts';
-import { TrendingUp, Calendar, Droplet, Lightbulb, BookOpen } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { TrendingUp, Calendar, Droplet, Lightbulb, BookOpen, Loader2 } from 'lucide-react';
 import { generateEducationalContent } from '../services/geminiService';
 
 export const Analytics: React.FC = () => {
-  const [inventory, setInventory] = useState<CellarWine[]>([]);
+  const { wines: inventory, loading } = useWines();
   const [totalBottles, setTotalBottles] = useState(0);
   const [avgProfile, setAvgProfile] = useState<SensoryProfile | null>(null);
   const [maturityData, setMaturityData] = useState<any[]>([]);
@@ -19,14 +18,13 @@ export const Analytics: React.FC = () => {
   const [loadingFact, setLoadingFact] = useState(false);
 
   useEffect(() => {
-    const wines = getInventory();
-    setInventory(wines);
-    
-    const total = wines.reduce((acc, w) => acc + w.inventoryCount, 0);
+    if (loading) return;
+
+    const total = inventory.reduce((acc, w) => acc + w.inventoryCount, 0);
     setTotalBottles(total);
 
-    if (wines.length > 0) {
-      const profileSum = wines.reduce((acc, w) => ({
+    if (inventory.length > 0) {
+      const profileSum = inventory.reduce((acc, w) => ({
         body: acc.body + w.sensoryProfile.body,
         acidity: acc.acidity + w.sensoryProfile.acidity,
         tannin: acc.tannin + w.sensoryProfile.tannin,
@@ -36,17 +34,17 @@ export const Analytics: React.FC = () => {
       }), { body: 0, acidity: 0, tannin: 0, sweetness: 0, alcohol: 0, flavors: [] });
 
       setAvgProfile({
-        body: Math.round(profileSum.body / wines.length),
-        acidity: Math.round(profileSum.acidity / wines.length),
-        tannin: Math.round(profileSum.tannin / wines.length),
-        sweetness: Math.round(profileSum.sweetness / wines.length),
-        alcohol: Math.round(profileSum.alcohol / wines.length),
+        body: Math.round(profileSum.body / inventory.length),
+        acidity: Math.round(profileSum.acidity / inventory.length),
+        tannin: Math.round(profileSum.tannin / inventory.length),
+        sweetness: Math.round(profileSum.sweetness / inventory.length),
+        alcohol: Math.round(profileSum.alcohol / inventory.length),
         flavors: []
       });
     }
 
     const currentYear = new Date().getFullYear();
-    const maturityDistribution = wines.reduce((acc: any, w) => {
+    const maturityDistribution = inventory.reduce((acc: any, w) => {
       let peakStart = w.vintage;
       if (w.type === 'RED') peakStart += 5;
       else if (w.type === 'WHITE') peakStart += 2;
@@ -61,12 +59,12 @@ export const Analytics: React.FC = () => {
     }, {});
     
     setMaturityData([
-      { name: 'Garde', value: maturityDistribution['Garde'] || 0, color: '#78716c' }, // Stone-500
-      { name: 'À Boire', value: maturityDistribution['À Boire'] || 0, color: '#16a34a' }, // Green-600
-      { name: 'Boire Vite', value: maturityDistribution['Boire Vite'] || 0, color: '#dc2626' }, // Red-600
+      { name: 'Garde', value: maturityDistribution['Garde'] || 0, color: '#78716c' },
+      { name: 'À Boire', value: maturityDistribution['À Boire'] || 0, color: '#16a34a' },
+      { name: 'Boire Vite', value: maturityDistribution['Boire Vite'] || 0, color: '#dc2626' },
     ]);
 
-    const byType = wines.reduce((acc: any, w) => {
+    const byType = inventory.reduce((acc: any, w) => {
       acc[w.type] = (acc[w.type] || 0) + w.inventoryCount;
       return acc;
     }, {});
@@ -80,7 +78,7 @@ export const Analytics: React.FC = () => {
       color: typeColors[key] || '#57534e'
     })));
 
-  }, []);
+  }, [inventory, loading]);
 
   const handleGetFact = async () => {
     if (inventory.length === 0) return;
@@ -107,6 +105,8 @@ export const Analytics: React.FC = () => {
     }
     return null;
   };
+
+  if (loading) return <div className="flex justify-center h-64 items-center"><Loader2 className="animate-spin text-stone-400" /></div>;
 
   return (
     <div className="space-y-6 pb-10 animate-fade-in">

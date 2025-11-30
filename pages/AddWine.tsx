@@ -4,7 +4,7 @@ import { enrichWineData } from '../services/geminiService';
 import { saveWine, getInventory, addBottleAtLocation, addBottles, findNextAvailableSlot } from '../services/storageService';
 import { Wine, CellarWine } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
-import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin, PackagePlus, ArrowRight, Upload, AlertTriangle, Edit3 } from 'lucide-react';
+import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin, PackagePlus, ArrowRight, AlertTriangle, Edit3 } from 'lucide-react';
 
 export const AddWine: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +24,7 @@ export const AddWine: React.FC = () => {
   const [editFormData, setEditFormData] = useState<Partial<Wine>>({});
   
   const [count, setCount] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [scanImage, setScanImage] = useState<string | null>(null);
 
   // Existing Wine State (Quick Add)
@@ -34,23 +35,33 @@ export const AddWine: React.FC = () => {
   const [autoPlace, setAutoPlace] = useState(true);
   const [suggestedLocations, setSuggestedLocations] = useState<string[]>([]);
 
+  // Chargement initial des vins pour l'onglet "Existing"
   useEffect(() => {
-    if (activeTab === 'EXISTING') {
-      setExistingWines(getInventory());
-    }
+    const loadWines = async () => {
+        if (activeTab === 'EXISTING') {
+            const data = await getInventory();
+            setExistingWines(data);
+        }
+    };
+    loadWines();
   }, [activeTab]);
 
+  // ✅ Correction : useEffect asynchrone pour findNextAvailableSlot
   useEffect(() => {
-     if (activeTab === 'EXISTING' && autoPlace) {
-         const locs = [];
-         const next = findNextAvailableSlot();
-         if(next) {
-             locs.push(`${next.rackName} [${String.fromCharCode(65+next.location.y)}${next.location.x+1}]`);
-         } else {
-             locs.push("Quai de réception (Non trié)");
+     const fetchLocation = async () => {
+         if (activeTab === 'EXISTING' && autoPlace) {
+             const locs = [];
+             // findNextAvailableSlot est async maintenant
+             const next = await findNextAvailableSlot(); 
+             if(next) {
+                 locs.push(`${next.rackName} [${String.fromCharCode(65+next.location.y)}${next.location.x+1}]`);
+             } else {
+                 locs.push("Quai de réception (Non trié)");
+             }
+             setSuggestedLocations(locs);
          }
-         setSuggestedLocations(locs);
-     }
+     };
+     fetchLocation();
   }, [quickAddCount, autoPlace, activeTab]);
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -86,7 +97,7 @@ export const AddWine: React.FC = () => {
           
           if (result) {
               setEnrichedWine(result);
-              setEditFormData(result); // Initialize edit form
+              setEditFormData(result); 
               setName(result.name || "Vin Inconnu");
               setVintage(result.vintage || new Date().getFullYear());
               setStep(3);
@@ -112,7 +123,7 @@ export const AddWine: React.FC = () => {
       const result = await enrichWineData(name, vintage, hint);
       if (result) {
         setEnrichedWine(result);
-        setEditFormData(result); // Initialize edit form
+        setEditFormData(result);
         setStep(3);
       } else {
         alert("Impossible de trouver les données. Veuillez réessayer ou ajouter manuellement.");
@@ -126,7 +137,7 @@ export const AddWine: React.FC = () => {
     }
   };
 
-  const handleSaveNew = () => {
+  const handleSaveNew = async () => {
     if (!editFormData.name) return;
 
     const newWine: Wine = {
@@ -138,23 +149,25 @@ export const AddWine: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    saveWine(newWine, count);
+    await saveWine(newWine, count); // Await
     navigate('/');
   };
 
-  const handleQuickAdd = () => {
+  // ✅ Correction : handleQuickAdd asynchrone
+  const handleQuickAdd = async () => {
       if (!selectedExisting) return;
 
       for(let i=0; i<quickAddCount; i++) {
           if (autoPlace) {
-              const slot = findNextAvailableSlot();
+              // findNextAvailableSlot est async
+              const slot = await findNextAvailableSlot(); 
               if (slot) {
-                  addBottleAtLocation(selectedExisting.id, slot.location);
+                  await addBottleAtLocation(selectedExisting.id, slot.location); // await
               } else {
-                  addBottles(selectedExisting.id, 1);
+                  await addBottles(selectedExisting.id, 1); // await
               }
           } else {
-              addBottles(selectedExisting.id, 1);
+              await addBottles(selectedExisting.id, 1); // await
           }
       }
       alert(`${quickAddCount} bouteilles ajoutées avec succès !`);
@@ -312,7 +325,7 @@ export const AddWine: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 3: REVIEW & CONFIRM (EDITABLE) */}
+          {/* STEP 3: REVIEW & CONFIRM */}
           {step === 3 && enrichedWine && (
             <div className="space-y-6 animate-fade-in-up">
               
@@ -455,7 +468,6 @@ export const AddWine: React.FC = () => {
       {/* --- TAB: EXISTING WINE (QUICK ADD) --- */}
       {activeTab === 'EXISTING' && (
         <div className="animate-fade-in space-y-6">
-            {/* ... existing quick add UI ... */}
             <div className="text-center mb-6">
                 <h2 className="text-3xl font-serif text-stone-900 dark:text-stone-100 mb-1">Stock Rapide</h2>
                 <p className="text-stone-500">Ajoutez des bouteilles existantes en un clic.</p>

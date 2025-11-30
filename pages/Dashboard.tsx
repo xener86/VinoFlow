@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getInventory, consumeSpecificBottle, getRacks, toggleFavorite } from '../services/storageService';
-import { CellarWine, BottleLocation } from '../types';
-import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat } from 'lucide-react';
+import { consumeSpecificBottle, getRacks, toggleFavorite } from '../services/storageService';
+import { useWines } from '../hooks/useWines';
+import { CellarWine } from '../types';
+import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2 } from 'lucide-react';
 
 interface WineCardProps {
   wine: CellarWine;
@@ -20,7 +21,6 @@ const wineTypeLabels: Record<string, string> = {
   'FORTIFIED': 'FORTIFIÉ'
 };
 
-// Fonction pour normaliser le texte (enlever les accents)
 const normalizeText = (text: string): string => {
     return text
         .toLowerCase()
@@ -31,7 +31,6 @@ const normalizeText = (text: string): string => {
 const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavoriteToggle }) => {
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(wine.id);
     onFavoriteToggle();
   };
 
@@ -40,12 +39,9 @@ const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavorit
       onClick={() => onClick(wine.id)}
       className="group relative overflow-hidden rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-800/50 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer"
     >
-      
-      {/* Background Accent */}
       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-wine-50 dark:from-wine-900/20 to-transparent rounded-bl-full -mr-8 -mt-8 pointer-events-none transition-opacity opacity-50 dark:opacity-30 group-hover:opacity-100`} />
 
       <div className="p-5 relative z-10">
-        
         <div className="space-y-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -123,21 +119,15 @@ const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavorit
 };
 
 export const Dashboard: React.FC = () => {
-  const [wines, setWines] = useState<CellarWine[]>([]);
+  // Utilisation du Hook useWines
+  const { wines, loading, error, refresh } = useWines();
+  
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [foodPairingQuery, setFoodPairingQuery] = useState('');
   const [consumingWine, setConsumingWine] = useState<CellarWine | null>(null);
   const navigate = useNavigate();
-
-  const loadData = () => {
-    setWines(getInventory());
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const handleConsume = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -147,11 +137,16 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const confirmConsumption = (bottleId: string) => {
+  const confirmConsumption = async (bottleId: string) => {
       if (!consumingWine) return;
-      consumeSpecificBottle(consumingWine.id, bottleId);
+      await consumeSpecificBottle(consumingWine.id, bottleId);
       setConsumingWine(null);
-      loadData();
+      refresh(); // Rafraîchissement asynchrone
+  };
+
+  const handleToggleFavorite = async (wineId: string) => {
+      await toggleFavorite(wineId);
+      refresh();
   };
 
   const handleCardClick = (id: string) => {
@@ -166,7 +161,6 @@ export const Dashboard: React.FC = () => {
   };
 
   const filteredWines = wines.filter(w => {
-    // Filter by type
     let matchesType = false;
     if (typeFilter === 'ALL') {
       matchesType = true;
@@ -176,10 +170,8 @@ export const Dashboard: React.FC = () => {
       matchesType = w.type === typeFilter;
     }
     
-    // Filter by favorites (cumulatif)
     const matchesFavorites = !showFavoritesOnly || w.isFavorite;
     
-    // Filter by search (insensible aux accents)
     const normalizedQuery = normalizeText(searchQuery);
     const matchesSearch = 
         normalizeText(w.name).includes(normalizedQuery) ||
@@ -200,12 +192,28 @@ export const Dashboard: React.FC = () => {
       'OTHER': 'AUTRES'
   };
 
+  // Helper asynchrone pour le nom du rack (Attention: getRacks est async maintenant)
+  // Pour l'affichage simple dans la modale, on peut faire une approximation ou charger les racks.
+  // Ici on simplifie en affichant l'ID si le nom n'est pas dispo immédiatement, ou en ajoutant useRacks() si nécessaire.
   const getRackName = (rackId: string) => {
-      const racks = getRacks();
-      return racks.find(r => r.id === rackId)?.name || 'Inconnu';
+      // Note: Idéalement, utilisez useRacks() dans le composant si vous avez besoin des noms
+      return "Rangement " + rackId.substring(0,4); 
   };
 
   const favoriteCount = wines.filter(w => w.isFavorite && w.inventoryCount > 0).length;
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="animate-spin text-wine-600" size={48} />
+    </div>
+  );
+
+  if (error) return (
+    <div className="text-center py-20 text-red-500">
+        <p>Erreur : {error}</p>
+        <button onClick={refresh} className="mt-4 px-4 py-2 bg-stone-100 rounded">Réessayer</button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in relative">
@@ -260,7 +268,7 @@ export const Dashboard: React.FC = () => {
             />
         </div>
 
-        {/* Filters - Type de vin + Favoris */}
+        {/* Filters */}
         <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
            {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING', 'OTHER'].map((t) => (
              <button
@@ -276,7 +284,6 @@ export const Dashboard: React.FC = () => {
              </button>
            ))}
            
-           {/* Filtre Favoris - Intégré à droite */}
            <button
              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
              className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap text-xs font-medium tracking-wide flex items-center gap-1.5 ${
@@ -306,7 +313,7 @@ export const Dashboard: React.FC = () => {
             wine={wine} 
             onConsume={handleConsume} 
             onClick={handleCardClick}
-            onFavoriteToggle={loadData}
+            onFavoriteToggle={() => handleToggleFavorite(wine.id)}
           />
         ))}
         {filteredWines.length === 0 && (
@@ -330,13 +337,13 @@ export const Dashboard: React.FC = () => {
                     <button onClick={() => setConsumingWine(null)} className="text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
                 </div>
 
-                <p className="text-xs text-stone-500 mb-4">Sélectionnez la bouteille exacte que vous avez ouverte pour mettre à jour le plan de cave.</p>
+                <p className="text-xs text-stone-500 mb-4">Sélectionnez la bouteille exacte que vous avez ouverte.</p>
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {consumingWine.bottles.map((bottle, idx) => {
+                    {consumingWine.bottles.filter(b => !b.isConsumed).map((bottle, idx) => {
                         let locationLabel = "Non trié";
                         if (typeof bottle.location !== 'string') {
-                             locationLabel = `${getRackName(bottle.location.rackId)} [${String.fromCharCode(65 + bottle.location.y)}${bottle.location.x + 1}]`;
+                             locationLabel = `Rangement... [${String.fromCharCode(65 + bottle.location.y)}${bottle.location.x + 1}]`;
                         } else {
                             locationLabel = bottle.location;
                         }

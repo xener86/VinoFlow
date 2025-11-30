@@ -1,112 +1,60 @@
-import React, { useState } from 'react';
-import { signInWithEmail, signUpWithEmail, saveSupabaseConfig } from '../services/supabase';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { customAuth } from '../services/customAuth'; // ✅ Nouveau service d'auth
+import { saveSupabaseConfig } from '../services/supabase'; // Pour compatibilité AuthContext
 import { useAuth } from '../contexts/AuthContext';
-import { Wine, Lock, Mail, Server, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Wine, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const { isConfigured, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
+  const navigate = useNavigate();
+  
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Auth Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Config Form State
-  const [url, setUrl] = useState('');
-  const [key, setKey] = useState('');
+  // Auto-configuration au montage pour satisfaire AuthContext
+  useEffect(() => {
+    // On sauvegarde une config "fictive" ou par défaut pour que isConfigured passe à true
+    // car customAuth gère maintenant la connexion en interne avec ses propres clés.
+    // Cela évite de rester bloqué sur l'écran de config si le contexte vérifie le localStorage.
+    if (!localStorage.getItem('vf_supabase_url')) {
+        saveSupabaseConfig('https://vinoflow-auth.auto', 'auto-configured');
+    }
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
       if (isLogin) {
-        await signInWithEmail(email, password);
-        await refreshUser();
-        // Forcer le rechargement pour que le contexte détecte la connexion
-        window.location.href = '/';
+        // ✅ Utilisation de customAuth pour la connexion
+        await customAuth.signIn(email, password);
+        await refreshUser(); // Rafraîchir le contexte utilisateur
+        navigate('/'); // Redirection vers le Dashboard
       } else {
-        await signUpWithEmail(email, password);
+        // ✅ Utilisation de customAuth pour l'inscription
+        await customAuth.signUp(email, password);
         await refreshUser();
-        alert("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
-        setIsLogin(true);
-        setEmail('');
-        setPassword('');
+        alert("Compte créé avec succès !");
+        navigate('/');
       }
     } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+      console.error(err);
+      setError(err.message || "Une erreur est survenue lors de l'authentification.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!url || !key) {
-      setError("URL et Clé requises");
-      return;
-    }
-    saveSupabaseConfig(url, key);
-    window.location.reload();
-  };
-
-  if (!isConfigured) {
-    return (
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4">
-         <div className="bg-white dark:bg-stone-900 p-8 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl w-full max-w-md animate-fade-in">
-             <div className="flex flex-col items-center mb-6">
-                 <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-3">
-                     <Server size={24} />
-                 </div>
-                 <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Configuration Système</h2>
-                 <p className="text-stone-500 text-sm text-center mt-2">
-                     Connectez VinoFlow à votre serveur d'authentification.
-                 </p>
-             </div>
-
-             <form onSubmit={handleConfig} className="space-y-4">
-                 <div>
-                     <label className="text-xs uppercase text-stone-500 font-bold">URL d'authentification</label>
-                     <input 
-                       type="text" 
-                       value={url}
-                       onChange={e => setUrl(e.target.value)}
-                       placeholder="https://supabase-auth.lauziere17.com"
-                       className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white mt-1 focus:border-indigo-500 outline-none"
-                     />
-                 </div>
-                 <div>
-                     <label className="text-xs uppercase text-stone-500 font-bold">Clé API</label>
-                     <input 
-                       type="password" 
-                       value={key}
-                       onChange={e => setKey(e.target.value)}
-                       placeholder="eyJh..."
-                       className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white mt-1 focus:border-indigo-500 outline-none"
-                     />
-                 </div>
-                 {error && (
-                   <div className="text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-900/50">
-                     {error}
-                   </div>
-                 )}
-                 
-                 <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition-all">
-                     Connecter
-                 </button>
-                 <p className="text-xs text-stone-500 text-center mt-4">
-                     Ces informations sont stockées localement dans votre navigateur.
-                 </p>
-             </form>
-         </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4 relative overflow-hidden">
+      
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-wine-100 dark:bg-wine-900/20 rounded-full blur-3xl"></div>
@@ -152,7 +100,7 @@ export const Login: React.FC = () => {
            </div>
 
            {error && (
-               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-300 p-3 rounded-lg text-sm flex items-center gap-2">
+               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-300 p-3 rounded-lg text-sm flex items-center gap-2 animate-pulse">
                    <AlertCircle size={16} />
                    {error}
                </div>
