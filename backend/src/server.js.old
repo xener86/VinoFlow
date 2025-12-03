@@ -1,0 +1,399 @@
+import express from 'express';
+import cors from 'cors';
+import pg from 'pg';
+import 'dotenv/config';
+
+const { Pool } = pg;
+const app = express();
+const port = process.env.PORT || 3100;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('❌ Database connection error:', err);
+  } else {
+    console.log('✅ Database connected:', res.rows[0].now);
+  }
+});
+
+// Helper functions
+const toCamelCase = (str) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+const toSnakeCase = (str) => str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+
+const convertKeysToCamelCase = (obj) => {
+  if (Array.isArray(obj)) return obj.map(convertKeysToCamelCase);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[toCamelCase(key)] = convertKeysToCamelCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+};
+
+const convertKeysToSnakeCase = (obj) => {
+  if (Array.isArray(obj)) return obj.map(convertKeysToSnakeCase);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[toSnakeCase(key)] = convertKeysToSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+};
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ========== WINES ENDPOINTS ==========
+
+// GET all wines with bottles
+app.get('/api/wines', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        w.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', b.id,
+              'wine_id', b.wine_id,
+              'location', b.location,
+              'added_by_user_id', b.added_by_user_id,
+              'purchase_date', b.purchase_date,
+              'is_consumed', b.is_consumed,
+              'consumed_date', b.consumed_date,
+              'gifted_to', b.gifted_to,
+              'gift_occasion', b.gift_occasion,
+              'created_at', b.created_at
+            ) ORDER BY b.created_at
+          ) FILTER (WHERE b.id IS NOT NULL),
+          '[]'
+        ) as bottles
+      FROM wines w
+      LEFT JOIN bottles b ON w.id = b.wine_id
+      GROUP BY w.id
+      ORDER BY w.created_at DESC
+    `);
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching wines:', error);
+    res.status(500).json({ error: 'Failed to fetch wines' });
+  }
+});
+
+// GET single wine
+app.get('/api/wines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      SELECT 
+        w.*,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', b.id,
+              'wine_id', b.wine_id,
+              'location', b.location,
+              'added_by_user_id', b.added_by_user_id,
+              'purchase_date', b.purchase_date,
+              'is_consumed', b.is_consumed,
+              'consumed_date', b.consumed_date,
+              'gifted_to', b.gifted_to,
+              'gift_occasion', b.gift_occasion,
+              'created_at', b.created_at
+            ) ORDER BY b.created_at
+          ) FILTER (WHERE b.id IS NOT NULL),
+          '[]'
+        ) as bottles
+      FROM wines w
+      LEFT JOIN bottles b ON w.id = b.wine_id
+      WHERE w.id = $1
+      GROUP BY w.id
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wine not found' });
+    }
+    
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error fetching wine:', error);
+    res.status(500).json({ error: 'Failed to fetch wine' });
+  }
+});
+
+// POST create wine
+app.post('/api/wines', async (req, res) => {
+  try {
+    const wine = convertKeysToSnakeCase(req.body);
+    const result = await pool.query(`
+      INSERT INTO wines (
+        name, cuvee, parcel, producer, vintage, region, country, type,
+        grape_varieties, format, personal_notes, sensory_description,
+        aroma_profile, tasting_notes, suggested_food_pairings,
+        producer_history, enriched_by_ai, ai_confidence, is_favorite, sensory_profile
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING *
+    `, [
+      wine.name, wine.cuvee, wine.parcel, wine.producer, wine.vintage,
+      wine.region, wine.country, wine.type, wine.grape_varieties, wine.format,
+      wine.personal_notes, wine.sensory_description, wine.aroma_profile,
+      wine.tasting_notes, wine.suggested_food_pairings, wine.producer_history,
+      wine.enriched_by_ai, wine.ai_confidence, wine.is_favorite, wine.sensory_profile
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating wine:', error);
+    res.status(500).json({ error: 'Failed to create wine' });
+  }
+});
+
+// PUT update wine
+app.put('/api/wines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const wine = convertKeysToSnakeCase(req.body);
+    const result = await pool.query(`
+      UPDATE wines SET
+        name = $1, cuvee = $2, parcel = $3, producer = $4, vintage = $5,
+        region = $6, country = $7, type = $8, grape_varieties = $9, format = $10,
+        personal_notes = $11, sensory_description = $12, aroma_profile = $13,
+        tasting_notes = $14, suggested_food_pairings = $15, producer_history = $16,
+        enriched_by_ai = $17, ai_confidence = $18, is_favorite = $19,
+        sensory_profile = $20, updated_at = NOW()
+      WHERE id = $21
+      RETURNING *
+    `, [
+      wine.name, wine.cuvee, wine.parcel, wine.producer, wine.vintage,
+      wine.region, wine.country, wine.type, wine.grape_varieties, wine.format,
+      wine.personal_notes, wine.sensory_description, wine.aroma_profile,
+      wine.tasting_notes, wine.suggested_food_pairings, wine.producer_history,
+      wine.enriched_by_ai, wine.ai_confidence, wine.is_favorite, wine.sensory_profile, id
+    ]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wine not found' });
+    }
+    
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error updating wine:', error);
+    res.status(500).json({ error: 'Failed to update wine' });
+  }
+});
+
+// DELETE wine
+app.delete('/api/wines/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM wines WHERE id = $1 RETURNING id', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wine not found' });
+    }
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error deleting wine:', error);
+    res.status(500).json({ error: 'Failed to delete wine' });
+  }
+});
+
+// PATCH toggle favorite
+app.patch('/api/wines/:id/favorite', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      UPDATE wines SET is_favorite = NOT is_favorite, updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Wine not found' });
+    }
+    
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    res.status(500).json({ error: 'Failed to toggle favorite' });
+  }
+});
+
+// ========== BOTTLES ENDPOINTS ==========
+
+// GET all bottles
+app.get('/api/bottles', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM bottles ORDER BY created_at DESC');
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching bottles:', error);
+    res.status(500).json({ error: 'Failed to fetch bottles' });
+  }
+});
+
+// POST create bottle
+app.post('/api/bottles', async (req, res) => {
+  try {
+    const bottle = convertKeysToSnakeCase(req.body);
+    const result = await pool.query(`
+      INSERT INTO bottles (wine_id, location, added_by_user_id, purchase_date, is_consumed)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [
+      bottle.wine_id, bottle.location, bottle.added_by_user_id,
+      bottle.purchase_date, bottle.is_consumed || false
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating bottle:', error);
+    res.status(500).json({ error: 'Failed to create bottle' });
+  }
+});
+
+// PATCH consume bottle
+app.patch('/api/bottles/:id/consume', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { giftedTo, giftOccasion } = req.body;
+    
+    const result = await pool.query(`
+      UPDATE bottles SET
+        is_consumed = true,
+        consumed_date = NOW(),
+        gifted_to = $2,
+        gift_occasion = $3
+      WHERE id = $1
+      RETURNING *
+    `, [id, giftedTo || null, giftOccasion || null]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bottle not found' });
+    }
+    
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error consuming bottle:', error);
+    res.status(500).json({ error: 'Failed to consume bottle' });
+  }
+});
+
+// ========== RACKS ENDPOINTS ==========
+
+// GET all racks
+app.get('/api/racks', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM racks ORDER BY created_at DESC');
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching racks:', error);
+    res.status(500).json({ error: 'Failed to fetch racks' });
+  }
+});
+
+// POST create rack
+app.post('/api/racks', async (req, res) => {
+  try {
+    const rack = convertKeysToSnakeCase(req.body);
+    const result = await pool.query(`
+      INSERT INTO racks (name, width, height, type)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `, [rack.name, rack.width, rack.height, rack.type]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating rack:', error);
+    res.status(500).json({ error: 'Failed to create rack' });
+  }
+});
+
+// DELETE rack
+app.delete('/api/racks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM racks WHERE id = $1 RETURNING id', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Rack not found' });
+    }
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error deleting rack:', error);
+    res.status(500).json({ error: 'Failed to delete rack' });
+  }
+});
+
+// ========== SPIRITS ENDPOINTS ==========
+
+// GET all spirits
+app.get('/api/spirits', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM spirits ORDER BY added_at DESC');
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching spirits:', error);
+    res.status(500).json({ error: 'Failed to fetch spirits' });
+  }
+});
+
+// POST create spirit
+app.post('/api/spirits', async (req, res) => {
+  try {
+    const spirit = convertKeysToSnakeCase(req.body);
+    const result = await pool.query(`
+      INSERT INTO spirits (
+        name, category, distillery, region, country, age, cask_type, abv, format,
+        description, producer_history, tasting_notes, aroma_profile,
+        suggested_cocktails, culinary_pairings, enriched_by_ai, is_opened,
+        inventory_level, is_luxury
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+      RETURNING *
+    `, [
+      spirit.name, spirit.category, spirit.distillery, spirit.region, spirit.country,
+      spirit.age, spirit.cask_type, spirit.abv, spirit.format, spirit.description,
+      spirit.producer_history, spirit.tasting_notes, spirit.aroma_profile,
+      spirit.suggested_cocktails, spirit.culinary_pairings, spirit.enriched_by_ai,
+      spirit.is_opened, spirit.inventory_level, spirit.is_luxury
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating spirit:', error);
+    res.status(500).json({ error: 'Failed to create spirit' });
+  }
+});
+
+// DELETE spirit
+app.delete('/api/spirits/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM spirits WHERE id = $1 RETURNING id', [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Spirit not found' });
+    }
+    
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error deleting spirit:', error);
+    res.status(500).json({ error: 'Failed to delete spirit' });
+  }
+});
+
+// Start server
+app.listen(port, () => {
+  console.log(`🍷 VinoFlow Backend running on port ${port}`);
+});

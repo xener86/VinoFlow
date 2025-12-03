@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentUser, getSupabaseConfig } from '../services/supabase';
+import { customAuth } from '../services/customAuth';
 
 interface User {
   id: string;
@@ -12,45 +12,43 @@ interface AuthContextType {
   loading: boolean;
   isConfigured: boolean;
   refreshUser: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true,
-  isConfigured: false,
+  loading: false,
+  isConfigured: true,
   refreshUser: async () => {},
+  signOut: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [isConfigured] = useState(true); // Toujours configuré maintenant
 
   const refreshUser = async () => {
-    const currentUser = await getCurrentUser();
+    const currentUser = customAuth.getUser();
     setUser(currentUser);
+  };
+
+  const signOut = async () => {
+    await customAuth.signOut();
+    setUser(null);
+    window.location.href = '/login';
   };
 
   useEffect(() => {
     const checkAuth = async () => {
-      const config = getSupabaseConfig();
-      
-      if (config.url && config.key) {
-        setIsConfigured(true);
-        
-        // Get user from localStorage
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-      } else {
-        setIsConfigured(false);
-      }
-      
+      const currentUser = customAuth.getUser();
+      setUser(currentUser);
       setLoading(false);
     };
 
     checkAuth();
 
-    // Listen for storage changes (useful for multi-tab sync)
+    // Listen for storage changes (multi-tab sync)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'user' || e.key === 'auth_token') {
         refreshUser();
@@ -65,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, isConfigured, refreshUser, signOut }}>
       {children}
     </AuthContext.Provider>
   );

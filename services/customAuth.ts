@@ -1,5 +1,4 @@
-const GOTRUE_URL = 'https://supabase-auth.lauziere17.com';
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY0NDIzMzU1LCJleHAiOjIwNzk3ODMzNTV9.FFvkbgGd3M8pyy19KUNX2e-nmtv0jWlfKvZT9Edfsk4';
+const API_URL = '/api/auth'; // Notre backend au lieu de GoTrue
 
 export interface AuthUser {
   id: string;
@@ -11,11 +10,10 @@ export interface AuthUser {
 export const customAuth = {
   // Inscription
   async signUp(email: string, password: string): Promise<AuthUser> {
-    const response = await fetch(`${GOTRUE_URL}/signup`, {
+    const response = await fetch(`${API_URL}/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': ANON_KEY,
       },
       body: JSON.stringify({ email, password }),
     });
@@ -40,11 +38,10 @@ export const customAuth = {
 
   // Connexion
   async signIn(email: string, password: string): Promise<AuthUser> {
-    const response = await fetch(`${GOTRUE_URL}/token?grant_type=password`, {
+    const response = await fetch(`${API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': ANON_KEY,
       },
       body: JSON.stringify({ email, password }),
     });
@@ -72,11 +69,10 @@ export const customAuth = {
     const token = localStorage.getItem('auth_token');
     
     if (token) {
-      await fetch(`${GOTRUE_URL}/logout`, {
+      await fetch(`${API_URL}/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'apikey': ANON_KEY,
         },
       });
     }

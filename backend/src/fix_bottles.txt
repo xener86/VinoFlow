@@ -1,0 +1,36 @@
+// POST create bottle
+app.post('/api/bottles', async (req, res) => {
+  try {
+    const bottle = req.body;
+    
+    // Convertir location en JSONB
+    let locationJson = bottle.location;
+    
+    // Si c'est une string, la mettre dans un objet
+    if (typeof bottle.location === 'string') {
+      locationJson = { label: bottle.location };
+    }
+    // Si c'est déjà un objet (rackId, x, y), on le garde tel quel
+    // Sinon si undefined, mettre "Non trié"
+    if (!locationJson) {
+      locationJson = { label: 'Non trié' };
+    }
+    
+    const result = await pool.query(`
+      INSERT INTO bottles (wine_id, location, added_by_user_id, purchase_date, is_consumed)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [
+      bottle.wineId || bottle.wine_id,
+      JSON.stringify(locationJson), // Forcer en JSON string pour PostgreSQL
+      bottle.addedByUserId || bottle.added_by_user_id,
+      bottle.purchaseDate || bottle.purchase_date,
+      bottle.isConsumed || bottle.is_consumed || false
+    ]);
+    
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating bottle:', error);
+    res.status(500).json({ error: 'Failed to create bottle', details: error.message });
+  }
+});
