@@ -65,6 +65,35 @@ export const EditWine: React.FC = () => {
             {/* Identity */}
             <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
                 <h3 className="text-lg font-serif text-stone-800 dark:text-stone-200">Identité</h3>
+
+                {/* Type / Couleur */}
+                <div>
+                    <label className="text-xs text-stone-500 uppercase mb-2 block">Type / Couleur</label>
+                    <div className="grid grid-cols-3 gap-2">
+                        {([
+                            { value: 'RED' as const, label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
+                            { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
+                            { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
+                            { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
+                            { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                            { value: 'FORTIFIED' as const, label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
+                        ]).map(t => (
+                            <button
+                                key={t.value}
+                                type="button"
+                                onClick={() => setWine({...wine, type: t.value})}
+                                className={`py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                                    wine.type === t.value
+                                    ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
+                                    : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                                }`}
+                            >
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
                         <label className="text-xs text-stone-500 uppercase">Nom (Domaine)</label>
@@ -119,6 +148,16 @@ export const EditWine: React.FC = () => {
                             type="text" 
                             value={wine.region}
                             onChange={e => setWine({...wine, region: e.target.value})}
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs text-stone-500 uppercase">Appellation</label>
+                        <input
+                            type="text"
+                            value={wine.appellation || ''}
+                            onChange={e => setWine({...wine, appellation: e.target.value})}
+                            placeholder="ex: Chablis Premier Cru"
                             className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
                         />
                     </div>

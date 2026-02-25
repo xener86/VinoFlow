@@ -1,5 +1,5 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, TimelineEvent, BottleLocation } from '../types';
-import { getAuthToken } from './supabase'; // Ou ./customAuth si vous avez migré le getter
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation } from '../types';
+import { getAuthToken } from './supabase';
 
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
 
@@ -104,7 +104,7 @@ export const saveWine = async (wine: Wine, quantity: number = 1): Promise<string
 
   // 2. Ajouter les bouteilles si quantité > 0
   if (quantity > 0) {
-    await addBottles(savedWine.id, quantity);
+    await addBottles(savedWine.id, quantity, 'Non trié', savedWine.name, savedWine.vintage);
   }
   
   return savedWine.id;
@@ -136,7 +136,13 @@ export const toggleFavorite = async (id: string): Promise<void> => {
 
 // --- BOTTLE FUNCTIONS ---
 
-export const addBottles = async (wineId: string, count: number, location: string | BottleLocation = 'Non trié'): Promise<void> => {
+export const addBottles = async (
+  wineId: string,
+  count: number,
+  location: string | BottleLocation = 'Non trié',
+  wineName: string = 'Vin inconnu',
+  wineVintage?: number
+): Promise<void> => {
   const promises = [];
   for (let i = 0; i < count; i++) {
     const bottle = {
@@ -145,7 +151,7 @@ export const addBottles = async (wineId: string, count: number, location: string
       location,
       purchaseDate: new Date().toISOString(),
       isConsumed: false,
-      addedByUserId: 'current-user' // Le backend devrait gérer ça avec le token
+      addedByUserId: 'current-user'
     };
     promises.push(
       fetch(`${API_URL}/bottles`, {
@@ -156,22 +162,32 @@ export const addBottles = async (wineId: string, count: number, location: string
     );
   }
   await Promise.all(promises);
-  
-  // Log Journal (Backend peut le faire, mais on le garde ici pour l'instant)
+
   await addJournalEntry({
       type: 'IN',
       wineId,
-      wineName: 'Vin', // Le backend devrait résoudre le nom
+      wineName,
+      wineVintage,
       quantity: count,
-      description: `Ajout de ${count} bouteille(s)`
+      description: `Ajout de ${count} bouteille(s) - ${wineName}`
   });
 };
 
-export const addBottleAtLocation = async (wineId: string, location: BottleLocation): Promise<void> => {
-    await addBottles(wineId, 1, location);
+export const addBottleAtLocation = async (
+  wineId: string,
+  location: BottleLocation,
+  wineName: string = 'Vin inconnu',
+  wineVintage?: number
+): Promise<void> => {
+    await addBottles(wineId, 1, location, wineName, wineVintage);
 };
 
-export const consumeSpecificBottle = async (wineId: string, bottleId: string): Promise<void> => {
+export const consumeSpecificBottle = async (
+  wineId: string,
+  bottleId: string,
+  wineName: string = 'Vin inconnu',
+  wineVintage?: number
+): Promise<void> => {
   const response = await fetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -180,27 +196,71 @@ export const consumeSpecificBottle = async (wineId: string, bottleId: string): P
           consumedDate: new Date().toISOString()
       })
   });
-  
+
   if (response.ok) {
       await addJournalEntry({
           type: 'OUT',
           wineId,
-          wineName: 'Vin',
+          wineName,
+          wineVintage,
           quantity: 1,
-          description: "Consommation d'une bouteille"
+          description: `Consommation - ${wineName} ${wineVintage || ''}`
       });
   }
 };
 
-export const moveBottle = async (bottleId: string, newLocation: string | BottleLocation): Promise<void> => {
+export const moveBottle = async (
+  bottleId: string,
+  newLocation: string | BottleLocation,
+  wineName?: string,
+  wineVintage?: number,
+  wineId?: string
+): Promise<void> => {
   await fetch(`${API_URL}/bottles/${bottleId}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ location: newLocation })
   });
+
+  if (wineId) {
+    const toLabel = typeof newLocation === 'string' ? newLocation : `Rack [${String.fromCharCode(65 + newLocation.y)}${newLocation.x + 1}]`;
+    await addJournalEntry({
+        type: 'MOVE',
+        wineId,
+        wineName: wineName || 'Vin',
+        wineVintage,
+        quantity: 1,
+        description: `Déplacement → ${toLabel}`,
+        toLocation: toLabel
+    });
+  }
 };
 
-export const giftBottle = async (wineId: string, bottleId: string, recipient: string, occasion: string): Promise<void> => {
+export const deleteBottle = async (bottleId: string, wineId: string, wineName: string): Promise<void> => {
+    const response = await fetch(`${API_URL}/bottles/${bottleId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+
+    if (response.ok || response.status === 204) {
+        await addJournalEntry({
+            type: 'OUT',
+            wineId,
+            wineName,
+            quantity: 1,
+            description: `Bouteille supprimée - ${wineName}`
+        });
+    }
+};
+
+export const giftBottle = async (
+  wineId: string,
+  bottleId: string,
+  recipient: string,
+  occasion: string,
+  wineName: string = 'Vin inconnu',
+  wineVintage?: number
+): Promise<void> => {
     await fetch(`${API_URL}/bottles/${bottleId}`, {
         method: 'PUT',
         headers: getHeaders(),
@@ -215,10 +275,12 @@ export const giftBottle = async (wineId: string, bottleId: string, recipient: st
     await addJournalEntry({
         type: 'GIFT',
         wineId,
-        wineName: 'Vin',
+        wineName,
+        wineVintage,
         recipient,
         occasion,
-        description: `Offert à ${recipient}`
+        quantity: 1,
+        description: `${wineName} offert à ${recipient}`
     });
 };
 
@@ -437,22 +499,62 @@ export const deleteTastingNote = async (id: string): Promise<void> => {
 
 // --- JOURNAL / HISTORY ---
 
-export const getCellarJournal = async (): Promise<TimelineEvent[]> => {
+export const getCellarJournal = async (): Promise<JournalEntry[]> => {
     const response = await fetch(`${API_URL}/history`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
-export const getWineHistory = async (wineId: string): Promise<TimelineEvent[]> => {
+export const getWineHistory = async (wineId: string): Promise<JournalEntry[]> => {
     const response = await fetch(`${API_URL}/history?wineId=${wineId}`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
-export const addJournalEntry = async (entry: any): Promise<void> => {
+export const addJournalEntry = async (entry: Partial<JournalEntry>): Promise<void> => {
+    const fullEntry: JournalEntry = {
+        id: crypto.randomUUID(),
+        date: new Date().toISOString(),
+        type: entry.type || 'NOTE',
+        wineName: entry.wineName || 'Vin inconnu',
+        userId: 'current-user',
+        ...entry
+    } as JournalEntry;
+
     await fetch(`${API_URL}/history`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(entry)
+        body: JSON.stringify(fullEntry)
     });
+};
+
+// --- CLEANUP (Ghost bottles) ---
+
+export const findOrphanedBottles = async (): Promise<Bottle[]> => {
+    const [wines, bottles] = await Promise.all([getWines(), getBottles()]);
+    const wineIds = new Set(wines.map(w => w.id));
+    return bottles.filter(b => !wineIds.has(b.wineId));
+};
+
+export const deleteBottleById = async (bottleId: string): Promise<void> => {
+    await fetch(`${API_URL}/bottles/${bottleId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
+
+export const cleanupGhostBottles = async (): Promise<{ orphaned: number; cleaned: number }> => {
+    const orphaned = await findOrphanedBottles();
+    let cleaned = 0;
+
+    for (const b of orphaned) {
+        try {
+            await deleteBottleById(b.id);
+            cleaned++;
+        } catch (e) {
+            console.error('Failed to delete orphaned bottle', b.id, e);
+        }
+    }
+
+    return { orphaned: orphaned.length, cleaned };
 };
 
 // --- USER & CONFIG (Local Storage for Config, API for Profile) ---

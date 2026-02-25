@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getWineHistory, addBottles, giftBottle, toggleFavorite } from '../services/storageService';
-import { generateTastingQuestionnaire } from '../services/geminiService'; // Import direct si disponible, sinon conserver la fonction locale
-import { useWines } from '../hooks/useWines'; // ✅ Hook Async
-import { useRacks } from '../hooks/useRacks'; // ✅ Hook Async
-import { useTastingNotes } from '../hooks/useTastingNotes'; // ✅ Hook Async
+import { getWineHistory, addBottles, giftBottle, toggleFavorite, deleteBottle } from '../services/storageService';
+import { generateTastingQuestionnaire } from '../services/geminiService';
+import { useWines } from '../hooks/useWines';
+import { useRacks } from '../hooks/useRacks';
+import { useTastingNotes } from '../hooks/useTastingNotes';
 import { saveTastingNote, deleteTastingNote } from '../services/storageService';
 import { CellarWine, TimelineEvent } from '../types';
+import { formatBottleLocation } from '../utils/locationFormatter';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { TastingQuestionnaireCompact, TastingFormData } from '../components/TastingQuestionnaireCompact';
 import { TastingNoteEditor, TastingNote } from '../components/TastingNoteEditor';
-import { ArrowLeft, MapPin, Calendar, Clock, BookOpen, ChefHat, Sparkles, Plus, Edit, Gift, Wine as WineIcon, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, BookOpen, ChefHat, Sparkles, Plus, Edit, Gift, Wine as WineIcon, X, Loader2, Trash2 } from 'lucide-react';
 
 // Fonction helper pour les paramètres API (si nécessaire localement)
 const getApiSettings = () => {
@@ -86,13 +87,12 @@ export const WineDetails: React.FC = () => {
 
   // --- Handlers ---
 
-  const getRackName = (rackId: string) => {
-      return racks.find(r => r.id === rackId)?.name || 'Rack Inconnu';
-  };
-
-  const getRowLabel = (index: number) => {
-      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      return letters[index] || "?";
+  const handleDeleteBottle = async (bottleId: string) => {
+      if (!wine) return;
+      if (window.confirm('Supprimer cette bouteille de la cave ? Cette action est irréversible.')) {
+          await deleteBottle(bottleId, wine.id, wine.name);
+          refreshWines();
+      }
   };
 
   const handleStartTasting = async () => {
@@ -165,7 +165,7 @@ export const WineDetails: React.FC = () => {
 
   const handleAddStock = async () => {
       if (wine && window.confirm(`Ajouter une bouteille de ${wine.name} au stock ?`)) {
-          await addBottles(wine.id, 1); // ✅ Async
+          await addBottles(wine.id, 1, 'Non trié', wine.name, wine.vintage);
           refreshWines(); // Refresh stock
       }
   };
@@ -175,7 +175,7 @@ export const WineDetails: React.FC = () => {
       
       const availableBottle = wine.bottles.find(b => !b.isConsumed);
       if (availableBottle) {
-          await giftBottle(wine.id, availableBottle.id, giftRecipient, giftOccasion); // ✅ Async
+          await giftBottle(wine.id, availableBottle.id, giftRecipient, giftOccasion, wine.name, wine.vintage);
           setShowGiftModal(false);
           setGiftRecipient('');
           setGiftOccasion('');
@@ -452,20 +452,23 @@ export const WineDetails: React.FC = () => {
                   {!loadingRacks && wine.bottles.filter(b => !b.isConsumed).length > 0 ? (
                       <div className="space-y-2">
                           {wine.bottles.filter(b => !b.isConsumed).map((b, i) => {
-                              let locationLabel = "Non trié";
-                              if (typeof b.location !== 'string') {
-                                  const rackName = getRackName(b.location.rackId);
-                                  locationLabel = `${rackName} [${getRowLabel(b.location.y)}${b.location.x + 1}]`;
-                              } else {
-                                  locationLabel = b.location;
-                              }
-                              
+                              const locationLabel = formatBottleLocation(b.location, racks);
+
                               return (
                                   <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 dark:bg-stone-950 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
                                       <span className="text-stone-700 dark:text-stone-300">Bouteille #{i + 1}</span>
-                                      <span className="text-wine-600 dark:text-wine-400 font-mono text-xs">
-                                          {locationLabel}
-                                      </span>
+                                      <div className="flex items-center gap-3">
+                                          <span className="text-wine-600 dark:text-wine-400 font-mono text-xs">
+                                              {locationLabel}
+                                          </span>
+                                          <button
+                                              onClick={() => handleDeleteBottle(b.id)}
+                                              className="p-1.5 text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                              title="Supprimer cette bouteille"
+                                          >
+                                              <Trash2 size={14} />
+                                          </button>
+                                      </div>
                                   </div>
                               );
                           })}

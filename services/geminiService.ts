@@ -14,6 +14,7 @@ const wineSchemaStructure = {
         suggestedFoodPairings: { type: Type.ARRAY, items: { type: Type.STRING } },
         producerHistory: { type: Type.STRING },
         region: { type: Type.STRING },
+        appellation: { type: Type.STRING, description: "Appellation officielle (ex: 'Chablis Premier Cru', 'Saint-Émilion Grand Cru')." },
         country: { type: Type.STRING },
         producer: { type: Type.STRING },
         name: { type: Type.STRING }, 

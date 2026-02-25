@@ -24,8 +24,9 @@ export const AddWine: React.FC = () => {
   const [editFormData, setEditFormData] = useState<Partial<Wine>>({});
   
   const [count, setCount] = useState(1);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [scanImage, setScanImage] = useState<string | null>(null);
+  const [scanImageBack, setScanImageBack] = useState<string | null>(null);
+  const backFileInputRef = useRef<HTMLInputElement>(null);
 
   // Existing Wine State (Quick Add)
   const [existingWines, setExistingWines] = useState<CellarWine[]>([]);
@@ -85,19 +86,37 @@ export const AddWine: React.FC = () => {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+      });
+      setScanImage(dataUrl);
+      setStep(2);
+  };
 
+  const handleBackFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+      });
+      setScanImageBack(dataUrl);
+  };
+
+  const handleStartScan = async () => {
+      if (!scanImage) return;
       setIsLoading(true);
-      setStep(2); 
-      
+
       try {
-          const base64 = await fileToBase64(file);
-          setScanImage(base64);
-          
+          const base64 = scanImage.split(',')[1];
           const result = await enrichWineData("", 0, "", base64);
-          
+
           if (result) {
               setEnrichedWine(result);
-              setEditFormData(result); 
+              setEditFormData(result);
               setName(result.name || "Vin Inconnu");
               setVintage(result.vintage || new Date().getFullYear());
               setStep(3);
@@ -160,14 +179,14 @@ export const AddWine: React.FC = () => {
       for(let i=0; i<quickAddCount; i++) {
           if (autoPlace) {
               // findNextAvailableSlot est async
-              const slot = await findNextAvailableSlot(); 
+              const slot = await findNextAvailableSlot();
               if (slot) {
-                  await addBottleAtLocation(selectedExisting.id, slot.location); // await
+                  await addBottleAtLocation(selectedExisting.id, slot.location, selectedExisting.name, selectedExisting.vintage);
               } else {
-                  await addBottles(selectedExisting.id, 1); // await
+                  await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage);
               }
           } else {
-              await addBottles(selectedExisting.id, 1); // await
+              await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage);
           }
       }
       alert(`${quickAddCount} bouteilles ajoutées avec succès !`);
@@ -310,17 +329,71 @@ export const AddWine: React.FC = () => {
             </form>
           )}
 
-          {/* STEP 2: LOADING */}
+          {/* STEP 2: PREVIEW + LOADING */}
+          {step === 2 && mode === 'SCAN' && !isLoading && scanImage && (
+            <div className="space-y-6 animate-fade-in">
+              <h3 className="text-xl font-serif text-stone-900 dark:text-white text-center">Aperçu de l'étiquette</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <p className="text-xs text-stone-500 uppercase font-bold text-center">Face</p>
+                      <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 aspect-[3/4]">
+                          <img src={scanImage} alt="Étiquette face" className="w-full h-full object-cover" />
+                      </div>
+                      <button onClick={() => { setScanImage(null); fileInputRef.current?.click(); }} className="w-full text-xs text-stone-500 hover:text-wine-600 py-1">Reprendre</button>
+                  </div>
+                  <div className="space-y-2">
+                      <p className="text-xs text-stone-500 uppercase font-bold text-center">Dos (optionnel)</p>
+                      {scanImageBack ? (
+                          <>
+                              <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 aspect-[3/4]">
+                                  <img src={scanImageBack} alt="Étiquette dos" className="w-full h-full object-cover" />
+                              </div>
+                              <button onClick={() => setScanImageBack(null)} className="w-full text-xs text-stone-500 hover:text-wine-600 py-1">Supprimer</button>
+                          </>
+                      ) : (
+                          <button
+                              onClick={() => backFileInputRef.current?.click()}
+                              className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-700 flex flex-col items-center justify-center gap-2 text-stone-400 hover:text-stone-600 hover:border-stone-500 transition-colors"
+                          >
+                              <Camera size={24} />
+                              <span className="text-xs">Ajouter le dos</span>
+                          </button>
+                      )}
+                  </div>
+              </div>
+              <input type="file" accept="image/*" capture="environment" ref={backFileInputRef} onChange={handleBackFileChange} className="hidden" />
+
+              <div className="flex gap-3">
+                  <button onClick={() => { setStep(1); setScanImage(null); setScanImageBack(null); }} className="flex-1 py-3 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-500 hover:text-stone-800 dark:hover:text-white transition-colors">
+                      Annuler
+                  </button>
+                  <button onClick={handleStartScan} className="flex-1 bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-wine-900/30 transition-all">
+                      <Search size={18} /> Analyser
+                  </button>
+              </div>
+            </div>
+          )}
+
           {step === 2 && isLoading && (
-            <div className="flex flex-col items-center justify-center py-20 text-stone-400 space-y-4 animate-pulse">
-              <Loader2 size={48} className="animate-spin text-wine-500" />
-              <h3 className="text-xl font-serif text-stone-900 dark:text-white">
-                  {mode === 'SCAN' ? "Analyse de l'étiquette..." : "Le Sommelier consulte ses archives"}
-              </h3>
-              <div className="text-sm text-stone-500 dark:text-stone-500 text-center max-w-xs">
-                {mode === 'SCAN' 
-                 ? "Extraction de la Cuvée, de la Parcelle et des détails techniques..."
-                 : "Analyse des conditions du millésime, récupération de l'histoire du terroir et accord des saveurs..."}
+            <div className="space-y-6 animate-fade-in">
+              {mode === 'SCAN' && scanImage && (
+                  <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 max-w-xs mx-auto aspect-[3/4]">
+                      <img src={scanImage} alt="Scanning..." className="w-full h-full object-cover opacity-70" />
+                      <div className="absolute inset-0 bg-gradient-to-b from-wine-500/10 to-transparent" />
+                      <div className="absolute left-0 right-0 h-0.5 bg-wine-500 shadow-[0_0_8px_rgba(224,36,36,0.8)] animate-scan-line" />
+                  </div>
+              )}
+              <div className="flex flex-col items-center justify-center py-8 text-stone-400 space-y-4">
+                  <Loader2 size={48} className="animate-spin text-wine-500" />
+                  <h3 className="text-xl font-serif text-stone-900 dark:text-white">
+                      {mode === 'SCAN' ? "Analyse de l'étiquette..." : "Le Sommelier consulte ses archives"}
+                  </h3>
+                  <div className="text-sm text-stone-500 dark:text-stone-500 text-center max-w-xs">
+                    {mode === 'SCAN'
+                     ? "Extraction de la Cuvée, de la Parcelle et des détails techniques..."
+                     : "Analyse des conditions du millésime, récupération de l'histoire du terroir et accord des saveurs..."}
+                  </div>
               </div>
             </div>
           )}
@@ -329,15 +402,27 @@ export const AddWine: React.FC = () => {
           {step === 3 && enrichedWine && (
             <div className="space-y-6 animate-fade-in-up">
               
-              {/* Alert Confidence */}
-              {enrichedWine.aiConfidence !== 'HIGH' && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/50 p-4 rounded-xl flex items-center gap-3 text-yellow-700 dark:text-yellow-200">
-                      <AlertTriangle size={20} />
-                      <div className="text-sm">
-                          <strong>Vérification requise :</strong> L'IA n'est pas certaine à 100%. Veuillez vérifier notamment la Cuvée et la Parcelle.
+              {/* Confidence Indicator */}
+              {(() => {
+                  const confidence = enrichedWine.aiConfidence || 'MEDIUM';
+                  const styles = {
+                      HIGH: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300', label: 'Confiance élevée', icon: '✓' },
+                      MEDIUM: { bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-700/50', text: 'text-yellow-700 dark:text-yellow-200', label: 'Confiance moyenne — vérifiez la Cuvée et la Parcelle', icon: '⚠' },
+                      LOW: { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700/50', text: 'text-red-700 dark:text-red-200', label: 'Confiance faible — vérification manuelle recommandée', icon: '✗' },
+                  };
+                  const s = styles[confidence as keyof typeof styles] || styles.MEDIUM;
+                  return (
+                      <div className={`${s.bg} border ${s.border} p-4 rounded-xl flex items-center gap-3 ${s.text}`}>
+                          <span className="text-lg">{s.icon}</span>
+                          <div className="text-sm flex-1">
+                              <strong>{confidence === 'HIGH' ? 'Données fiables' : 'Vérification requise'} :</strong> {s.label}
+                          </div>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${confidence === 'HIGH' ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' : confidence === 'LOW' ? 'bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200' : 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'}`}>
+                              {confidence}
+                          </span>
                       </div>
-                  </div>
-              )}
+                  );
+              })()}
 
               <div className="bg-white dark:bg-stone-900 border border-wine-200 dark:border-wine-900/30 rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl">
                 
@@ -382,22 +467,62 @@ export const AddWine: React.FC = () => {
                               <div className="flex gap-4 pt-2">
                                   <div className="flex-1">
                                       <label className="text-[10px] uppercase text-stone-500">Producteur</label>
-                                      <input 
-                                          type="text" 
-                                          value={editFormData.producer} 
+                                      <input
+                                          type="text"
+                                          value={editFormData.producer}
                                           onChange={(e) => setEditFormData({...editFormData, producer: e.target.value})}
                                           className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
                                       />
                                   </div>
                                   <div className="w-20">
                                       <label className="text-[10px] uppercase text-stone-500">Millésime</label>
-                                      <input 
-                                          type="number" 
-                                          value={editFormData.vintage} 
+                                      <input
+                                          type="number"
+                                          value={editFormData.vintage}
                                           onChange={(e) => setEditFormData({...editFormData, vintage: Number(e.target.value)})}
                                           className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
                                       />
                                   </div>
+                              </div>
+
+                              {/* Type / Couleur */}
+                              <div className="pt-3">
+                                  <label className="text-[10px] uppercase text-stone-500 mb-2 block">Type / Couleur</label>
+                                  <div className="grid grid-cols-3 gap-1.5">
+                                      {([
+                                          { value: 'RED' as const, label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
+                                          { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
+                                          { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
+                                          { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
+                                          { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                                          { value: 'FORTIFIED' as const, label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
+                                      ]).map(t => (
+                                          <button
+                                              key={t.value}
+                                              type="button"
+                                              onClick={() => setEditFormData({...editFormData, type: t.value})}
+                                              className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium transition-all ${
+                                                  editFormData.type === t.value
+                                                  ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
+                                                  : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                                              }`}
+                                          >
+                                              {t.label}
+                                          </button>
+                                      ))}
+                                  </div>
+                              </div>
+
+                              {/* Appellation */}
+                              <div className="pt-2">
+                                  <label className="text-[10px] uppercase text-stone-500">Appellation</label>
+                                  <input
+                                      type="text"
+                                      value={editFormData.appellation || ''}
+                                      onChange={(e) => setEditFormData({...editFormData, appellation: e.target.value})}
+                                      placeholder="ex: Chablis Premier Cru"
+                                      className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
+                                  />
                               </div>
                           </div>
                       </div>

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { consumeSpecificBottle, getRacks, toggleFavorite } from '../services/storageService';
+import { consumeSpecificBottle, toggleFavorite } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
+import { useRacks } from '../hooks/useRacks';
 import { CellarWine } from '../types';
+import { formatBottleLocation } from '../utils/locationFormatter';
 import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2 } from 'lucide-react';
 
 interface WineCardProps {
@@ -121,7 +123,8 @@ const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavorit
 export const Dashboard: React.FC = () => {
   // Utilisation du Hook useWines
   const { wines, loading, error, refresh } = useWines();
-  
+  const { racks } = useRacks();
+
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -139,7 +142,7 @@ export const Dashboard: React.FC = () => {
 
   const confirmConsumption = async (bottleId: string) => {
       if (!consumingWine) return;
-      await consumeSpecificBottle(consumingWine.id, bottleId);
+      await consumeSpecificBottle(consumingWine.id, bottleId, consumingWine.name, consumingWine.vintage);
       setConsumingWine(null);
       refresh(); // Rafraîchissement asynchrone
   };
@@ -192,13 +195,7 @@ export const Dashboard: React.FC = () => {
       'OTHER': 'AUTRES'
   };
 
-  // Helper asynchrone pour le nom du rack (Attention: getRacks est async maintenant)
-  // Pour l'affichage simple dans la modale, on peut faire une approximation ou charger les racks.
-  // Ici on simplifie en affichant l'ID si le nom n'est pas dispo immédiatement, ou en ajoutant useRacks() si nécessaire.
-  const getRackName = (rackId: string) => {
-      // Note: Idéalement, utilisez useRacks() dans le composant si vous avez besoin des noms
-      return "Rangement " + rackId.substring(0,4); 
-  };
+  // Removed: getRackName stub - now using formatBottleLocation utility
 
   const favoriteCount = wines.filter(w => w.isFavorite && w.inventoryCount > 0).length;
 
@@ -341,12 +338,7 @@ export const Dashboard: React.FC = () => {
 
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {consumingWine.bottles.filter(b => !b.isConsumed).map((bottle, idx) => {
-                        let locationLabel = "Non trié";
-                        if (typeof bottle.location !== 'string') {
-                             locationLabel = `Rangement... [${String.fromCharCode(65 + bottle.location.y)}${bottle.location.x + 1}]`;
-                        } else {
-                            locationLabel = bottle.location;
-                        }
+                        const locationLabel = formatBottleLocation(bottle.location, racks);
 
                         return (
                             <button
