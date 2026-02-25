@@ -210,7 +210,7 @@ export const EditWine: React.FC = () => {
 
             <button 
                 type="submit" 
-                className="w-full bg-wine-600 hover:bg-wine-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-wine-900/30 fixed bottom-6 left-0 right-0 max-w-2xl mx-auto z-20"
+                className="w-full bg-wine-600 hover:bg-wine-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-wine-900/30 fixed bottom-20 left-4 right-4 max-w-2xl mx-auto z-20"
             >
                 <Save size={20} /> Enregistrer les modifications
             </button>
