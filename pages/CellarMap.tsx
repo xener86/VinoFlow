@@ -4,7 +4,7 @@ import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWi
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Pencil, ChevronLeft, MoreVertical, ArrowLeftRight } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Edit3, ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
 
@@ -75,18 +75,6 @@ export const CellarMap: React.FC = () => {
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
 
-  // Context menu for rack tabs
-  const [rackMenuId, setRackMenuId] = useState<string | null>(null);
-
-  // Close rack menu on outside click
-  useEffect(() => {
-    const handleClickOutside = () => setRackMenuId(null);
-    if (rackMenuId) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [rackMenuId]);
-
   // Initialisation de la sélection du rack une fois les données chargées
   useEffect(() => {
     if (!loadingRacks && racks.length > 0 && !selectedTabId) {
@@ -119,7 +107,13 @@ export const CellarMap: React.FC = () => {
       return count;
   };
 
-  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
+  const isUnsortedLocation = (loc: any): boolean => {
+    if (typeof loc === 'string') return loc === 'Non trié';
+    if (typeof loc === 'object' && loc !== null) return loc.label === 'Non trié';
+    return false;
+  };
+
+  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => isUnsortedLocation(b.location) && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
 
   const [isPlacingAll, setIsPlacingAll] = useState(false);
 
@@ -386,88 +380,37 @@ export const CellarMap: React.FC = () => {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {shelves.map((rack, idx) => {
+            {shelves.map(rack => {
                 const matchCount = getMatchesForRack(rack.id);
                 const isSelected = selectedTabId === rack.id;
-
+                
                 return (
-                    <div key={rack.id} className="relative flex-shrink-0">
-                        <button
-                            onClick={() => { setSelectedTabId(rack.id); setRackMenuId(null); }}
-                            onContextMenu={(e) => { e.preventDefault(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
-                            className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
-                                isSelected
-                                ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm'
-                                : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
-                            }`}
-                            style={{marginBottom: -1}}
-                        >
-                            {rack.name}
-                            {matchCount > 0 && (
-                                <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                                    {matchCount}
-                                </span>
-                            )}
-                            {isArchitectMode && isSelected && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
-                                    className="ml-1 p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
-                                >
-                                    <MoreVertical size={12} />
-                                </button>
-                            )}
-                        </button>
-
-                        {/* Context menu */}
-                        {rackMenuId === rack.id && (
-                            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-2 min-w-[180px] animate-fade-in">
-                                <button
-                                    onClick={() => { handleEditRack(rack); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                >
-                                    <Pencil size={14} className="text-blue-500" /> Renommer
-                                </button>
-                                {idx > 0 && (
-                                    <button
-                                        onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenuId(null); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                    >
-                                        <ChevronLeft size={14} className="text-indigo-500" /> Déplacer à gauche
-                                    </button>
-                                )}
-                                {idx < shelves.length - 1 && (
-                                    <button
-                                        onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenuId(null); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                    >
-                                        <ChevronRight size={14} className="text-indigo-500" /> Déplacer à droite
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => { handleQuickFill(rack); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                >
-                                    <PackagePlus size={14} className="text-amber-500" /> Remplir
-                                </button>
-                                <div className="border-t border-stone-200 dark:border-stone-700 my-1" />
-                                <button
-                                    onClick={() => { handleDeleteRack(rack.id); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3"
-                                >
-                                    <Trash2 size={14} /> Supprimer
-                                </button>
-                            </div>
+                    <button
+                        key={rack.id}
+                        onClick={() => setSelectedTabId(rack.id)}
+                        className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
+                            isSelected 
+                            ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm' 
+                            : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
+                        }`}
+                        style={{marginBottom: -1}} 
+                    >
+                        {rack.name}
+                        {matchCount > 0 && (
+                            <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                                {matchCount}
+                            </span>
                         )}
-                    </div>
+                    </button>
                 )
             })}
 
             {boxes.length > 0 && (
                 <button
-                    onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenuId(null); }}
+                    onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
                     className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                         selectedTabId === 'VIEW_ALL_BOXES'
-                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm'
+                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm' 
                         : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
                     }`}
                     style={{marginBottom: -1}}
@@ -483,7 +426,7 @@ export const CellarMap: React.FC = () => {
             )}
 
             {isArchitectMode && (
-                <button
+                <button 
                   onClick={() => setShowAddRackModal(true)}
                   className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 dark:border-stone-600 text-stone-500 hover:text-stone-800 dark:hover:text-white hover:border-stone-500 dark:hover:border-stone-400"
                 >
@@ -492,6 +435,35 @@ export const CellarMap: React.FC = () => {
             )}
         </div>
       </div>
+
+      {/* Architect Mode Toolbar */}
+      {isArchitectMode && selectedTabId && selectedTabId !== 'VIEW_ALL_BOXES' && (() => {
+          const rack = racks.find(r => r.id === selectedTabId);
+          if (!rack) return null;
+          const rackIndex = racks.findIndex(r => r.id === selectedTabId);
+          return (
+              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-2">
+                  <PencilRuler size={14} className="text-indigo-500" />
+                  <span className="text-xs text-indigo-700 dark:text-indigo-300 font-bold mr-auto">{rack.name}</span>
+                  <button onClick={() => handleReorderRack(rack.id, 'left')} disabled={rackIndex === 0} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à gauche">
+                      <ChevronLeft size={16} />
+                  </button>
+                  <button onClick={() => handleReorderRack(rack.id, 'right')} disabled={rackIndex === racks.length - 1} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à droite">
+                      <ChevronRight size={16} />
+                  </button>
+                  <div className="w-px h-5 bg-indigo-200 dark:bg-indigo-800" />
+                  <button onClick={() => handleEditRack(rack)} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400" title="Renommer">
+                      <Edit3 size={16} />
+                  </button>
+                  <button onClick={() => handleQuickFill(rack)} className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-600 dark:text-amber-400" title="Remplir">
+                      <PackagePlus size={16} />
+                  </button>
+                  <button onClick={() => handleDeleteRack(rack.id)} className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 text-red-500" title="Supprimer">
+                      <Trash2 size={16} />
+                  </button>
+              </div>
+          );
+      })()}
 
       {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
@@ -730,19 +702,22 @@ export const CellarMap: React.FC = () => {
                       <div className="border-t border-stone-200 dark:border-stone-800 my-1 pt-2">
                           <p className="text-xs text-stone-500 mb-2 uppercase font-bold">Ou placer un vin existant</p>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {inventory.map(w => (
-                                  <button 
-                                    key={w.id} 
+                              {inventory.filter(w => w.inventoryCount > 0).map(w => (
+                                  <button
+                                    key={w.id}
                                     onClick={() => handleAddExistingToSlot(w)}
                                     className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800"
                                   >
                                       <div>
                                           <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                          <div className="text-stone-500 text-[10px]">{w.vintage}</div>
+                                          <div className="text-stone-500 text-[10px]">{w.vintage} • {w.inventoryCount} en stock</div>
                                       </div>
                                       <Plus size={14} className="text-stone-400"/>
                                   </button>
                               ))}
+                              {inventory.filter(w => w.inventoryCount > 0).length === 0 && (
+                                  <p className="text-xs text-stone-400 italic text-center py-4">Aucun vin en stock</p>
+                              )}
                           </div>
                       </div>
                   </div>

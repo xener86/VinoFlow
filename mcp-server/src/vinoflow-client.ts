@@ -223,7 +223,11 @@ export async function getCellarStats(): Promise<{
         byType[wine.type] = (byType[wine.type] || 0) + count;
         byRegion[wine.region] = (byRegion[wine.region] || 0) + count;
         if (wine.isFavorite) favorites++;
-        unsorted += wine.bottles.filter(b => b.location === 'Non trié').length;
+        unsorted += wine.bottles.filter(b => {
+            if (typeof b.location === 'string') return b.location === 'Non trié';
+            if (typeof b.location === 'object' && b.location !== null) return (b.location as any).label === 'Non trié';
+            return false;
+        }).length;
     }
 
     return {

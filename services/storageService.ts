@@ -391,29 +391,23 @@ export const deleteRack = async (id: string): Promise<void> => {
   });
 };
 
-export const reorderRacks = async (rackIds: string[]): Promise<void> => {
+export const reorderRack = async (id: string, direction: 'left' | 'right'): Promise<void> => {
+    const allRacks = await getRacks();
+    const currentIndex = allRacks.findIndex(r => r.id === id);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= allRacks.length) return;
+
+    // Swap
+    const reordered = [...allRacks];
+    [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
+
     await fetch(`${API_URL}/racks/reorder`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ rackIds })
+        body: JSON.stringify({ rackIds: reordered.map(r => r.id) })
     });
-};
-
-// Legacy compat - single rack move
-export const reorderRack = async (id: string, direction: 'left' | 'right'): Promise<void> => {
-    // Fetch current racks, find rack, swap positions, then call reorder
-    const racks = await getRacks();
-    const idx = racks.findIndex(r => r.id === id);
-    if (idx === -1) return;
-
-    const newIdx = direction === 'left' ? idx - 1 : idx + 1;
-    if (newIdx < 0 || newIdx >= racks.length) return;
-
-    // Swap
-    const newOrder = racks.map(r => r.id);
-    [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
-
-    await reorderRacks(newOrder);
 };
 
 // --- SPIRIT FUNCTIONS ---
