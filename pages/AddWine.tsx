@@ -377,7 +377,7 @@ export const AddWine: React.FC = () => {
                       </div>
                   </div>
               </div>
-              <div className="p-6 bg-black/80 flex justify-center">
+              <div className="p-6 pb-24 bg-black/80 flex justify-center">
                   <button
                       onClick={captureWebcam}
                       className="w-18 h-18 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/30 active:bg-white/50 transition-colors"
