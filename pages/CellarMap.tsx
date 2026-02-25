@@ -75,6 +75,9 @@ export const CellarMap: React.FC = () => {
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
 
+  // Context menu for rack tabs
+  const [rackMenuId, setRackMenuId] = useState<string | null>(null);
+
   // Close rack menu on outside click
   useEffect(() => {
     const handleClickOutside = () => setRackMenuId(null);
@@ -334,9 +337,6 @@ export const CellarMap: React.FC = () => {
       setNewRackH(h);
       setCreateRackName(name);
   };
-
-  // Context menu for rack tabs
-  const [rackMenuId, setRackMenuId] = useState<string | null>(null);
 
   if (loadingRacks || loadingWines) {
       return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-wine-600" size={48} /></div>;
