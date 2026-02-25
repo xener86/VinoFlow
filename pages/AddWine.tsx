@@ -18,7 +18,9 @@ export const AddWine: React.FC = () => {
   const [name, setName] = useState('');
   const [vintage, setVintage] = useState<number>(new Date().getFullYear());
   const [hint, setHint] = useState('');
-  
+  const [selectedType, setSelectedType] = useState<string>('');
+  const [appellation, setAppellation] = useState('');
+
   // Edit State (Step 3)
   const [enrichedWine, setEnrichedWine] = useState<Partial<Wine> | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<Wine>>({});
@@ -138,11 +140,22 @@ export const AddWine: React.FC = () => {
     setIsLoading(true);
     setStep(2);
 
+    // Build enriched hint with type and appellation context
+    const typeLabels: Record<string, string> = { RED: 'rouge', WHITE: 'blanc', ROSE: 'rosé', SPARKLING: 'pétillant', DESSERT: 'dessert', FORTIFIED: 'fortifié' };
+    const parts = [hint];
+    if (selectedType) parts.push(`Type: vin ${typeLabels[selectedType] || selectedType}`);
+    if (appellation) parts.push(`Appellation: ${appellation}`);
+    const enrichedHint = parts.filter(Boolean).join('. ');
+
     try {
-      const result = await enrichWineData(name, vintage, hint);
+      const result = await enrichWineData(name, vintage, enrichedHint);
       if (result) {
-        setEnrichedWine(result);
-        setEditFormData(result);
+        // Pre-fill with user-provided type/appellation if AI didn't override
+        const merged = { ...result };
+        if (selectedType && !result.type) merged.type = selectedType as any;
+        if (appellation && !result.appellation) merged.appellation = appellation;
+        setEnrichedWine(merged);
+        setEditFormData(merged);
         setStep(3);
       } else {
         alert("Impossible de trouver les données. Veuillez réessayer ou ajouter manuellement.");
@@ -318,6 +331,45 @@ export const AddWine: React.FC = () => {
                     className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400 dark:placeholder-stone-700"
                   />
                 </div>
+              </div>
+
+              {/* Type / Couleur (optionnel, aide l'IA) */}
+              <div>
+                <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Couleur / Type <span className="text-stone-400 dark:text-stone-600 font-normal">(optionnel)</span></label>
+                <div className="grid grid-cols-3 gap-1.5">
+                    {([
+                        { value: 'RED', label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
+                        { value: 'WHITE', label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
+                        { value: 'ROSE', label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
+                        { value: 'SPARKLING', label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
+                        { value: 'DESSERT', label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                        { value: 'FORTIFIED', label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
+                    ]).map(t => (
+                        <button
+                            key={t.value}
+                            type="button"
+                            onClick={() => setSelectedType(selectedType === t.value ? '' : t.value)}
+                            className={`py-2 px-2 rounded-lg border text-xs font-medium transition-all ${
+                                selectedType === t.value
+                                ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
+                                : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Appellation <span className="text-stone-400 dark:text-stone-600 font-normal">(optionnel)</span></label>
+                <input
+                  type="text"
+                  value={appellation}
+                  onChange={(e) => setAppellation(e.target.value)}
+                  placeholder="ex: Chablis Premier Cru, Saint-Émilion..."
+                  className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400 dark:placeholder-stone-700"
+                />
               </div>
 
               <button
