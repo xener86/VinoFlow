@@ -181,7 +181,7 @@ export const EditWine: React.FC = () => {
                     <label className="text-xs text-stone-500 uppercase">Cépages (séparés par virgule)</label>
                     <input 
                         type="text" 
-                        value={wine.grapeVarieties.join(', ')}
+                        value={(wine.grapeVarieties || []).join(', ')}
                         onChange={e => setWine({...wine, grapeVarieties: e.target.value.split(',').map(s => s.trim())})}
                         className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
                     />
@@ -201,7 +201,7 @@ export const EditWine: React.FC = () => {
                     <label className="text-xs text-stone-500 uppercase">Accords Mets-Vins (séparés par virgule)</label>
                     <input 
                         type="text" 
-                        value={wine.suggestedFoodPairings.join(', ')}
+                        value={(wine.suggestedFoodPairings || []).join(', ')}
                         onChange={e => setWine({...wine, suggestedFoodPairings: e.target.value.split(',').map(s => s.trim())})}
                         className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
                     />
