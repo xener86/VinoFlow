@@ -8,6 +8,7 @@ export interface Wine {
   producer: string;
   vintage: number;
   region: string;
+  appellation?: string;
   country: string;
   type: WineType;
   grapeVarieties: string[];
@@ -62,6 +63,23 @@ export interface TimelineEvent {
   type: 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
   description: string;
   user: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  type: 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
+  wineId?: string;
+  wineName: string;
+  wineVintage?: number;
+  quantity?: number;
+  description?: string;
+  fromLocation?: string;
+  toLocation?: string;
+  recipient?: string;
+  occasion?: string;
+  note?: string;
+  userId?: string;
 }
 
 export interface SensoryProfile {

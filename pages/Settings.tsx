@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { exportFullData, importFullData } from '../services/storageService';
+import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles } from '../services/storageService';
 import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
-import { AIConfig, AIProvider } from '../types';
-import { Download, Upload, Server, Cpu, Check, Loader2 } from 'lucide-react';
+import { AIConfig, AIProvider, Bottle } from '../types';
+import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle } from 'lucide-react';
 
 export const Settings: React.FC = () => {
   // ✅ Utilisation du Hook
@@ -13,12 +13,45 @@ export const Settings: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Cleanup state
+  const [isScanning, setIsScanning] = useState(false);
+  const [orphanedBottles, setOrphanedBottles] = useState<Bottle[] | null>(null);
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ orphaned: number; cleaned: number } | null>(null);
+
   // Synchronisation de l'état local une fois la config chargée
   useEffect(() => {
       if (config) {
           setLocalConfig(config);
       }
   }, [config]);
+
+  const handleScanGhosts = async () => {
+      setIsScanning(true);
+      setCleanupResult(null);
+      try {
+          const orphaned = await findOrphanedBottles();
+          setOrphanedBottles(orphaned);
+      } catch (e) {
+          console.error('Scan failed', e);
+      } finally {
+          setIsScanning(false);
+      }
+  };
+
+  const handleCleanup = async () => {
+      if (!window.confirm(`Supprimer ${orphanedBottles?.length || 0} bouteille(s) orpheline(s) ? Cette action est irréversible.`)) return;
+      setIsCleaning(true);
+      try {
+          const result = await cleanupGhostBottles();
+          setCleanupResult(result);
+          setOrphanedBottles(null);
+      } catch (e) {
+          console.error('Cleanup failed', e);
+      } finally {
+          setIsCleaning(false);
+      }
+  };
 
   const handleSaveConfig = async () => {
       if (!localConfig) return;
@@ -153,6 +186,52 @@ export const Settings: React.FC = () => {
                      {saved ? 'Configuration Enregistrée' : 'Sauvegarder les Clés'}
                  </button>
              </div>
+        </Section>
+
+        <Section title="Nettoyage de la Cave" icon={Trash2}>
+            <div className="space-y-4">
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                    Détectez et supprimez les bouteilles orphelines (vin parent supprimé) ou les données de test restantes.
+                </p>
+
+                <button
+                    onClick={handleScanGhosts}
+                    disabled={isScanning}
+                    className="w-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 dark:border-stone-700 disabled:opacity-50"
+                >
+                    {isScanning ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
+                    {isScanning ? 'Analyse en cours...' : 'Scanner les anomalies'}
+                </button>
+
+                {orphanedBottles !== null && orphanedBottles.length === 0 && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center gap-2">
+                        <Check size={18} /> Aucune anomalie détectée. Votre cave est propre !
+                    </div>
+                )}
+
+                {orphanedBottles !== null && orphanedBottles.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg text-yellow-700 dark:text-yellow-300 text-sm flex items-center gap-2">
+                            <AlertTriangle size={18} />
+                            <span><strong>{orphanedBottles.length}</strong> bouteille(s) orpheline(s) détectée(s)</span>
+                        </div>
+                        <button
+                            onClick={handleCleanup}
+                            disabled={isCleaning}
+                            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold"
+                        >
+                            {isCleaning ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
+                            {isCleaning ? 'Nettoyage...' : `Supprimer ${orphanedBottles.length} bouteille(s)`}
+                        </button>
+                    </div>
+                )}
+
+                {cleanupResult && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center gap-2">
+                        <Check size={18} /> {cleanupResult.cleaned}/{cleanupResult.orphaned} bouteille(s) nettoyée(s) avec succès.
+                    </div>
+                )}
+            </div>
         </Section>
 
         <Section title="Gestion des Données" icon={Server}>

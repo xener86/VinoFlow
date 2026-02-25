@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
+import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle, findNextAvailableSlot } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
@@ -107,7 +107,30 @@ export const CellarMap: React.FC = () => {
       return count;
   };
 
-  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
+  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
+
+  const [isPlacingAll, setIsPlacingAll] = useState(false);
+
+  const handlePlaceAll = async () => {
+      if (unsortedBottles.length === 0) return;
+      if (!window.confirm(`Ranger automatiquement ${unsortedBottles.length} bouteille(s) dans les emplacements libres ?`)) return;
+      setIsPlacingAll(true);
+      let placed = 0;
+      for (const bottle of unsortedBottles) {
+          const slot = await findNextAvailableSlot();
+          if (slot) {
+              await moveBottle(bottle.id, slot.location, bottle.wineName, bottle.wineVintage, bottle.wineId);
+              placed++;
+          } else {
+              break;
+          }
+      }
+      setIsPlacingAll(false);
+      refreshAll();
+      if (placed < unsortedBottles.length) {
+          alert(`${placed}/${unsortedBottles.length} bouteille(s) rangée(s). Plus d'emplacements libres.`);
+      }
+  };
 
   const handleSlotClick = async (rackId: string, x: number, y: number, rackName: string) => {
     let occupied = false;
@@ -130,7 +153,7 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-        await moveBottle(moveSource.bottleId, { rackId, x, y });
+        await moveBottle(moveSource.bottleId, { rackId, x, y }, moveSource.wine.name, moveSource.wine.vintage, moveSource.wine.id);
         setMoveSource(null);
         refreshWines();
         return;
@@ -171,7 +194,8 @@ export const CellarMap: React.FC = () => {
           }
           if (occupied) return; 
 
-            await moveBottle(bottleId, { rackId, x, y });
+            const sourceWine = inventory.find(w => w.bottles.some(b => b.id === bottleId));
+            await moveBottle(bottleId, { rackId, x, y }, sourceWine?.name, sourceWine?.vintage, sourceWine?.id);
             setDragSourceId(null);
             refreshWines();
         }
@@ -179,7 +203,7 @@ export const CellarMap: React.FC = () => {
 
   const handleConsume = async () => {
         if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-            await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId, selectedBottle.wine.name, selectedBottle.wine.vintage);
             setSelectedBottle(null);
             refreshWines();
         }
@@ -197,7 +221,7 @@ export const CellarMap: React.FC = () => {
   const handleConfirmGift = async () => {
       if (!selectedBottle || !giftRecipient) return;
       
-      await giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion);
+      await giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion, selectedBottle.wine.name, selectedBottle.wine.vintage);
       setShowGiftModal(false);
       setSelectedBottle(null);
       setGiftRecipient('');
@@ -268,7 +292,7 @@ export const CellarMap: React.FC = () => {
 
   const handleAddExistingToSlot = async (wine: CellarWine) => {
       if(emptySlotTarget) {
-          await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y });
+          await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y }, wine.name, wine.vintage);
           setEmptySlotTarget(null);
           refreshWines();
       }
@@ -409,8 +433,8 @@ export const CellarMap: React.FC = () => {
       {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
-               <button 
+           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-72 max-h-[45vh] flex flex-col relative">
+               <button
                 onClick={() => setShowUnsortedDock(false)}
                 className="absolute -left-8 top-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-2 rounded-l-lg text-stone-400 hover:text-stone-800 dark:hover:text-white"
                >
@@ -419,31 +443,55 @@ export const CellarMap: React.FC = () => {
                <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2 border-b border-stone-200 dark:border-stone-800 pb-2">
                    <Inbox size={16} className="text-wine-600 dark:text-wine-400" />
                    <span className="text-sm font-bold">Quai de Réception</span>
-                   <span className="text-xs bg-stone-100 dark:bg-stone-800 px-2 rounded-full ml-auto">{unsortedBottles.length}</span>
+                   <span className="text-xs bg-wine-600 text-white px-2 py-0.5 rounded-full ml-auto animate-pulse">{unsortedBottles.length}</span>
                </div>
-               <p className="text-[10px] text-stone-500 italic">Glissez ces bouteilles vers les étagères pour les ranger.</p>
-               {unsortedBottles.map((b, i) => (
-                   <div 
-                    key={b.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, b.id)}
-                    title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
-                    className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
-                   >
-                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
-                       <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
-                   </div>
-               ))}
+
+               {/* Tout ranger button */}
+               <button
+                   onClick={handlePlaceAll}
+                   disabled={isPlacingAll}
+                   className="w-full mb-2 py-2 text-xs font-bold bg-wine-600 hover:bg-wine-700 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+               >
+                   {isPlacingAll ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                   {isPlacingAll ? 'Rangement...' : 'Tout ranger automatiquement'}
+               </button>
+
+               <p className="text-[10px] text-stone-500 italic mb-2">Glissez ou cliquez pour ranger.</p>
+               <div className="overflow-y-auto flex flex-col gap-1.5">
+                   {unsortedBottles.map(b => {
+                       const typeColors: Record<string, string> = {
+                           'RED': 'bg-red-700', 'WHITE': 'bg-yellow-300', 'ROSE': 'bg-pink-400',
+                           'SPARKLING': 'bg-amber-300', 'DESSERT': 'bg-orange-400', 'FORTIFIED': 'bg-stone-600'
+                       };
+                       return (
+                           <div
+                            key={b.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, b.id)}
+                            onClick={() => navigate(`/wine/${b.wineId}`)}
+                            title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
+                            className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-wine-400 dark:hover:border-wine-600 active:cursor-grabbing flex items-center gap-2 group"
+                           >
+                               <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${typeColors[b.wineType] || 'bg-stone-400'}`} />
+                               <div className="flex-1 min-w-0">
+                                   <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
+                                   <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
+                               </div>
+                               <Eye size={12} className="text-stone-300 group-hover:text-wine-500 flex-shrink-0 transition-colors" />
+                           </div>
+                       );
+                   })}
+               </div>
            </div>
         </div>
       )}
       {!showUnsortedDock && unsortedBottles.length > 0 && (
-         <button 
+         <button
             onClick={() => setShowUnsortedDock(true)}
             className="fixed bottom-24 right-0 z-40 bg-wine-600 text-white p-3 rounded-l-xl shadow-lg hover:bg-wine-500 transition-colors"
          >
              <Inbox size={20} />
-             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full">{unsortedBottles.length}</span>
+             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full animate-pulse">{unsortedBottles.length}</span>
          </button>
       )}
 
@@ -489,31 +537,33 @@ export const CellarMap: React.FC = () => {
       {/* Modals & Popups (SelectedBottle, Gift, etc.) */}
       {/* ... [Code des modales identique au fichier d'origine mais utilisant les handlers async] ... */}
       {selectedBottle && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 z-50 flex items-end">
               <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                  <button onClick={() => setSelectedBottle(null)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
-                  
+              <div className="bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 w-full rounded-t-3xl p-6 pb-28 relative z-10 shadow-2xl animate-slide-up">
+                  {/* Handle bar */}
+                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4" />
+
                   <div className="text-center mb-6">
                       <h3 className="text-2xl font-serif text-stone-900 dark:text-white mb-1">{selectedBottle.wine.name}</h3>
+                      {selectedBottle.wine.cuvee && <p className="text-wine-600 dark:text-wine-400 text-sm italic mb-1">Cuvée {selectedBottle.wine.cuvee}</p>}
                       <p className="text-stone-500 dark:text-stone-400">{selectedBottle.wine.producer} • {selectedBottle.wine.vintage}</p>
                       <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
                           {racks.find(r => r.id === selectedBottle.location.rackId)?.name} • {getRowLabel(selectedBottle.location.y)}{selectedBottle.location.x+1}
                       </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
                       <button onClick={handleConsume} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-sm">Boire</span>
+                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-xs">Boire</span>
                       </button>
                       <button onClick={handleStartMove} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-sm">Déplacer</span>
+                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-xs">Déplacer</span>
                       </button>
                       <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
+                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-xs">Fiche</span>
                       </button>
                       <button onClick={handleStartGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
+                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-xs">Offrir</span>
                       </button>
                   </div>
               </div>
@@ -521,9 +571,10 @@ export const CellarMap: React.FC = () => {
       )}
 
       {showGiftModal && selectedBottle && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 z-50 flex items-end">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+              <div className="bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 w-full rounded-t-3xl p-6 pb-28 relative z-10 shadow-2xl animate-slide-up">
+                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4" />
                   <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
                   <p className="text-sm text-stone-500 mb-4">{selectedBottle.wine.name} {selectedBottle.wine.vintage}</p>
                   
