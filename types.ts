@@ -33,10 +33,26 @@ export interface Bottle {
   location: BottleLocation | string;
   addedByUserId: string;
   purchaseDate?: string;
+  purchasePrice?: number;
   isConsumed: boolean;
   consumedDate?: string;
   giftedTo?: string;
   giftOccasion?: string;
+}
+
+export interface WishlistItem {
+  id: string;
+  name: string;
+  producer?: string;
+  region?: string;
+  appellation?: string;
+  type?: WineType;
+  vintage?: number;
+  notes?: string;
+  source?: string;
+  estimatedPrice?: number;
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW';
+  addedAt: string;
 }
 
 export interface BottleLocation {

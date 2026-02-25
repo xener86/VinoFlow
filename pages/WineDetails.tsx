@@ -432,15 +432,29 @@ export const WineDetails: React.FC = () => {
                           <Plus size={16} className="text-stone-600 dark:text-stone-300" />
                       </button>
                   </div>
-                  <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center gap-4 shadow-sm">
-                      <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-green-600 dark:text-green-500">
-                          <Calendar size={20} />
-                      </div>
-                      <div>
-                          <p className="text-lg font-bold text-stone-900 dark:text-white">2025-2030</p>
-                          <p className="text-xs text-stone-500">Apogée</p>
-                      </div>
-                  </div>
+                  {(() => {
+                      const pricedBottles = wine.bottles.filter(b => !b.isConsumed && b.purchasePrice);
+                      const totalValue = pricedBottles.reduce((s, b) => s + (b.purchasePrice || 0), 0);
+                      return totalValue > 0 ? (
+                          <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center gap-4 shadow-sm">
+                              <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-amber-600 dark:text-amber-500 font-bold text-sm">{'\u20AC'}</div>
+                              <div>
+                                  <p className="text-lg font-bold text-stone-900 dark:text-white">{totalValue.toFixed(0)}{'\u20AC'}</p>
+                                  <p className="text-xs text-stone-500">Valeur en cave</p>
+                              </div>
+                          </div>
+                      ) : (
+                          <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center gap-4 shadow-sm">
+                              <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-green-600 dark:text-green-500">
+                                  <Calendar size={20} />
+                              </div>
+                              <div>
+                                  <p className="text-lg font-bold text-stone-900 dark:text-white">2025-2030</p>
+                                  <p className="text-xs text-stone-500">Apogée</p>
+                              </div>
+                          </div>
+                      );
+                  })()}
               </div>
 
               {/* Location */}
@@ -458,6 +472,7 @@ export const WineDetails: React.FC = () => {
                                   <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 dark:bg-stone-950 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
                                       <span className="text-stone-700 dark:text-stone-300">Bouteille #{i + 1}</span>
                                       <div className="flex items-center gap-3">
+                                          {b.purchasePrice && <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">{b.purchasePrice}{'\u20AC'}</span>}
                                           <span className="text-wine-600 dark:text-wine-400 font-mono text-xs">
                                               {locationLabel}
                                           </span>

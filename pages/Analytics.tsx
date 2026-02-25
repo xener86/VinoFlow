@@ -5,6 +5,7 @@ import { FlavorRadar } from '../components/FlavorRadar';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrendingUp, Calendar, Droplet, Lightbulb, BookOpen, Loader2 } from 'lucide-react';
 import { generateEducationalContent } from '../services/geminiService';
+import { getPeakWindow } from '../utils/peakWindow';
 
 export const Analytics: React.FC = () => {
   const { wines: inventory, loading } = useWines();
@@ -43,17 +44,8 @@ export const Analytics: React.FC = () => {
       });
     }
 
-    const currentYear = new Date().getFullYear();
     const maturityDistribution = inventory.reduce((acc: any, w) => {
-      let peakStart = w.vintage;
-      if (w.type === 'RED') peakStart += 5;
-      else if (w.type === 'WHITE') peakStart += 2;
-      else peakStart += 1;
-
-      let status = "Garde";
-      if (currentYear > peakStart + 5) status = "Boire Vite";
-      else if (currentYear >= peakStart) status = "À Boire";
-      
+      const { status } = getPeakWindow(w.vintage, w.type);
       acc[status] = (acc[status] || 0) + w.inventoryCount;
       return acc;
     }, {});

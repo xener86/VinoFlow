@@ -202,6 +202,59 @@ export async function getCellarJournal(limit: number = 50): Promise<JournalEntry
         .slice(0, limit);
 }
 
+export function formatCellarContextForFair(inventory: CellarWine[], stats: {
+    totalWines: number;
+    totalBottles: number;
+    byType: Record<string, number>;
+    byRegion: Record<string, number>;
+    favorites: number;
+    unsorted: number;
+}): string {
+    const typeLabels: Record<string, string> = {
+        RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Pétillant', DESSERT: 'Dessert', FORTIFIED: 'Fortifié'
+    };
+
+    const typeBreakdown = Object.entries(stats.byType)
+        .sort((a, b) => b[1] - a[1])
+        .map(([t, c]) => `${typeLabels[t] || t}: ${c}`)
+        .join(', ');
+
+    const regionBreakdown = Object.entries(stats.byRegion)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15)
+        .map(([r, c]) => `${r}: ${c}`)
+        .join(', ');
+
+    const producers = [...new Set(inventory.map(w => w.producer))].sort();
+    const appellations = [...new Set(inventory.filter(w => w.appellation).map(w => w.appellation!))].sort();
+    const grapes = [...new Set(inventory.flatMap(w => w.grapeVarieties))].sort();
+
+    // Identify weaknesses (underrepresented types or regions)
+    const weaknesses: string[] = [];
+    const typeEntries = Object.entries(stats.byType);
+    const totalBottles = stats.totalBottles;
+    if (!typeEntries.find(([t]) => t === 'WHITE') || (stats.byType['WHITE'] || 0) < totalBottles * 0.1) {
+        weaknesses.push('Peu de blancs');
+    }
+    if (!typeEntries.find(([t]) => t === 'SPARKLING') || (stats.byType['SPARKLING'] || 0) < 2) {
+        weaknesses.push('Peu de pétillants/champagnes');
+    }
+    if (!typeEntries.find(([t]) => t === 'ROSE') || (stats.byType['ROSE'] || 0) < 2) {
+        weaknesses.push('Peu de rosés');
+    }
+
+    return [
+        `## Profil de la Cave`,
+        `- **${stats.totalWines} vins**, **${stats.totalBottles} bouteilles**`,
+        `- **Types:** ${typeBreakdown}`,
+        `- **Régions (top 15):** ${regionBreakdown}`,
+        `- **Producteurs connus (${producers.length}):** ${producers.slice(0, 20).join(', ')}${producers.length > 20 ? '...' : ''}`,
+        `- **Appellations:** ${appellations.slice(0, 20).join(', ')}${appellations.length > 20 ? '...' : ''}`,
+        `- **Cépages:** ${grapes.slice(0, 15).join(', ')}${grapes.length > 15 ? '...' : ''}`,
+        weaknesses.length > 0 ? `- **Faiblesses identifiées:** ${weaknesses.join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+}
+
 export async function getCellarStats(): Promise<{
     totalWines: number;
     totalBottles: number;

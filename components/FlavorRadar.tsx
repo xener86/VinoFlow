@@ -3,35 +3,63 @@ import React from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { SensoryProfile } from '../types';
 
-interface Props {
+interface Overlay {
   data: SensoryProfile;
+  color: string;
+  name: string;
 }
 
-export const FlavorRadar: React.FC<Props> = ({ data }) => {
-  const chartData = [
-    { subject: 'Corps', A: data.body, fullMark: 100 },
-    { subject: 'Acidité', A: data.acidity, fullMark: 100 },
-    { subject: 'Tanins', A: data.tannin, fullMark: 100 },
-    { subject: 'Sucre', A: data.sweetness, fullMark: 100 },
-    { subject: 'Alcool', A: data.alcohol, fullMark: 100 },
-  ];
+interface Props {
+  data?: SensoryProfile;
+  overlays?: Overlay[];
+}
+
+export const FlavorRadar: React.FC<Props> = ({ data, overlays }) => {
+  // Build chart data with all data series
+  const subjects = ['Corps', 'Acidité', 'Tanins', 'Sucre', 'Alcool'];
+  const keys = ['body', 'acidity', 'tannin', 'sweetness', 'alcohol'] as const;
+
+  const chartData = subjects.map((subject, i) => {
+    const point: any = { subject, fullMark: 100 };
+    if (data) {
+      point.A = data[keys[i]];
+    }
+    if (overlays) {
+      overlays.forEach((overlay, idx) => {
+        point[`O${idx}`] = overlay.data[keys[i]];
+      });
+    }
+    return point;
+  });
 
   return (
     <div className="w-full h-[200px] select-none">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
           <PolarGrid stroke="#44403c" />
-          <PolarAngleAxis 
-            dataKey="subject" 
-            tick={{ fill: '#a8a29e', fontSize: 10, fontWeight: 500 }} 
+          <PolarAngleAxis
+            dataKey="subject"
+            tick={{ fill: '#a8a29e', fontSize: 10, fontWeight: 500 }}
           />
-          <Radar
-            name="Vin"
-            dataKey="A"
-            stroke="#e02424"
-            fill="#e02424"
-            fillOpacity={0.3}
-          />
+          {data && (
+            <Radar
+              name="Vin"
+              dataKey="A"
+              stroke="#e02424"
+              fill="#e02424"
+              fillOpacity={0.3}
+            />
+          )}
+          {overlays?.map((overlay, idx) => (
+            <Radar
+              key={idx}
+              name={overlay.name}
+              dataKey={`O${idx}`}
+              stroke={overlay.color}
+              fill={overlay.color}
+              fillOpacity={0.15}
+            />
+          ))}
         </RadarChart>
       </ResponsiveContainer>
     </div>
