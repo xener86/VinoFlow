@@ -83,16 +83,29 @@ export const AddWine: React.FC = () => {
      fetchLocation();
   }, [quickAddCount, autoPlace, activeTab]);
 
-  const fileToBase64 = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = () => {
-              const result = reader.result as string;
-              const base64Data = result.split(',')[1];
-              resolve(base64Data);
+  const compressImage = (dataUrl: string, maxSize = 1600, quality = 0.8): Promise<string> => {
+      return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let { width, height } = img;
+              if (width > maxSize || height > maxSize) {
+                  if (width > height) {
+                      height = Math.round(height * maxSize / width);
+                      width = maxSize;
+                  } else {
+                      width = Math.round(width * maxSize / height);
+                      height = maxSize;
+                  }
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d')!;
+              ctx.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', quality));
           };
-          reader.onerror = error => reject(error);
+          img.onerror = () => resolve(dataUrl); // fallback to original
+          img.src = dataUrl;
       });
   };
 
@@ -147,27 +160,29 @@ export const AddWine: React.FC = () => {
       setStep(2);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const dataUrl = await new Promise<string>((resolve) => {
+  const readFileAsDataUrl = (file: File): Promise<string> => {
+      return new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.readAsDataURL(file);
       });
-      setScanImage(dataUrl);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const raw = await readFileAsDataUrl(file);
+      const compressed = await compressImage(raw);
+      setScanImage(compressed);
       setStep(2);
   };
 
   const handleBackFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const dataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-      });
-      setScanImageBack(dataUrl);
+      const raw = await readFileAsDataUrl(file);
+      const compressed = await compressImage(raw);
+      setScanImageBack(compressed);
   };
 
   const handleStartScan = async () => {
@@ -175,7 +190,15 @@ export const AddWine: React.FC = () => {
       setIsLoading(true);
 
       try {
-          const base64 = scanImage.split(',')[1];
+          // Ensure image is compressed (re-compress if needed)
+          const compressed = await compressImage(scanImage, 1280, 0.75);
+          const base64 = compressed.split(',')[1];
+
+          if (!base64 || base64.length < 100) {
+              throw new Error("Image invalide ou vide");
+          }
+
+          console.log(`Scan: sending ${Math.round(base64.length / 1024)}KB image to AI`);
           const result = await enrichWineData("", 0, "", base64);
 
           if (result) {
@@ -185,12 +208,19 @@ export const AddWine: React.FC = () => {
               setVintage(result.vintage || new Date().getFullYear());
               setStep(3);
           } else {
-              alert("Analyse échouée. Essayez la saisie manuelle.");
+              alert("L'IA n'a pas pu identifier ce vin. Essayez avec une photo plus nette ou la saisie manuelle.");
               setStep(1);
           }
-      } catch (err) {
-          console.error("Scan error", err);
-          alert("Erreur lors du traitement de l'image.");
+      } catch (err: any) {
+          console.error("Scan error:", err);
+          const msg = err?.message || String(err);
+          if (msg.includes('API') || msg.includes('key') || msg.includes('401') || msg.includes('403')) {
+              alert("Erreur de configuration IA. Vérifiez votre clé API dans les Paramètres.");
+          } else if (msg.includes('size') || msg.includes('too large') || msg.includes('413')) {
+              alert("Image trop volumineuse. Essayez avec une photo moins détaillée.");
+          } else {
+              alert(`Erreur d'analyse : ${msg}`);
+          }
           setStep(1);
       } finally {
           setIsLoading(false);

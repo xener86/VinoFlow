@@ -61,7 +61,7 @@ class GeminiAdapter implements AIAdapter {
         this.client = new GoogleGenAI({ apiKey });
     }
 
-    private async generateJSON(prompt: string | any[], schema: Schema): Promise<any> {
+    private async generateJSON(prompt: string | any[], schema: Schema, throwOnError = false): Promise<any> {
         try {
             const response = await this.client.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -73,25 +73,33 @@ class GeminiAdapter implements AIAdapter {
                 }
             });
             return response.text ? JSON.parse(response.text) : null;
-        } catch (e) {
-            console.error("Gemini Error", e);
+        } catch (e: any) {
+            console.error("Gemini Error:", e?.message || e);
+            if (throwOnError) throw e;
             return null;
         }
     }
 
     async enrichWine(name: string, vintage: number, hint?: string, imageBase64?: string) {
-        let contents: any = [];
-        
+        let contents: any;
+        const isImageScan = !!imageBase64;
+
         if (imageBase64) {
+            // Use proper parts structure for multimodal content
             contents = [
-                { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-                { text: "Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique. Extrais TOUS les détails : Domaine, Appellation, Millésime, mais SURTOUT la 'Cuvée' et la 'Parcelle/Climat'. Remplis le JSON EN FRANÇAIS." }
+                {
+                    role: 'user',
+                    parts: [
+                        { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+                        { text: "Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique. Extrais TOUS les détails : Domaine, Appellation, Millésime, mais SURTOUT la 'Cuvée' et la 'Parcelle/Climat'. Remplis le JSON EN FRANÇAIS." }
+                    ]
+                }
             ];
         } else {
             contents = `Analyse ce vin : "${name}" (${vintage}) ${hint || ''}. Cherche spécifiquement s'il y a une Cuvée ou un Lieu-dit associé. Retourne un JSON complet EN FRANÇAIS.`;
         }
 
-        const res = await this.generateJSON(contents, wineSchemaStructure as Schema);
+        const res = await this.generateJSON(contents, wineSchemaStructure as Schema, isImageScan);
         if(res) return { ...res, enrichedByAI: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
         return null;
     }
