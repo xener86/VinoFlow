@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { enrichWineData } from '../services/geminiService';
 import { saveWine, getInventory, addBottleAtLocation, addBottles, findNextAvailableSlot } from '../services/storageService';
 import { Wine, CellarWine } from '../types';
@@ -8,6 +8,7 @@ import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin,
 
 export const AddWine: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<'NEW' | 'EXISTING'>('NEW');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -26,6 +27,7 @@ export const AddWine: React.FC = () => {
   const [editFormData, setEditFormData] = useState<Partial<Wine>>({});
   
   const [count, setCount] = useState(1);
+  const [purchasePrice, setPurchasePrice] = useState<number | undefined>(undefined);
   const [scanImage, setScanImage] = useState<string | null>(null);
   const [scanImageBack, setScanImageBack] = useState<string | null>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
@@ -52,6 +54,20 @@ export const AddWine: React.FC = () => {
               streamRef.current.getTracks().forEach(t => t.stop());
           }
       };
+  }, []);
+
+  // Prefill from wishlist
+  useEffect(() => {
+    if (searchParams.get('prefill') === 'true') {
+      const prefillName = searchParams.get('name');
+      const prefillVintage = searchParams.get('vintage');
+      const prefillProducer = searchParams.get('producer');
+      const prefillType = searchParams.get('type');
+      if (prefillName) setName(prefillName);
+      if (prefillVintage) setVintage(Number(prefillVintage));
+      if (prefillProducer) setHint(prefillProducer);
+      if (prefillType) setSelectedType(prefillType);
+    }
   }, []);
 
   // Chargement initial des vins pour l'onglet "Existing"
@@ -273,7 +289,7 @@ export const AddWine: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    await saveWine(newWine, count); // Await
+    await saveWine(newWine, count, purchasePrice); // Await
     navigate('/');
   };
 
@@ -283,15 +299,14 @@ export const AddWine: React.FC = () => {
 
       for(let i=0; i<quickAddCount; i++) {
           if (autoPlace) {
-              // findNextAvailableSlot est async
               const slot = await findNextAvailableSlot();
               if (slot) {
-                  await addBottleAtLocation(selectedExisting.id, slot.location, selectedExisting.name, selectedExisting.vintage);
+                  await addBottleAtLocation(selectedExisting.id, slot.location, selectedExisting.name, selectedExisting.vintage, purchasePrice);
               } else {
-                  await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage);
+                  await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage, purchasePrice);
               }
           } else {
-              await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage);
+              await addBottles(selectedExisting.id, 1, 'Non trié', selectedExisting.name, selectedExisting.vintage, purchasePrice);
           }
       }
       alert(`${quickAddCount} bouteilles ajoutées avec succès !`);
@@ -779,12 +794,29 @@ export const AddWine: React.FC = () => {
               </div>
 
               <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <label className="text-stone-500 dark:text-stone-400 text-sm">Quantité :</label>
-                    <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
-                      <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
-                      <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{count}</span>
-                      <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <label className="text-stone-500 dark:text-stone-400 text-sm">Quantité :</label>
+                      <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                        <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
+                        <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{count}</span>
+                        <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-stone-500 dark:text-stone-400 text-sm">Prix/btl :</label>
+                      <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                        <input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          value={purchasePrice ?? ''}
+                          onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="--"
+                          className="w-16 px-3 py-2 bg-transparent text-stone-900 dark:text-white text-center outline-none text-sm"
+                        />
+                        <span className="pr-3 text-stone-400 text-sm">{'\u20AC'}</span>
+                      </div>
                     </div>
                 </div>
                 <div className="flex gap-3 w-full md:w-auto">
@@ -869,6 +901,22 @@ export const AddWine: React.FC = () => {
                                 <button onClick={() => setQuickAddCount(Math.max(1, quickAddCount - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
                                 <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{quickAddCount}</span>
                                 <button onClick={() => setQuickAddCount(quickAddCount + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                            <label className="text-stone-600 dark:text-stone-300">Prix par bouteille</label>
+                            <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0"
+                                  value={purchasePrice ?? ''}
+                                  onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : undefined)}
+                                  placeholder="--"
+                                  className="w-20 px-3 py-2 bg-transparent text-stone-900 dark:text-white text-center outline-none text-sm"
+                                />
+                                <span className="pr-3 text-stone-400 text-sm">{'\u20AC'}</span>
                             </div>
                         </div>
 

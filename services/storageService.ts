@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
 import { getAuthToken } from './supabase';
 
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -84,7 +84,7 @@ export const getWineById = async (id: string): Promise<CellarWine | null> => {
   }
 };
 
-export const saveWine = async (wine: Wine, quantity: number = 1): Promise<string> => {
+export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?: number): Promise<string> => {
   // 1. Sauvegarder le vin
   let savedWine = wine;
   
@@ -104,7 +104,7 @@ export const saveWine = async (wine: Wine, quantity: number = 1): Promise<string
 
   // 2. Ajouter les bouteilles si quantité > 0
   if (quantity > 0) {
-    await addBottles(savedWine.id, quantity, 'Non trié', savedWine.name, savedWine.vintage);
+    await addBottles(savedWine.id, quantity, 'Non trié', savedWine.name, savedWine.vintage, purchasePrice);
   }
   
   return savedWine.id;
@@ -141,11 +141,12 @@ export const addBottles = async (
   count: number,
   location: string | BottleLocation = 'Non trié',
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  purchasePrice?: number
 ): Promise<void> => {
   const promises = [];
   for (let i = 0; i < count; i++) {
-    const bottle = {
+    const bottle: any = {
       id: crypto.randomUUID(),
       wineId,
       location,
@@ -153,6 +154,7 @@ export const addBottles = async (
       isConsumed: false,
       addedByUserId: 'current-user'
     };
+    if (purchasePrice) bottle.purchasePrice = purchasePrice;
     promises.push(
       fetch(`${API_URL}/bottles`, {
         method: 'POST',
@@ -163,13 +165,14 @@ export const addBottles = async (
   }
   await Promise.all(promises);
 
+  const priceInfo = purchasePrice ? ` - ${purchasePrice}\u20AC/btl` : '';
   await addJournalEntry({
       type: 'IN',
       wineId,
       wineName,
       wineVintage,
       quantity: count,
-      description: `Ajout de ${count} bouteille(s) - ${wineName}`
+      description: `Ajout de ${count} bouteille(s) - ${wineName}${priceInfo}`
   });
 };
 
@@ -177,9 +180,10 @@ export const addBottleAtLocation = async (
   wineId: string,
   location: BottleLocation,
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  purchasePrice?: number
 ): Promise<void> => {
-    await addBottles(wineId, 1, location, wineName, wineVintage);
+    await addBottles(wineId, 1, location, wineName, wineVintage, purchasePrice);
 };
 
 export const consumeSpecificBottle = async (
@@ -600,6 +604,29 @@ export const exportFullData = async (): Promise<string> => {
   };
   
   return JSON.stringify(data, null, 2);
+};
+
+// --- WISHLIST FUNCTIONS ---
+
+export const getWishlist = async (): Promise<WishlistItem[]> => {
+    const response = await fetch(`${API_URL}/wishlist`, { headers: getHeaders() });
+    return handleResponse(response) || [];
+};
+
+export const addWishlistItem = async (item: Partial<WishlistItem>): Promise<WishlistItem> => {
+    const response = await fetch(`${API_URL}/wishlist`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(item)
+    });
+    return handleResponse(response);
+};
+
+export const deleteWishlistItem = async (id: string): Promise<void> => {
+    await fetch(`${API_URL}/wishlist/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
 };
 
 export const importFullData = async (jsonString: string): Promise<boolean> => {

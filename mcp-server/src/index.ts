@@ -255,6 +255,66 @@ server.tool(
     }
 );
 
+// --- Tool: analyze_wine_fair ---
+server.tool(
+    'analyze_wine_fair',
+    'Analyze a wine fair exhibitor list against the cellar inventory. Returns cellar context and exhibitor list for prioritized recommendations (INCONTOURNABLE / INTÉRESSANT / OPTIONNEL)',
+    {
+        exhibitors: z.string().describe('List of exhibitors/producers at the wine fair (one per line or comma-separated)'),
+        priorities: z.string().optional().describe('User priorities or preferences for the fair (e.g., "looking for white wines", "budget < 30€")'),
+    },
+    async ({ exhibitors, priorities }) => {
+        try {
+            const [inventory, stats] = await Promise.all([
+                client.getInventory(),
+                client.getCellarStats()
+            ]);
+
+            const cellarContext = client.formatCellarContextForFair(inventory, stats);
+
+            // Check which exhibitors are already known producers
+            const exhibitorList = exhibitors
+                .split(/[,\n]+/)
+                .map(e => e.trim())
+                .filter(Boolean);
+
+            const knownProducers = inventory.map(w => w.producer.toLowerCase());
+            const alreadyInCellar = exhibitorList.filter(e =>
+                knownProducers.some(p => p.includes(e.toLowerCase()) || e.toLowerCase().includes(p))
+            );
+
+            const text = [
+                `# Analyse Salon de Vignerons`,
+                '',
+                cellarContext,
+                '',
+                `## Exposants du Salon (${exhibitorList.length})`,
+                exhibitorList.map(e => {
+                    const inCellar = alreadyInCellar.some(a => a.toLowerCase() === e.toLowerCase());
+                    return `- ${e}${inCellar ? ' ⭐ (déjà en cave)' : ''}`;
+                }).join('\n'),
+                '',
+                alreadyInCellar.length > 0
+                    ? `**${alreadyInCellar.length} exposant(s) déjà présent(s) en cave:** ${alreadyInCellar.join(', ')}`
+                    : '**Aucun exposant déjà présent en cave.**',
+                '',
+                priorities ? `## Priorités Utilisateur\n${priorities}` : '',
+                '',
+                `## Instructions pour l'analyse`,
+                `En te basant sur le profil de la cave ci-dessus et la liste des exposants, classe chaque exposant en:`,
+                `- **INCONTOURNABLE** : exposant qui comble une faiblesse de la cave ou producteur déjà apprécié`,
+                `- **INTÉRESSANT** : diversification pertinente ou découverte cohérente avec le profil`,
+                `- **OPTIONNEL** : doublon avec ce qui existe déjà ou hors profil`,
+                `Pour chaque exposant, donne une raison courte liée à la cave.`,
+            ].filter(Boolean).join('\n');
+
+            return { content: [{ type: 'text' as const, text }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
 // --- Start Server ---
 async function main() {
     const transport = new StdioServerTransport();

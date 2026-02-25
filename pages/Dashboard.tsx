@@ -5,7 +5,8 @@ import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine } from '../types';
 import { formatBottleLocation } from '../utils/locationFormatter';
-import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2 } from 'lucide-react';
+import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
+import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2, Filter, RotateCcw } from 'lucide-react';
 
 interface WineCardProps {
   wine: CellarWine;
@@ -71,6 +72,15 @@ const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavorit
                 >
                   FAVORIS
                 </button>
+                {(() => {
+                  const peak = getPeakWindow(wine.vintage, wine.type);
+                  const styles = getPeakBadgeStyles(peak.status);
+                  return (
+                    <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase ${styles.bg} ${styles.text}`}>
+                      {peak.status}
+                    </span>
+                  );
+                })()}
               </div>
               <h3 className="text-2xl font-serif text-stone-800 dark:text-stone-100 leading-tight mb-1">{wine.name}</h3>
               {wine.cuvee && <p className="text-sm font-serif text-wine-700 dark:text-wine-400 italic mb-1">{wine.cuvee}</p>}
@@ -130,7 +140,16 @@ export const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [foodPairingQuery, setFoodPairingQuery] = useState('');
   const [consumingWine, setConsumingWine] = useState<CellarWine | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [regionFilter, setRegionFilter] = useState('');
+  const [appellationFilter, setAppellationFilter] = useState('');
+  const [vintageMin, setVintageMin] = useState<number | ''>('');
+  const [vintageMax, setVintageMax] = useState<number | ''>('');
   const navigate = useNavigate();
+
+  const uniqueRegions = [...new Set(wines.map(w => w.region))].filter(Boolean).sort();
+  const uniqueAppellations = [...new Set(wines.map(w => w.appellation).filter(Boolean) as string[])].sort();
+  const activeFilterCount = [regionFilter, appellationFilter, vintageMin, vintageMax].filter(Boolean).length;
 
   const handleConsume = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -182,8 +201,12 @@ export const Dashboard: React.FC = () => {
         normalizeText(w.region).includes(normalizedQuery) ||
         w.vintage.toString().includes(normalizedQuery);
     const hasStock = w.inventoryCount > 0;
+    const matchesRegion = !regionFilter || w.region === regionFilter;
+    const matchesAppellation = !appellationFilter || w.appellation === appellationFilter;
+    const matchesVintageMin = !vintageMin || w.vintage >= vintageMin;
+    const matchesVintageMax = !vintageMax || w.vintage <= vintageMax;
 
-    return matchesType && matchesFavorites && matchesSearch && hasStock;
+    return matchesType && matchesFavorites && matchesSearch && hasStock && matchesRegion && matchesAppellation && matchesVintageMin && matchesVintageMax;
   });
   
   const filterLabels: Record<string, string> = {
@@ -264,6 +287,70 @@ export const Dashboard: React.FC = () => {
                 className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-stone-300 dark:focus:ring-stone-600 outline-none placeholder-stone-400 dark:placeholder-stone-600 transition-all shadow-sm"
             />
         </div>
+
+        {/* Advanced Filters Toggle */}
+        <div className="flex items-center gap-3">
+            <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`flex items-center gap-1.5 text-xs font-medium transition-colors px-3 py-1.5 rounded-lg border ${
+                  showAdvancedFilters || activeFilterCount > 0
+                    ? 'bg-wine-50 dark:bg-wine-900/20 text-wine-700 dark:text-wine-400 border-wine-200 dark:border-wine-800'
+                    : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300 border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900'
+                }`}
+            >
+                <Filter size={12} />
+                Filtres
+                {activeFilterCount > 0 && (
+                    <span className="bg-wine-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{activeFilterCount}</span>
+                )}
+            </button>
+        </div>
+
+        {showAdvancedFilters && (
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-3 shadow-sm animate-slide-up">
+                <div className="grid grid-cols-2 gap-3">
+                    <select
+                        value={regionFilter}
+                        onChange={(e) => setRegionFilter(e.target.value)}
+                        className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-700 dark:text-stone-300 outline-none"
+                    >
+                        <option value="">Toutes régions</option>
+                        {uniqueRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <select
+                        value={appellationFilter}
+                        onChange={(e) => setAppellationFilter(e.target.value)}
+                        className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-700 dark:text-stone-300 outline-none"
+                    >
+                        <option value="">Toutes appellations</option>
+                        {uniqueAppellations.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        type="number" placeholder="Mill. min" min={1900} max={2030}
+                        value={vintageMin}
+                        onChange={(e) => setVintageMin(e.target.value ? Number(e.target.value) : '')}
+                        className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-700 dark:text-stone-300 outline-none"
+                    />
+                    <span className="text-stone-400 text-xs">—</span>
+                    <input
+                        type="number" placeholder="Mill. max" min={1900} max={2030}
+                        value={vintageMax}
+                        onChange={(e) => setVintageMax(e.target.value ? Number(e.target.value) : '')}
+                        className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-700 dark:text-stone-300 outline-none"
+                    />
+                </div>
+                {activeFilterCount > 0 && (
+                    <button
+                        onClick={() => { setRegionFilter(''); setAppellationFilter(''); setVintageMin(''); setVintageMax(''); }}
+                        className="flex items-center gap-1 text-[10px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 uppercase tracking-wider"
+                    >
+                        <RotateCcw size={10} /> Réinitialiser
+                    </button>
+                )}
+            </div>
+        )}
 
         {/* Filters */}
         <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
