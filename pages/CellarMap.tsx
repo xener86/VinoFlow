@@ -4,7 +4,7 @@ import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWi
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Pencil, ChevronLeft, MoreVertical, ArrowLeftRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
 
@@ -74,6 +74,15 @@ export const CellarMap: React.FC = () => {
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
+
+  // Close rack menu on outside click
+  useEffect(() => {
+    const handleClickOutside = () => setRackMenuId(null);
+    if (rackMenuId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [rackMenuId]);
 
   // Initialisation de la sélection du rack une fois les données chargées
   useEffect(() => {
@@ -302,6 +311,9 @@ export const CellarMap: React.FC = () => {
       setCreateRackName(name);
   };
 
+  // Context menu for rack tabs
+  const [rackMenuId, setRackMenuId] = useState<string | null>(null);
+
   if (loadingRacks || loadingWines) {
       return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-wine-600" size={48} /></div>;
   }
@@ -350,37 +362,88 @@ export const CellarMap: React.FC = () => {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {shelves.map(rack => {
+            {shelves.map((rack, idx) => {
                 const matchCount = getMatchesForRack(rack.id);
                 const isSelected = selectedTabId === rack.id;
-                
+
                 return (
-                    <button
-                        key={rack.id}
-                        onClick={() => setSelectedTabId(rack.id)}
-                        className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
-                            isSelected 
-                            ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm' 
-                            : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
-                        }`}
-                        style={{marginBottom: -1}} 
-                    >
-                        {rack.name}
-                        {matchCount > 0 && (
-                            <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                                {matchCount}
-                            </span>
+                    <div key={rack.id} className="relative flex-shrink-0">
+                        <button
+                            onClick={() => { setSelectedTabId(rack.id); setRackMenuId(null); }}
+                            onContextMenu={(e) => { e.preventDefault(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
+                            className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
+                                isSelected
+                                ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm'
+                                : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
+                            }`}
+                            style={{marginBottom: -1}}
+                        >
+                            {rack.name}
+                            {matchCount > 0 && (
+                                <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                                    {matchCount}
+                                </span>
+                            )}
+                            {isArchitectMode && isSelected && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
+                                    className="ml-1 p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
+                                >
+                                    <MoreVertical size={12} />
+                                </button>
+                            )}
+                        </button>
+
+                        {/* Context menu */}
+                        {rackMenuId === rack.id && (
+                            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-2 min-w-[180px] animate-fade-in">
+                                <button
+                                    onClick={() => { handleEditRack(rack); setRackMenuId(null); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
+                                >
+                                    <Pencil size={14} className="text-blue-500" /> Renommer
+                                </button>
+                                {idx > 0 && (
+                                    <button
+                                        onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenuId(null); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
+                                    >
+                                        <ChevronLeft size={14} className="text-indigo-500" /> Déplacer à gauche
+                                    </button>
+                                )}
+                                {idx < shelves.length - 1 && (
+                                    <button
+                                        onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenuId(null); }}
+                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
+                                    >
+                                        <ChevronRight size={14} className="text-indigo-500" /> Déplacer à droite
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => { handleQuickFill(rack); setRackMenuId(null); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
+                                >
+                                    <PackagePlus size={14} className="text-amber-500" /> Remplir
+                                </button>
+                                <div className="border-t border-stone-200 dark:border-stone-700 my-1" />
+                                <button
+                                    onClick={() => { handleDeleteRack(rack.id); setRackMenuId(null); }}
+                                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3"
+                                >
+                                    <Trash2 size={14} /> Supprimer
+                                </button>
+                            </div>
                         )}
-                    </button>
+                    </div>
                 )
             })}
 
             {boxes.length > 0 && (
                 <button
-                    onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
+                    onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenuId(null); }}
                     className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                         selectedTabId === 'VIEW_ALL_BOXES'
-                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm' 
+                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm'
                         : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
                     }`}
                     style={{marginBottom: -1}}
@@ -396,7 +459,7 @@ export const CellarMap: React.FC = () => {
             )}
 
             {isArchitectMode && (
-                <button 
+                <button
                   onClick={() => setShowAddRackModal(true)}
                   className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 dark:border-stone-600 text-stone-500 hover:text-stone-800 dark:hover:text-white hover:border-stone-500 dark:hover:border-stone-400"
                 >
