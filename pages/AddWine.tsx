@@ -4,7 +4,7 @@ import { enrichWineData } from '../services/geminiService';
 import { saveWine, getInventory, addBottleAtLocation, addBottles, findNextAvailableSlot } from '../services/storageService';
 import { Wine, CellarWine } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
-import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin, PackagePlus, ArrowRight, AlertTriangle, Edit3 } from 'lucide-react';
+import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin, PackagePlus, ArrowRight, AlertTriangle, Edit3, Video, Upload, X } from 'lucide-react';
 
 export const AddWine: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +30,13 @@ export const AddWine: React.FC = () => {
   const [scanImageBack, setScanImageBack] = useState<string | null>(null);
   const backFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Webcam State
+  const [showScanChoice, setShowScanChoice] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
   // Existing Wine State (Quick Add)
   const [existingWines, setExistingWines] = useState<CellarWine[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,6 +44,15 @@ export const AddWine: React.FC = () => {
   const [quickAddCount, setQuickAddCount] = useState(1);
   const [autoPlace, setAutoPlace] = useState(true);
   const [suggestedLocations, setSuggestedLocations] = useState<string[]>([]);
+
+  // Cleanup webcam on unmount
+  useEffect(() => {
+      return () => {
+          if (streamRef.current) {
+              streamRef.current.getTracks().forEach(t => t.stop());
+          }
+      };
+  }, []);
 
   // Chargement initial des vins pour l'onglet "Existing"
   useEffect(() => {
@@ -82,7 +98,53 @@ export const AddWine: React.FC = () => {
 
   const handleScanClick = () => {
       setMode('SCAN');
+      setShowScanChoice(true);
+  };
+
+  const handleScanFromFile = () => {
+      setShowScanChoice(false);
       fileInputRef.current?.click();
+  };
+
+  const startWebcam = async () => {
+      setShowScanChoice(false);
+      setShowWebcam(true);
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+          });
+          streamRef.current = stream;
+          if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+          }
+      } catch (err) {
+          console.error('Webcam error:', err);
+          alert("Impossible d'accéder à la caméra. Vérifiez les permissions.");
+          stopWebcam();
+      }
+  };
+
+  const stopWebcam = () => {
+      if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+      }
+      setShowWebcam(false);
+  };
+
+  const captureWebcam = () => {
+      if (!videoRef.current || !canvasRef.current) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      setScanImage(dataUrl);
+      stopWebcam();
+      setStep(2);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -214,14 +276,87 @@ export const AddWine: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto pb-20">
       
-      <input 
-          type="file" 
-          accept="image/*" 
+      <input
+          type="file"
+          accept="image/*"
           capture="environment"
-          ref={fileInputRef} 
+          ref={fileInputRef}
           onChange={handleFileChange}
-          className="hidden" 
+          className="hidden"
       />
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Scan Choice Modal */}
+      {showScanChoice && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+              <div className="absolute inset-0 bg-stone-900/30 dark:bg-black/70 backdrop-blur-sm" onClick={() => setShowScanChoice(false)} />
+              <div className="bg-white dark:bg-stone-900 border-t sm:border border-stone-200 dark:border-stone-700 w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl p-6 pb-10 sm:pb-6 relative z-10 shadow-2xl animate-slide-up">
+                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4 sm:hidden" />
+                  <h3 className="text-lg font-serif text-stone-900 dark:text-white mb-4 text-center">Scanner une étiquette</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                      <button
+                          onClick={handleScanFromFile}
+                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                      >
+                          <Upload size={28} className="text-wine-600" />
+                          <div className="text-center">
+                              <div className="text-sm font-medium text-stone-800 dark:text-white">Photo / Fichier</div>
+                              <div className="text-[10px] text-stone-500 mt-0.5">Galerie ou appareil photo</div>
+                          </div>
+                      </button>
+                      <button
+                          onClick={startWebcam}
+                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                      >
+                          <Video size={28} className="text-indigo-600" />
+                          <div className="text-center">
+                              <div className="text-sm font-medium text-stone-800 dark:text-white">Webcam</div>
+                              <div className="text-[10px] text-stone-500 mt-0.5">Capture en direct</div>
+                          </div>
+                      </button>
+                  </div>
+                  <button onClick={() => setShowScanChoice(false)} className="w-full py-2 mt-4 text-stone-500 text-sm">Annuler</button>
+              </div>
+          </div>
+      )}
+
+      {/* Webcam Capture Modal */}
+      {showWebcam && (
+          <div className="fixed inset-0 z-50 bg-black flex flex-col">
+              <div className="flex items-center justify-between p-4 bg-black/80">
+                  <h3 className="text-white font-medium">Visez l'étiquette</h3>
+                  <button onClick={stopWebcam} className="text-white/70 hover:text-white p-1">
+                      <X size={24} />
+                  </button>
+              </div>
+              <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                  <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                  />
+                  {/* Viewfinder overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-[75%] max-w-sm aspect-[3/4] border-2 border-white/40 rounded-2xl">
+                          <div className="absolute top-0 left-0 w-6 h-6 border-t-3 border-l-3 border-white rounded-tl-xl" />
+                          <div className="absolute top-0 right-0 w-6 h-6 border-t-3 border-r-3 border-white rounded-tr-xl" />
+                          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-3 border-l-3 border-white rounded-bl-xl" />
+                          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-3 border-r-3 border-white rounded-br-xl" />
+                      </div>
+                  </div>
+              </div>
+              <div className="p-6 bg-black/80 flex justify-center">
+                  <button
+                      onClick={captureWebcam}
+                      className="w-18 h-18 rounded-full border-4 border-white flex items-center justify-center bg-white/20 hover:bg-white/30 active:bg-white/50 transition-colors"
+                  >
+                      <div className="w-14 h-14 rounded-full bg-white" />
+                  </button>
+              </div>
+          </div>
+      )}
 
       {/* HEADER TABS */}
       <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800 mb-8">
