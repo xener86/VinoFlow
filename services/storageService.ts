@@ -392,10 +392,22 @@ export const deleteRack = async (id: string): Promise<void> => {
 };
 
 export const reorderRack = async (id: string, direction: 'left' | 'right'): Promise<void> => {
-    // Nécessite de connaitre l'ordre actuel. 
-    // Le backend devrait gérer ça via un endpoint /reorder ou on le fait ici.
-    // Simplification: On ne fait rien pour l'instant ou on implémente une logique complète
-    console.warn("Reorder rack not fully implemented in API mode yet");
+    const allRacks = await getRacks();
+    const currentIndex = allRacks.findIndex(r => r.id === id);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= allRacks.length) return;
+
+    // Swap
+    const reordered = [...allRacks];
+    [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
+
+    await fetch(`${API_URL}/racks/reorder`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ rackIds: reordered.map(r => r.id) })
+    });
 };
 
 // --- SPIRIT FUNCTIONS ---

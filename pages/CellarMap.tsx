@@ -4,7 +4,7 @@ import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWi
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2 } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Edit3, ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
 
@@ -107,7 +107,13 @@ export const CellarMap: React.FC = () => {
       return count;
   };
 
-  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
+  const isUnsortedLocation = (loc: any): boolean => {
+    if (typeof loc === 'string') return loc === 'Non trié';
+    if (typeof loc === 'object' && loc !== null) return loc.label === 'Non trié';
+    return false;
+  };
+
+  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => isUnsortedLocation(b.location) && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
 
   const [isPlacingAll, setIsPlacingAll] = useState(false);
 
@@ -430,6 +436,35 @@ export const CellarMap: React.FC = () => {
         </div>
       </div>
 
+      {/* Architect Mode Toolbar */}
+      {isArchitectMode && selectedTabId && selectedTabId !== 'VIEW_ALL_BOXES' && (() => {
+          const rack = racks.find(r => r.id === selectedTabId);
+          if (!rack) return null;
+          const rackIndex = racks.findIndex(r => r.id === selectedTabId);
+          return (
+              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-2">
+                  <PencilRuler size={14} className="text-indigo-500" />
+                  <span className="text-xs text-indigo-700 dark:text-indigo-300 font-bold mr-auto">{rack.name}</span>
+                  <button onClick={() => handleReorderRack(rack.id, 'left')} disabled={rackIndex === 0} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à gauche">
+                      <ChevronLeft size={16} />
+                  </button>
+                  <button onClick={() => handleReorderRack(rack.id, 'right')} disabled={rackIndex === racks.length - 1} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à droite">
+                      <ChevronRight size={16} />
+                  </button>
+                  <div className="w-px h-5 bg-indigo-200 dark:bg-indigo-800" />
+                  <button onClick={() => handleEditRack(rack)} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400" title="Renommer">
+                      <Edit3 size={16} />
+                  </button>
+                  <button onClick={() => handleQuickFill(rack)} className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-600 dark:text-amber-400" title="Remplir">
+                      <PackagePlus size={16} />
+                  </button>
+                  <button onClick={() => handleDeleteRack(rack.id)} className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 text-red-500" title="Supprimer">
+                      <Trash2 size={16} />
+                  </button>
+              </div>
+          );
+      })()}
+
       {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
@@ -667,19 +702,22 @@ export const CellarMap: React.FC = () => {
                       <div className="border-t border-stone-200 dark:border-stone-800 my-1 pt-2">
                           <p className="text-xs text-stone-500 mb-2 uppercase font-bold">Ou placer un vin existant</p>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {inventory.map(w => (
-                                  <button 
-                                    key={w.id} 
+                              {inventory.filter(w => w.inventoryCount > 0).map(w => (
+                                  <button
+                                    key={w.id}
                                     onClick={() => handleAddExistingToSlot(w)}
                                     className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800"
                                   >
                                       <div>
                                           <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                          <div className="text-stone-500 text-[10px]">{w.vintage}</div>
+                                          <div className="text-stone-500 text-[10px]">{w.vintage} • {w.inventoryCount} en stock</div>
                                       </div>
                                       <Plus size={14} className="text-stone-400"/>
                                   </button>
                               ))}
+                              {inventory.filter(w => w.inventoryCount > 0).length === 0 && (
+                                  <p className="text-xs text-stone-400 italic text-center py-4">Aucun vin en stock</p>
+                              )}
                           </div>
                       </div>
                   </div>
