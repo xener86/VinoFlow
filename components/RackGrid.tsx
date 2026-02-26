@@ -1,5 +1,6 @@
 import React from 'react';
 import { CellarWine, Rack, Bottle, BottleLocation } from '../types';
+import { matchesWineSearch } from '../utils/wineSearch';
 
 interface SelectedBottleState {
     wine: CellarWine;
@@ -73,7 +74,7 @@ export const RackGrid: React.FC<RackGridProps> = ({
 
                        if (cellData) {
                            const { wine, bottle } = cellData;
-                           const isMatch = searchQuery && (wine.name.toLowerCase().includes(searchQuery.toLowerCase()) || wine.vintage.toString().includes(searchQuery));
+                           const isMatch = searchQuery && matchesWineSearch(wine, searchQuery);
                            
                            if (wine.type === 'RED') bgClass = "bg-red-100 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-400";
                            else if (wine.type === 'WHITE') bgClass = "bg-yellow-100 border-yellow-200 text-yellow-800 dark:bg-yellow-950 dark:border-yellow-900 dark:text-yellow-400";
