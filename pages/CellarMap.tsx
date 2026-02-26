@@ -7,6 +7,7 @@ import { CellarWine, Rack, BottleLocation } from '../types';
 import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Edit3, ChevronLeft, ArrowLeftRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
+import { matchesWineSearch } from '../utils/wineSearch';
 
 interface SelectedBottleState {
     wine: CellarWine;
@@ -95,8 +96,7 @@ export const CellarMap: React.FC = () => {
       if (!searchQuery) return 0;
       let count = 0;
       inventory.forEach(w => {
-          const isMatch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) || w.vintage.toString().includes(searchQuery);
-          if (isMatch) {
+          if (matchesWineSearch(w, searchQuery)) {
               w.bottles.forEach(b => {
                   if (typeof b.location !== 'string' && b.location.rackId === rackId && !b.isConsumed) {
                       count++;
@@ -372,7 +372,7 @@ export const CellarMap: React.FC = () => {
             <Search className="absolute left-3 top-3 text-stone-400" size={18} />
             <input 
                 type="text"
-                placeholder="Chercher dans toute la cave..."
+                placeholder="Nom, producteur, région, cépage, millésime..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-600 outline-none"
