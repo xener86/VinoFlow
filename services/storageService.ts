@@ -84,7 +84,7 @@ export const getWineById = async (id: string): Promise<CellarWine | null> => {
   }
 };
 
-export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?: number): Promise<string> => {
+export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?: number, location?: BottleLocation): Promise<string> => {
   // 1. Sauvegarder le vin
   let savedWine = wine;
   
@@ -104,7 +104,7 @@ export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?:
 
   // 2. Ajouter les bouteilles si quantité > 0
   if (quantity > 0) {
-    await addBottles(savedWine.id, quantity, 'Non trié', savedWine.name, savedWine.vintage, purchasePrice);
+    await addBottles(savedWine.id, quantity, location || 'Non trié', savedWine.name, savedWine.vintage, purchasePrice);
   }
   
   return savedWine.id;

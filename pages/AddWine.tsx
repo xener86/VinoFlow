@@ -2,13 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { enrichWineData } from '../services/geminiService';
 import { saveWine, getInventory, addBottleAtLocation, addBottles, findNextAvailableSlot } from '../services/storageService';
-import { Wine, CellarWine } from '../types';
+import { Wine, CellarWine, BottleLocation } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { Search, Loader2, Save, FileSpreadsheet, Keyboard, Camera, Plus, MapPin, PackagePlus, ArrowRight, AlertTriangle, Edit3, Video, Upload, X } from 'lucide-react';
 
 export const AddWine: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Rack location from CellarMap empty-cell flow
+  const rackLocation: BottleLocation | undefined = (() => {
+    const rId = searchParams.get('rackId'), rX = searchParams.get('rackX'), rY = searchParams.get('rackY');
+    return rId && rX !== null && rY !== null ? { rackId: rId, x: Number(rX), y: Number(rY) } : undefined;
+  })();
+  const rackName = searchParams.get('rackName');
+
   const [activeTab, setActiveTab] = useState<'NEW' | 'EXISTING'>('NEW');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -289,7 +297,7 @@ export const AddWine: React.FC = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    await saveWine(newWine, count, purchasePrice); // Await
+    await saveWine(newWine, rackLocation ? 1 : count, purchasePrice, rackLocation);
     navigate('/');
   };
 
@@ -401,6 +409,16 @@ export const AddWine: React.FC = () => {
                   </button>
               </div>
           </div>
+      )}
+
+      {/* Rack location banner */}
+      {rackLocation && (
+        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 mb-4">
+          <MapPin size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+          <span className="text-sm text-emerald-800 dark:text-emerald-300">
+            Emplacement : <strong>{rackName || 'Rack'}</strong> • {String.fromCharCode(65 + rackLocation.y)}{rackLocation.x + 1}
+          </span>
+        </div>
       )}
 
       {/* HEADER TABS */}
@@ -795,14 +813,21 @@ export const AddWine: React.FC = () => {
 
               <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <label className="text-stone-500 dark:text-stone-400 text-sm">Quantité :</label>
-                      <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
-                        <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
-                        <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{count}</span>
-                        <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                    {rackLocation ? (
+                      <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+                        <MapPin size={14} />
+                        <span>1 bouteille → {rackName || 'Rack'} {String.fromCharCode(65 + rackLocation.y)}{rackLocation.x + 1}</span>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <label className="text-stone-500 dark:text-stone-400 text-sm">Quantité :</label>
+                        <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                          <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
+                          <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{count}</span>
+                          <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <label className="text-stone-500 dark:text-stone-400 text-sm">Prix/btl :</label>
                       <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
