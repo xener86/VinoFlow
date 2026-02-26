@@ -39,9 +39,11 @@ const generateTastingQuestionnaire = async (wine: CellarWine) => {
         };
         let body: any = {};
 
+        const currentYear = new Date().getFullYear();
+        const ageYears = currentYear - wine.vintage;
         const prompt = `Tu es un sommelier expert. Génère un questionnaire de dégustation personnalisé pour ce vin :
 
-VIN : ${wine.name} ${wine.cuvee || ''}
+VIN : ${wine.name} ${wine.cuvee || ''} (${ageYears} ans d'âge)
 PRODUCTEUR : ${wine.producer}
 RÉGION : ${wine.region}
 MILLÉSIME : ${wine.vintage}
@@ -50,18 +52,18 @@ ${wine.aromaProfile?.length ? `PROFIL AROMATIQUE : ${wine.aromaProfile.join(', '
 
 Réponds UNIQUEMENT avec un objet JSON valide (sans backticks ni texte) :
 {
-  "visualIntensity": 50-80 (nombre selon couleur type),
+  "visualIntensity": 50-80 (nombre selon couleur et âge — un rouge vieux sera moins intense),
   "visualDescription": "Description couleur précise (ex: Rubis profond, Or brillant, Rose saumon)",
-  "bodyDefault": 40-80 (selon région/millésime),
+  "bodyDefault": 40-80 (selon région/millésime/cépage probable),
   "acidityDefault": 30-70 (selon type/région),
-  "tanninDefault": 20-80 (selon couleur/âge),
-  "tastingTips": "1 conseil court de dégustation (température, aération...)",
-  "pairingSuggestions": ["5 accords mets-vins précis pour ce vin"]
+  "tanninDefault": 20-80 (selon couleur/âge — tanins fondus si vieux),
+  "tastingTips": "1 conseil court et pratique (ex: Carafer 30min, servir à 16°C)",
+  "pairingSuggestions": ["5 plats PRÉCIS — pas 'viande rouge' mais 'côte de bœuf grillée aux herbes'"]
 }
 
-IMPORTANT : 
+IMPORTANT :
 - Adapte les valeurs au profil EXACT du vin (pas de valeurs génériques)
-- Les pairingSuggestions doivent être des plats précis
+- Prends en compte l'âge du vin (${ageYears} ans) pour ajuster les paramètres
 - Ne mets RIEN d'autre que le JSON dans ta réponse`;
 
         if (settings.provider === 'anthropic') {

@@ -61,7 +61,7 @@ class GeminiAdapter implements AIAdapter {
         this.client = new GoogleGenAI({ apiKey });
     }
 
-    private async generateJSON(prompt: string | any[], schema: Schema, throwOnError = false): Promise<any> {
+    private async generateJSON(prompt: string | any[], schema: Schema, throwOnError = false, temperature = 0.3): Promise<any> {
         try {
             const response = await this.client.models.generateContent({
                 model: 'gemini-2.5-flash',
@@ -69,7 +69,7 @@ class GeminiAdapter implements AIAdapter {
                 config: {
                     responseMimeType: 'application/json',
                     responseSchema: schema,
-                    temperature: 0.3
+                    temperature
                 }
             });
             return response.text ? JSON.parse(response.text) : null;
@@ -84,19 +84,33 @@ class GeminiAdapter implements AIAdapter {
         let contents: any;
         const isImageScan = !!imageBase64;
 
+        const antiHallucination = `RÈGLES STRICTES :
+- Si tu n'es PAS certain d'une information, mets null plutôt que d'inventer.
+- Le champ "confidence" doit refléter ta certitude globale : HIGH = vin connu et vérifié, MEDIUM = probable mais non confirmé, LOW = hypothèse basée sur peu d'indices.
+- Ne complète JAMAIS les cépages ou l'appellation si tu n'as pas de source fiable.
+- Mieux vaut un JSON incomplet qu'un JSON avec des données inventées.`;
+
         if (imageBase64) {
-            // Use proper parts structure for multimodal content
             contents = [
                 {
                     role: 'user',
                     parts: [
                         { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-                        { text: "Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique. Extrais TOUS les détails : Domaine, Appellation, Millésime, mais SURTOUT la 'Cuvée' et la 'Parcelle/Climat'. Remplis le JSON EN FRANÇAIS." }
+                        { text: `Tu es expert en vin et OCR. Analyse cette étiquette ou fiche technique.
+1. Transcris d'abord le texte visible sur l'image.
+2. Extrais ensuite les détails : Domaine, Appellation, Millésime, Cuvée, Parcelle/Climat.
+3. Remplis le JSON EN FRANÇAIS.
+
+${antiHallucination}` }
                     ]
                 }
             ];
         } else {
-            contents = `Analyse ce vin : "${name}" (${vintage}) ${hint || ''}. Cherche spécifiquement s'il y a une Cuvée ou un Lieu-dit associé. Retourne un JSON complet EN FRANÇAIS.`;
+            contents = `Tu es expert en vin. Analyse ce vin : "${name}" (${vintage}) ${hint || ''}.
+Cherche spécifiquement s'il y a une Cuvée ou un Lieu-dit associé.
+Retourne un JSON complet EN FRANÇAIS.
+
+${antiHallucination}`;
         }
 
         const res = await this.generateJSON(contents, wineSchemaStructure as Schema, isImageScan);
@@ -124,15 +138,26 @@ class GeminiAdapter implements AIAdapter {
             },
             required: ["category", "description"]
         } as Schema;
-        
-        const prompt = `Analyse ce spiritueux : "${name}" ${hint || ''}. Retourne JSON français complet.`;
+
+        const prompt = `Tu es expert en spiritueux. Analyse : "${name}" ${hint || ''}.
+Retourne un JSON complet EN FRANÇAIS avec catégorie, distillerie, région, pays, ABV, description, notes de dégustation, profil aromatique, cocktails suggérés et accords culinaires.
+Si tu n'es pas certain d'une information (ABV, type de fût, etc.), mets null plutôt que d'inventer.`;
         const res = await this.generateJSON(prompt, schema);
         if(res) return { ...res, enrichedByAI: true, addedAt: new Date().toISOString() };
         return null;
     }
 
     async createCustomCocktail(ingredients: string[], query: string) {
-        const prompt = `Mixologue. Stock: ${ingredients.join(',')}. Demande: "${query}". Crée recette JSON.`;
+        const prompt = `Tu es mixologue expert. Crée une recette de cocktail originale.
+
+INGRÉDIENTS DISPONIBLES : ${ingredients.join(', ')}
+DEMANDE DU CLIENT : "${query}"
+
+CONSIGNES :
+- Utilise UNIQUEMENT les ingrédients listés (+ glace, sucre, eau gazeuse autorisés).
+- La description doit faire 1-2 phrases max.
+- Les instructions doivent être des étapes numérotées claires et concises.
+- Le nom du cocktail doit être créatif et évocateur.`;
         const schema = {
             type: Type.OBJECT,
             properties: {
@@ -144,15 +169,17 @@ class GeminiAdapter implements AIAdapter {
                 difficulty: { type: Type.STRING }
             }
         } as Schema;
-        const res = await this.generateJSON(prompt, schema);
+        const res = await this.generateJSON(prompt, schema, false, 0.7);
         if(res) return { ...res, category: 'MODERN', prepTime: 5, source: 'AI', isFavorite: false, tags: ['AI'] };
         return null;
     }
 
     async generateEducationalContent(itemName: string): Promise<string> {
-        const r = await this.client.models.generateContent({ 
-            model: 'gemini-2.5-flash', 
-            contents: `Anecdote courte sur "${itemName}" en français.`
+        const r = await this.client.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `Tu es œnologue passionné. Raconte UNE anecdote surprenante sur "${itemName}" en français.
+Contraintes : 2-4 phrases maximum. Ton conversationnel et engageant. Inclus un fait peu connu si possible.`,
+            config: { temperature: 0.7 }
         });
         return r.text || "";
     }
@@ -178,17 +205,29 @@ class GeminiAdapter implements AIAdapter {
             return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) - Type:${w.type} Region:${w.region} Favorite:${(w as any).isFavorite ? 'OUI' : 'NON'} Emplacements:[${bottleLocations.join(', ')}]`;
         }).join('\n');
         
-        const prompt = `Tu es sommelier expert français. Année actuelle : 2025.
-Contexte : Repas: ${context.meal || 'Non spécifié'}, Mood: ${context.mood || 'Aucune'}
-Vins dispos :
+        const currentYear = new Date().getFullYear();
+        const prompt = `Tu es sommelier expert français. Année actuelle : ${currentYear}.
+
+CONTEXTE DU REPAS :
+- Plat/occasion : ${context.meal || 'Non spécifié'}
+- Ambiance souhaitée : ${context.mood || 'Aucune préférence'}
+
+CAVE DISPONIBLE :
 ${invStr}
 
-MISSION :
-1. Sélectionne 3 vins.
-2. Calcule apogée 2025 (DRINK_NOW, KEEP_2_3_YEARS, DRINK_SOON, PAST_PEAK).
-3. Suggère 1 appellation hors cave si besoin.
+MISSION (par ordre de priorité) :
+1. SÉLECTION : Choisis les 3 meilleurs vins pour ce contexte. Privilégie les favoris (Favorite:OUI) à qualité égale.
+2. APOGÉE : Pour chaque vin, évalue son stade de maturité en ${currentYear} :
+   - DRINK_NOW = à son apogée, ouvrir maintenant
+   - DRINK_SOON = encore 1-2 ans de potentiel mais déjà excellent
+   - KEEP_2_3_YEARS = trop jeune, attendre
+   - PAST_PEAK = en déclin, à boire vite si gardé
+3. SERVICE : Température précise (ex: "16-17°C") et décantage (true/false avec durée si oui).
+4. HORS CAVE (optionnel) : Si aucun vin ne convient parfaitement, suggère 1 appellation externe.
 
-JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, foodPairingMatch, peakStatus, peakExplanation, locations}], outOfCellarSuggestion: {appellation, reason, recommendedDomains, recommendedVintages} | null }`;
+EXEMPLE DE RAISONNEMENT :
+"Ce Châteauneuf-du-Pape 2019 est idéal : le grenache mûr s'accorde avec l'agneau, et le millésime 2019 atteint son plateau en ${currentYear}. Servir à 17°C après 1h de carafe."`;
+
 
         const schema = {
             type: Type.OBJECT,
@@ -230,13 +269,25 @@ JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, fo
     }
 
     async getPairingAdvice(query: string, mode: string, inventory: Wine[]) {
-        const prompt = `Sommelier. Mode: ${mode}. Query: "${query}". Inventory: ${inventory.map(w=>w.name).join(', ')}. Short MD response.`;
-        const r = await this.client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        const modeLabel = mode === 'FOOD_TO_WINE' ? 'On part du plat pour trouver le vin' : 'On part du vin pour trouver le plat';
+        const prompt = `Tu es sommelier français. ${modeLabel}.
+
+${mode === 'FOOD_TO_WINE' ? 'PLAT' : 'VIN'} : "${query}"
+CAVE DISPONIBLE : ${inventory.map(w => `${w.name} (${w.vintage})`).join(', ')}
+
+Réponds en markdown court (5-8 lignes max). Propose 2-3 accords de ta cave en expliquant pourquoi. Si aucun vin ne convient, suggère une alternative hors cave.`;
+        const r = await this.client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { temperature: 0.5 } });
         return r.text || "";
     }
 
     async planEvening(context: any, wines: Wine[], spirits: Spirit[]) {
-        const prompt = `Soirée Plan. Context: ${JSON.stringify(context)}. Vins: ${wines.map(w=>w.name).join(',')}. Spiritueux: ${spirits.map(s=>s.name).join(',')}. JSON only.`;
+        const prompt = `Tu es sommelier et organisateur de soirées. Planifie une soirée complète.
+
+CONTEXTE : ${JSON.stringify(context)}
+VINS DISPONIBLES : ${wines.map(w => `${w.name} (${w.vintage}) - ${w.type}`).join(', ')}
+SPIRITUEUX DISPONIBLES : ${spirits.map(s => `${s.name} - ${s.category}`).join(', ')}
+
+Propose un thème original, un apéritif avec amuse-bouche, un plat principal avec accord vin, et un digestif. Utilise UNIQUEMENT les bouteilles de la cave.`;
         const schema = {
             type: Type.OBJECT,
             properties: {
@@ -246,17 +297,40 @@ JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, fo
                 digestif: { type: Type.OBJECT, properties: { spiritName: { type: Type.STRING }, description: { type: Type.STRING } } }
             }
         } as Schema;
-        return this.generateJSON(prompt, schema);
+        return this.generateJSON(prompt, schema, false, 0.6);
     }
 
     async chatWithSommelier(history: any[], message: string) {
-        const prompt = `Sommelier expert français. Historique: ${JSON.stringify(history)}. Question: ${message}`;
-        const r = await this.client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt });
+        const systemContext = `Tu es un sommelier français passionné et cultivé. Tu tutoies l'utilisateur.
+Ton style : chaleureux, précis, avec des anecdotes quand c'est pertinent.
+Réponds en 3-6 phrases sauf si la question demande plus de détail.
+Si tu ne connais pas un vin spécifique, dis-le honnêtement.`;
+        const conversationHistory = history.length > 0 ? `\nConversation précédente :\n${history.map(h => `${h.role === 'user' ? 'Utilisateur' : 'Sommelier'}: ${h.content}`).join('\n')}` : '';
+        const prompt = `${systemContext}${conversationHistory}\n\nQuestion de l'utilisateur : ${message}`;
+        const r = await this.client.models.generateContent({ model: 'gemini-2.5-flash', contents: prompt, config: { temperature: 0.6 } });
         return r.text || "";
     }
 
     async analyzeCellarForWineFair(inventory: Wine[]) {
-        const prompt = `Expert Achat Vin. Analyse cave: ${inventory.map(w=>`${w.region} ${w.type} ${w.vintage}`).join(',')}. JSON Checklist achat.`;
+        const regionCounts: Record<string, number> = {};
+        const typeCounts: Record<string, number> = {};
+        inventory.forEach(w => {
+            regionCounts[w.region] = (regionCounts[w.region] || 0) + 1;
+            typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
+        });
+        const prompt = `Tu es expert en achat de vin pour constituer une cave équilibrée.
+
+PROFIL DE LA CAVE (${inventory.length} bouteilles) :
+- Par couleur : ${Object.entries(typeCounts).map(([t,c]) => `${t}: ${c}`).join(', ')}
+- Par région : ${Object.entries(regionCounts).sort((a,b) => b[1]-a[1]).map(([r,c]) => `${r}: ${c}`).join(', ')}
+- Millésimes : ${[...new Set(inventory.map(w => w.vintage))].sort().join(', ')}
+
+MISSION :
+1. Analyse générale de l'équilibre (2-3 phrases).
+2. Identifie les lacunes (régions absentes, couleurs sous-représentées, trous de millésimes).
+3. Propose 3-5 achats prioritaires avec budget indicatif et cible précise (domaine ou appellation).
+
+Classe les suggestions par priorité : HAUTE, MOYENNE, BASSE.`;
         const schema = {
             type: Type.OBJECT,
             properties: {
@@ -275,7 +349,15 @@ JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, fo
 
     async optimizeCellarStorage(boxWines: any[], shelfWines: any[]) {
         if (boxWines.length === 0) return [];
-        const prompt = `Optimisation Cave. Box: ${JSON.stringify(boxWines)}. Shelf: ${JSON.stringify(shelfWines)}. JSON Array {bottleId, reason} suggestions move box->shelf.`;
+        const prompt = `Tu es caviste professionnel. Optimise le rangement de cette cave.
+
+VINS EN CARTON (à ranger en priorité) : ${JSON.stringify(boxWines.map(w => ({id: w.id, name: w.name, vintage: w.vintage, type: w.type})))}
+VINS DÉJÀ EN ÉTAGÈRE : ${JSON.stringify(shelfWines.map(w => ({id: w.id, name: w.name, vintage: w.vintage, type: w.type})))}
+
+Suggère quels vins déplacer du carton vers l'étagère en priorité. Critères :
+- Vins proches de leur apogée en premier
+- Vins de garde longue peuvent rester en carton
+- Raison courte (1 phrase) pour chaque suggestion`;
         const schema = {
             type: Type.ARRAY,
             items: { type: Type.OBJECT, properties: { bottleId: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ["bottleId"] }
@@ -283,11 +365,22 @@ JSON : { recommendations: [{wineId, score, reasoning, servingTemp, decanting, fo
         return this.generateJSON(prompt, schema) || [];
     }
 
-    // ✅ Nouvelle méthode pour générer le questionnaire de dégustation
     async generateTastingQuestionnaire(wine: CellarWine) {
-        const prompt = `Tu es un sommelier expert. Génère un questionnaire de dégustation personnalisé pour ce vin :
-VIN : ${wine.name} ${wine.cuvee || ''} (${wine.vintage}) - ${wine.type} - ${wine.region}.
-Réponds UNIQUEMENT avec un objet JSON. Inclure: visualIntensity, visualDescription, bodyDefault, acidityDefault, tanninDefault, tastingTips, pairingSuggestions.`;
+        const currentYear = new Date().getFullYear();
+        const ageYears = currentYear - wine.vintage;
+        const prompt = `Tu es sommelier expert. Génère des valeurs par défaut pour un questionnaire de dégustation.
+
+VIN : ${wine.name} ${wine.cuvee || ''} (${wine.vintage}, ${ageYears} ans d'âge)
+PRODUCTEUR : ${(wine as any).producer || 'Inconnu'}
+TYPE : ${wine.type} | RÉGION : ${wine.region}
+${(wine as any).aromaProfile?.length ? `ARÔMES CONNUS : ${(wine as any).aromaProfile.join(', ')}` : ''}
+
+CONSIGNES :
+- Adapte les valeurs (0-100) au profil EXACT de ce vin, pas des valeurs génériques.
+- visualIntensity : selon la couleur et l'âge (un rouge vieux → moins intense, un blanc jeune → pâle).
+- bodyDefault, acidityDefault, tanninDefault : selon région, cépage probable et millésime.
+- tastingTips : 1 conseil court et pratique (ex: "Carafer 30min, servir à 16°C").
+- pairingSuggestions : 5 plats PRÉCIS (pas "viande rouge" mais "côte de bœuf grillée aux herbes").`;
 
         const schema = {
             type: Type.OBJECT,
@@ -345,12 +438,13 @@ class RestAdapter implements AIAdapter {
     }
 
     async enrichWine(name: string, vintage: number, hint?: string, imageBase64?: string) {
-        const system = `Expert Vin. Structure JSON: ${JSON.stringify(wineSchemaStructure)}. Inclure champ "confidence" (HIGH/MEDIUM/LOW).`;
-        let userContent: any = `Analyse "${name}" ${vintage} ${hint||''}. En Français.`;
+        const system = `Tu es expert en vin. Retourne un JSON avec la structure suivante : ${JSON.stringify(wineSchemaStructure)}.
+RÈGLES : Si tu n'es pas certain d'une info, mets null. Le champ "confidence" (HIGH/MEDIUM/LOW) doit refléter ta certitude réelle. Ne complète JAMAIS cépages ou appellation sans source fiable.`;
+        let userContent: any = `Analyse ce vin : "${name}" (${vintage}) ${hint||''}. Cherche cuvée et lieu-dit. En Français.`;
 
         if (imageBase64 && this.provider === 'OPENAI') {
             userContent = [
-                { type: "text", text: "Analyse cette étiquette. Extrais les données." },
+                { type: "text", text: "Analyse cette étiquette de vin. Transcris le texte visible puis extrais les données. Mets null si une info n'est pas lisible." },
                 { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
             ];
         }
@@ -361,26 +455,27 @@ class RestAdapter implements AIAdapter {
     }
 
     async enrichSpirit(name: string, hint?: string) {
-        const system = "Expert Spiritueux. JSON: {category, distillery, region, country, abv, format, description, producerHistory, tastingNotes, aromaProfile, suggestedCocktails, culinaryPairings}";
-        const user = `Analyse "${name}" ${hint||''}. En Français.`;
+        const system = "Tu es expert en spiritueux. Retourne JSON complet en français : {category, distillery, region, country, abv, format, description, producerHistory, tastingNotes, aromaProfile, suggestedCocktails, culinaryPairings}. Si tu n'es pas certain d'une info, mets null.";
+        const user = `Analyse ce spiritueux : "${name}" ${hint||''}. En Français.`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
         if(res) return { ...res, enrichedByAI: true, addedAt: new Date().toISOString() };
         return null;
     }
 
     async createCustomCocktail(ingredients: string[], query: string) {
-        const system = "Mixologue. JSON Recette.";
-        const user = `Stock: ${ingredients.join(',')}. Request: ${query}`;
+        const system = "Tu es mixologue expert. Crée une recette de cocktail originale en JSON. Utilise UNIQUEMENT les ingrédients fournis (+ glace, sucre, eau gazeuse autorisés). Nom créatif, description en 1-2 phrases, instructions claires.";
+        const user = `Ingrédients disponibles : ${ingredients.join(', ')}. Demande : "${query}"`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
         if(res) return { ...res, category: 'MODERN', prepTime: 5, source: 'AI', isFavorite: false, tags: ['AI'] };
         return null;
     }
 
     async generateEducationalContent(itemName: string) {
-        return this.call([{ role: "system", content: "Expert Vin. Anecdote courte." }, { role: "user", content: itemName }], false);
+        return this.call([{ role: "system", content: "Tu es œnologue passionné. Raconte UNE anecdote surprenante en 2-4 phrases. Ton conversationnel. Inclus un fait peu connu si possible." }, { role: "user", content: `Anecdote sur "${itemName}"` }], false);
     }
 
     async getSommelierRecommendations(inventory: Wine[], context: any) {
+        const currentYear = new Date().getFullYear();
         const racks = await getRacks();
         const invStr = inventory.map(w => {
             const bottleLocations = (w as any).bottles
@@ -393,54 +488,62 @@ class RestAdapter implements AIAdapter {
                     const col = b.location.x + 1;
                     return `${rackName} [${row}${col}]`;
                 }) || [];
-            
-            return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) Emplacements:[${bottleLocations.join(', ')}]`;
+
+            return `ID:${w.id} ${w.name} ${w.cuvee||''} ${w.parcel||''} (${w.vintage}) Favorite:${(w as any).isFavorite ? 'OUI' : 'NON'} Emplacements:[${bottleLocations.join(', ')}]`;
         }).join('\n');
 
-        const system = `Sommelier expert. JSON output only.`;
-        const user = `Context: ${JSON.stringify(context)}. Inventory:\n${invStr}`;
+        const system = `Tu es sommelier expert français. Année : ${currentYear}. Sélectionne 3 vins avec score, raisonnement, température de service, décantage, accord mets, statut apogée (DRINK_NOW/KEEP_2_3_YEARS/DRINK_SOON/PAST_PEAK), et emplacements. Privilégie les favoris à qualité égale. JSON only.`;
+        const user = `Repas: ${context.meal || 'Non spécifié'}, Ambiance: ${context.mood || 'Aucune'}.\nCave:\n${invStr}`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
-        
+
         if (res && res.recommendations && Array.isArray(res.recommendations)) return res;
         return {recommendations: []};
     }
 
     async getPairingAdvice(query: string, mode: string, inventory: Wine[]) {
-        const system = "Sommelier. Markdown response.";
-        const user = `Mode: ${mode}. Query: ${query}. Inventory: ${inventory.map(w=>w.name).join(',')}`;
+        const modeLabel = mode === 'FOOD_TO_WINE' ? 'Du plat au vin' : 'Du vin au plat';
+        const system = `Tu es sommelier français. Mode : ${modeLabel}. Réponds en markdown court (5-8 lignes max). Propose 2-3 accords avec explication.`;
+        const user = `${mode === 'FOOD_TO_WINE' ? 'Plat' : 'Vin'}: "${query}". Cave: ${inventory.map(w=>`${w.name} (${w.vintage})`).join(', ')}`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }], false);
     }
 
     async planEvening(context: any, wines: Wine[], spirits: Spirit[]) {
-        const system = "Event Planner. JSON.";
-        const user = `Context: ${JSON.stringify(context)}. Wines: ${wines.map(w=>w.name).join(',')}. Spirits: ${spirits.map(s=>s.name).join(',')}`;
+        const system = "Tu es sommelier et organisateur de soirées. Propose un thème original, un apéritif avec amuse-bouche, un plat principal avec accord vin, et un digestif. Utilise UNIQUEMENT les bouteilles fournies. JSON.";
+        const user = `Contexte: ${JSON.stringify(context)}. Vins: ${wines.map(w=>`${w.name} (${w.vintage}) ${w.type}`).join(', ')}. Spiritueux: ${spirits.map(s=>`${s.name} ${s.category}`).join(', ')}`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
 
     async chatWithSommelier(history: any[], message: string) {
-        const system = "Sommelier Chatbot.";
+        const system = `Tu es un sommelier français passionné et cultivé. Tu tutoies l'utilisateur. Style chaleureux et précis, avec des anecdotes quand c'est pertinent. Réponds en 3-6 phrases sauf si la question demande plus. Si tu ne connais pas un vin, dis-le honnêtement.`;
         const messages = [{ role: "system", content: system }, ...history, { role: "user", content: message }];
         return this.call(messages, false);
     }
 
     async analyzeCellarForWineFair(inventory: Wine[]) {
-        const system = "Wine Buyer. JSON.";
-        const user = `Inventory: ${inventory.map(w=>`${w.region} ${w.type}`).join(',')}`;
+        const regionCounts: Record<string, number> = {};
+        const typeCounts: Record<string, number> = {};
+        inventory.forEach(w => {
+            regionCounts[w.region] = (regionCounts[w.region] || 0) + 1;
+            typeCounts[w.type] = (typeCounts[w.type] || 0) + 1;
+        });
+        const system = "Tu es expert en achat de vin pour constituer une cave équilibrée. Analyse la cave, identifie les lacunes, et propose 3-5 achats prioritaires (HAUTE/MOYENNE/BASSE) avec budget et cible. JSON.";
+        const user = `Cave (${inventory.length} bouteilles). Couleurs: ${Object.entries(typeCounts).map(([t,c])=>`${t}:${c}`).join(', ')}. Régions: ${Object.entries(regionCounts).sort((a,b)=>b[1]-a[1]).map(([r,c])=>`${r}:${c}`).join(', ')}. Millésimes: ${[...new Set(inventory.map(w=>w.vintage))].sort().join(', ')}`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
 
     async optimizeCellarStorage(boxWines: any[], shelfWines: any[]) {
-        const system = "Cellar Manager. JSON Array.";
-        const user = `Box: ${JSON.stringify(boxWines)}. Shelf: ${JSON.stringify(shelfWines)}.`;
+        const system = "Tu es caviste professionnel. Suggère quels vins déplacer du carton vers l'étagère. Priorité aux vins proches de l'apogée. Raison courte (1 phrase). JSON Array [{bottleId, reason}].";
+        const user = `Carton: ${JSON.stringify(boxWines.map(w=>({id:w.id,name:w.name,vintage:w.vintage,type:w.type})))}. Étagère: ${JSON.stringify(shelfWines.map(w=>({id:w.id,name:w.name,vintage:w.vintage,type:w.type})))}`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
         if (Array.isArray(res)) return res;
         return [];
     }
 
-    // ✅ Implémentation manquante pour REST
     async generateTastingQuestionnaire(wine: CellarWine) {
-        const system = "Sommelier Expert. JSON Response Only.";
-        const user = `Generate tasting questionnaire for ${wine.name} (${wine.vintage}). Include visualIntensity, visualDescription, bodyDefault, acidityDefault, tanninDefault, tastingTips, pairingSuggestions.`;
+        const currentYear = new Date().getFullYear();
+        const ageYears = currentYear - wine.vintage;
+        const system = "Tu es sommelier expert. Génère des valeurs par défaut personnalisées pour un questionnaire de dégustation. Adapte au profil EXACT du vin (pas de valeurs génériques). Les pairingSuggestions doivent être des plats PRÉCIS. JSON.";
+        const user = `VIN: ${wine.name} ${wine.cuvee||''} (${wine.vintage}, ${ageYears} ans) - ${wine.type} - ${wine.region}. ${(wine as any).aromaProfile?.length ? `Arômes: ${(wine as any).aromaProfile.join(', ')}` : ''}. Champs: visualIntensity (0-100), visualDescription, bodyDefault (0-100), acidityDefault (0-100), tanninDefault (0-100), tastingTips (1 conseil court), pairingSuggestions (5 plats précis).`;
         return this.call([{ role: "system", content: system }, { role: "user", content: user }]);
     }
 }
