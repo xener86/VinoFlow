@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { consumeSpecificBottle, toggleFavorite } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine } from '../types';
 import { formatBottleLocation } from '../utils/locationFormatter';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
-import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2, Filter, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { BottomSheet } from '../components/BottomSheet';
+import { Toast, useToast } from '../components/Toast';
+import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2, Filter, RotateCcw, ArrowUpDown, Clock } from 'lucide-react';
 
 interface WineCardProps {
   wine: CellarWine;
@@ -147,6 +149,18 @@ export const Dashboard: React.FC = () => {
   const [vintageMax, setVintageMax] = useState<number | ''>('');
   const [sortBy, setSortBy] = useState('name');
   const navigate = useNavigate();
+  const { toast, showToast, hideToast } = useToast();
+
+  // Summary stats
+  const winesInStock = wines.filter(w => w.inventoryCount > 0);
+  const totalBottles = wines.reduce((sum, w) => sum + w.inventoryCount, 0);
+  const drinkNowWines = winesInStock.filter(w => {
+    const peak = getPeakWindow(w.vintage, w.type);
+    return peak.status === 'À Boire' || peak.status === 'Boire Vite';
+  });
+  const totalValue = wines.reduce((sum, w) => {
+    return sum + w.bottles.reduce((s, b) => s + (b.purchasePrice || 0), 0);
+  }, 0);
 
   const uniqueRegions = [...new Set(wines.map(w => w.region))].filter(Boolean).sort();
   const uniqueAppellations = [...new Set(wines.map(w => w.appellation).filter(Boolean) as string[])].sort();
@@ -162,9 +176,11 @@ export const Dashboard: React.FC = () => {
 
   const confirmConsumption = async (bottleId: string) => {
       if (!consumingWine) return;
+      const wineName = `${consumingWine.name} ${consumingWine.vintage}`;
       await consumeSpecificBottle(consumingWine.id, bottleId, consumingWine.name, consumingWine.vintage);
       setConsumingWine(null);
-      refresh(); // Rafraîchissement asynchrone
+      showToast(`${wineName} consommé !`, 'success');
+      refresh();
   };
 
   const handleToggleFavorite = async (wineId: string) => {
@@ -255,8 +271,34 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in relative">
       <div className="flex flex-col gap-4">
-        <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Ma Cave</h2>
-        
+        <div>
+          <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Ma Cave</h2>
+          {/* Summary Stats */}
+          {!loading && totalBottles > 0 && (
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="bg-wine-50 dark:bg-wine-900/20 text-wine-700 dark:text-wine-400 px-2.5 py-0.5 rounded-full border border-wine-100 dark:border-wine-800 text-xs font-medium">
+                {totalBottles} btl
+              </span>
+              <span className="text-stone-300 dark:text-stone-700">•</span>
+              <span className="text-xs text-stone-500 dark:text-stone-400">{winesInStock.length} réf.</span>
+              {drinkNowWines.length > 0 && (
+                <>
+                  <span className="text-stone-300 dark:text-stone-700">•</span>
+                  <Link to="/drink-now" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2.5 py-0.5 rounded-full border border-green-100 dark:border-green-800 text-xs font-medium hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors flex items-center gap-1">
+                    <Clock size={10} /> {drinkNowWines.length} à boire
+                  </Link>
+                </>
+              )}
+              {totalValue > 0 && (
+                <>
+                  <span className="text-stone-300 dark:text-stone-700">•</span>
+                  <span className="text-xs text-stone-500 dark:text-stone-400">~{Math.round(totalValue)}€</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Quick Pairing Widget */}
         <div className="bg-gradient-to-r from-stone-50 via-white to-wine-50 dark:from-stone-900 dark:via-stone-900 dark:to-wine-900/20 p-1 rounded-2xl shadow-md dark:shadow-xl border border-stone-200 dark:border-stone-800/50 overflow-hidden group">
             <div className="bg-white/90 dark:bg-stone-950/90 p-5 rounded-xl backdrop-blur-sm relative">
@@ -442,45 +484,41 @@ export const Dashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Consumption Modal */}
-      {consumingWine && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
-            <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setConsumingWine(null)} />
-            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 className="text-xl font-serif text-stone-900 dark:text-white">Consommer</h3>
-                        <p className="text-stone-500 dark:text-stone-400 text-sm">{consumingWine.name}</p>
-                    </div>
-                    <button onClick={() => setConsumingWine(null)} className="text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
+      {/* Consumption BottomSheet */}
+      <BottomSheet
+        isOpen={!!consumingWine}
+        onClose={() => setConsumingWine(null)}
+        title="Consommer"
+        subtitle={consumingWine?.name}
+      >
+        <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">Sélectionnez la bouteille que vous avez ouverte.</p>
+        <div className="space-y-2">
+          {consumingWine?.bottles.filter(b => !b.isConsumed).map((bottle, idx) => {
+            const locationLabel = formatBottleLocation(bottle.location, racks);
+            return (
+              <button
+                key={bottle.id}
+                onClick={() => confirmConsumption(bottle.id)}
+                className="w-full text-left p-3 rounded-xl bg-stone-50 dark:bg-stone-950 hover:bg-wine-50 dark:hover:bg-wine-900/20 border border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-500/50 flex justify-between items-center group transition-all"
+              >
+                <div>
+                  <span className="text-stone-700 dark:text-stone-300 text-sm font-medium">Bouteille #{idx + 1}</span>
+                  <div className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
+                    <MapPin size={10} /> {locationLabel}
+                  </div>
+                  {bottle.purchasePrice && (
+                    <div className="text-xs text-stone-400 mt-0.5">{bottle.purchasePrice}€</div>
+                  )}
                 </div>
-
-                <p className="text-xs text-stone-500 mb-4">Sélectionnez la bouteille exacte que vous avez ouverte.</p>
-
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {consumingWine.bottles.filter(b => !b.isConsumed).map((bottle, idx) => {
-                        const locationLabel = formatBottleLocation(bottle.location, racks);
-
-                        return (
-                            <button
-                                key={bottle.id}
-                                onClick={() => confirmConsumption(bottle.id)}
-                                className="w-full text-left p-3 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-wine-50 dark:hover:bg-wine-900/20 border border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-500/50 flex justify-between items-center group transition-all"
-                            >
-                                <div>
-                                    <span className="text-stone-700 dark:text-stone-300 text-sm font-medium">Bouteille #{idx + 1}</span>
-                                    <div className="text-xs text-stone-500 flex items-center gap-1">
-                                        <MapPin size={10} /> {locationLabel}
-                                    </div>
-                                </div>
-                                <Droplet size={16} className="text-stone-400 group-hover:text-wine-500" />
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+                <Droplet size={16} className="text-stone-400 group-hover:text-wine-500 transition-colors" />
+              </button>
+            );
+          })}
         </div>
-      )}
+      </BottomSheet>
+
+      {/* Toast */}
+      {toast && <Toast {...toast} onClose={hideToast} />}
     </div>
   );
 };
