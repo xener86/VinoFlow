@@ -1,136 +1,140 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ComposableMap,
+  Geographies,
+  Geography,
+  ZoomableGroup,
+} from 'react-simple-maps';
 import { useWines } from '../hooks/useWines';
 import { CellarWine } from '../types';
-import { Globe, MapPin, ArrowRight, Loader2 } from 'lucide-react';
+import {
+  DEPT_TO_WINE_REGION,
+  REGION_FILL,
+  WINE_REGIONS,
+  resolveWineRegion,
+} from '../data/wineRegions';
+import {
+  Globe, MapPin, ArrowRight, Loader2, ZoomIn, ZoomOut, RotateCcw, Wine,
+} from 'lucide-react';
+import geoData from '../data/france-departments.json';
 
-// ── France outline (simplified "Hexagone") ──────────────────────────
-const FRANCE_PATH = `
-  M 180,15 Q 210,5 245,15 L 275,30 Q 305,48 335,78
-  Q 355,105 360,140 Q 363,175 355,210 Q 347,240 335,260
-  Q 328,275 332,300 Q 338,330 342,355 Q 338,375 318,390
-  Q 295,405 265,412 Q 235,416 205,408 Q 175,398 148,380
-  Q 120,355 100,328 Q 82,302 75,275 Q 68,248 65,218
-  Q 60,190 50,178 Q 42,172 52,160 Q 65,148 72,135
-  Q 85,110 102,88 Q 122,60 148,38 Q 165,22 180,15 Z
-`;
-
-const CORSE_PATH = `M 372,362 Q 378,370 380,388 Q 380,402 374,410 Q 368,405 365,390 Q 364,372 372,362 Z`;
-
-// ── Wine region positions on the SVG ────────────────────────────────
-interface RegionConfig { x: number; y: number; label: string }
-
-const REGION_POSITIONS: Record<string, RegionConfig> = {
-  'Bordeaux':              { x: 108, y: 288, label: 'Bordeaux' },
-  'Bourgogne':             { x: 268, y: 198, label: 'Bourgogne' },
-  'Vallée du Rhône':       { x: 278, y: 300, label: 'Rhône' },
-  'Rhône':                 { x: 278, y: 300, label: 'Rhône' },
-  'Loire':                 { x: 168, y: 195, label: 'Loire' },
-  'Val de Loire':          { x: 168, y: 195, label: 'Loire' },
-  'Alsace':                { x: 340, y: 128, label: 'Alsace' },
-  'Champagne':             { x: 255, y: 78, label: 'Champagne' },
-  'Languedoc':             { x: 218, y: 375, label: 'Languedoc' },
-  'Languedoc-Roussillon':  { x: 218, y: 375, label: 'Languedoc' },
-  'Roussillon':            { x: 198, y: 392, label: 'Roussillon' },
-  'Provence':              { x: 312, y: 358, label: 'Provence' },
-  'Sud-Ouest':             { x: 138, y: 352, label: 'Sud-Ouest' },
-  'Beaujolais':            { x: 262, y: 245, label: 'Beaujolais' },
-  'Jura':                  { x: 315, y: 202, label: 'Jura' },
-  'Savoie':                { x: 330, y: 248, label: 'Savoie' },
-  'Corse':                 { x: 374, y: 386, label: 'Corse' },
-};
-
-// Accent-insensitive match
-const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-
-const findRegionConfig = (region: string): RegionConfig | null => {
-  if (REGION_POSITIONS[region]) return REGION_POSITIONS[region];
-  const n = norm(region);
-  for (const [key, cfg] of Object.entries(REGION_POSITIONS)) {
-    if (norm(key) === n || n.includes(norm(key)) || norm(key).includes(n)) return cfg;
-  }
-  return null;
-};
-
-// ── Types ───────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────
 interface RegionData {
-  key: string;        // unique key (label-based, deduplicated)
-  names: string[];    // original region names merged here
-  label: string;
+  name: string;
   wines: CellarWine[];
   totalBottles: number;
   dominantType: string;
-  x: number;
-  y: number;
 }
 
-// ── Bubble helpers ──────────────────────────────────────────────────
-const bubbleColor = (type: string) => {
-  switch (type) {
-    case 'RED':       return { fill: '#dc2626', stroke: '#991b1b', text: '#fff' };
-    case 'WHITE':     return { fill: '#eab308', stroke: '#a16207', text: '#1c1917' };
-    case 'ROSE':      return { fill: '#ec4899', stroke: '#be185d', text: '#fff' };
-    case 'SPARKLING': return { fill: '#f59e0b', stroke: '#d97706', text: '#1c1917' };
-    default:          return { fill: '#78716c', stroke: '#57534e', text: '#fff' };
-  }
-};
-
-// ── Component ───────────────────────────────────────────────────────
+// ── Component ────────────────────────────────────────────────────────
 export const RegionMap: React.FC = () => {
   const { wines, loading } = useWines();
   const navigate = useNavigate();
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [hoveredDept, setHoveredDept] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [center, setCenter] = useState<[number, number]>([2.5, 46.5]);
 
-  // Group wines by region, then by map position
-  const { mapped, unmapped } = useMemo(() => {
+  // ── Group wines by wine region ───────────────────────────────────
+  const { regionMap, unmapped } = useMemo(() => {
     const inStock = wines.filter(w => w.inventoryCount > 0);
-    const byRegion: Record<string, CellarWine[]> = {};
+    const rm: Record<string, RegionData> = {};
+    const um: CellarWine[] = [];
+
     for (const w of inStock) {
-      const r = w.region || 'Inconnu';
-      (byRegion[r] ??= []).push(w);
-    }
-
-    // Merge regions sharing the same map position
-    const posGroups: Record<string, { cfg: RegionConfig; wines: CellarWine[]; names: string[] }> = {};
-    const unmappedList: { name: string; wines: CellarWine[]; total: number }[] = [];
-
-    for (const [region, rw] of Object.entries(byRegion)) {
-      const cfg = findRegionConfig(region);
-      if (cfg) {
-        const k = `${cfg.x}-${cfg.y}`;
-        if (!posGroups[k]) posGroups[k] = { cfg, wines: [], names: [] };
-        posGroups[k].wines.push(...rw);
-        if (!posGroups[k].names.includes(region)) posGroups[k].names.push(region);
+      const wr = resolveWineRegion(w.region, w.appellation);
+      if (wr) {
+        if (!rm[wr]) rm[wr] = { name: wr, wines: [], totalBottles: 0, dominantType: 'RED' };
+        rm[wr].wines.push(w);
+        rm[wr].totalBottles += w.inventoryCount;
       } else {
-        unmappedList.push({ name: region, wines: rw, total: rw.reduce((s, w) => s + w.inventoryCount, 0) });
+        um.push(w);
       }
     }
 
-    const mappedList: RegionData[] = Object.values(posGroups).map(({ cfg, wines: gw, names }) => {
-      const totalBottles = gw.reduce((s, w) => s + w.inventoryCount, 0);
+    // Compute dominant type per region
+    for (const rd of Object.values(rm)) {
       const tc: Record<string, number> = {};
-      for (const w of gw) tc[w.type] = (tc[w.type] || 0) + w.inventoryCount;
-      const dominantType = Object.entries(tc).sort((a, b) => b[1] - a[1])[0]?.[0] || 'RED';
-      return { key: cfg.label, names, label: cfg.label, wines: gw, totalBottles, dominantType, x: cfg.x, y: cfg.y };
-    });
+      for (const w of rd.wines) tc[w.type] = (tc[w.type] || 0) + w.inventoryCount;
+      rd.dominantType = Object.entries(tc).sort((a, b) => b[1] - a[1])[0]?.[0] || 'RED';
+    }
 
-    return {
-      mapped: mappedList.sort((a, b) => b.totalBottles - a.totalBottles),
-      unmapped: unmappedList.sort((a, b) => b.total - a.total),
-    };
+    return { regionMap: rm, unmapped: um };
   }, [wines]);
 
-  const maxBtl = Math.max(...mapped.map(r => r.totalBottles), 1);
-  const bubbleR = (n: number) => Math.max(10, Math.sqrt(n / maxBtl) * 30);
+  // Group unmapped by region name
+  const unmappedGroups = useMemo(() => {
+    const groups: Record<string, { wines: CellarWine[]; total: number }> = {};
+    for (const w of unmapped) {
+      const k = w.region || 'Inconnu';
+      if (!groups[k]) groups[k] = { wines: [], total: 0 };
+      groups[k].wines.push(w);
+      groups[k].total += w.inventoryCount;
+    }
+    return Object.entries(groups).sort((a, b) => b[1].total - a[1].total);
+  }, [unmapped]);
 
-  // Wines for the selected region
+  // ── Department color ─────────────────────────────────────────────
+  const getDeptColor = useCallback((deptCode: string) => {
+    const wr = DEPT_TO_WINE_REGION[deptCode];
+    if (!wr) return undefined;
+    const rd = regionMap[wr];
+    if (!rd || rd.totalBottles === 0) return undefined;
+    return REGION_FILL[wr] || '#78716c';
+  }, [regionMap]);
+
+  const getDeptOpacity = useCallback((deptCode: string) => {
+    const wr = DEPT_TO_WINE_REGION[deptCode];
+    if (!wr) return 0;
+    const rd = regionMap[wr];
+    if (!rd || rd.totalBottles === 0) return 0;
+    if (selectedRegion) {
+      return wr === selectedRegion ? 0.85 : 0.15;
+    }
+    return 0.7;
+  }, [regionMap, selectedRegion]);
+
+  // ── Hover ────────────────────────────────────────────────────────
+  const handleMouseEnter = useCallback((deptCode: string, deptName: string, evt: React.MouseEvent) => {
+    setHoveredDept(deptCode);
+    const wr = DEPT_TO_WINE_REGION[deptCode];
+    const rd = wr ? regionMap[wr] : null;
+    const text = rd
+      ? `${wr} — ${rd.totalBottles} btl (${rd.wines.length} vins)`
+      : deptName;
+    setTooltip({ x: evt.clientX, y: evt.clientY, text });
+  }, [regionMap]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredDept(null);
+    setTooltip(null);
+  }, []);
+
+  const handleMouseMove = useCallback((evt: React.MouseEvent) => {
+    if (tooltip) setTooltip(t => t ? { ...t, x: evt.clientX, y: evt.clientY } : null);
+  }, [tooltip]);
+
+  // ── Click on department → select its wine region ─────────────────
+  const handleDeptClick = useCallback((deptCode: string) => {
+    const wr = DEPT_TO_WINE_REGION[deptCode];
+    if (!wr || !regionMap[wr]) return;
+    setSelectedRegion(prev => prev === wr ? null : wr);
+  }, [regionMap]);
+
+  // ── Selected wines ───────────────────────────────────────────────
   const selectedWines = useMemo(() => {
     if (!selectedRegion) return [];
-    const m = mapped.find(r => r.key === selectedRegion);
-    if (m) return m.wines;
-    const u = unmapped.find(r => r.name === selectedRegion);
-    return u?.wines || [];
-  }, [selectedRegion, mapped, unmapped]);
+    if (regionMap[selectedRegion]) return regionMap[selectedRegion].wines;
+    const ug = unmappedGroups.find(([k]) => k === selectedRegion);
+    return ug ? ug[1].wines : [];
+  }, [selectedRegion, regionMap, unmappedGroups]);
+
+  // ── Zoom controls ────────────────────────────────────────────────
+  const handleZoomIn = () => setZoom(z => Math.min(z * 1.5, 8));
+  const handleZoomOut = () => setZoom(z => Math.max(z / 1.5, 1));
+  const handleReset = () => { setZoom(1); setCenter([2.5, 46.5]); };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[50vh]">
@@ -138,7 +142,8 @@ export const RegionMap: React.FC = () => {
     </div>
   );
 
-  const totalRegions = mapped.length + unmapped.length;
+  const totalRegions = Object.keys(regionMap).filter(k => regionMap[k].totalBottles > 0).length + unmappedGroups.length;
+  const totalBottlesOnMap = Object.values(regionMap).reduce((s, r) => s + r.totalBottles, 0);
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">
@@ -149,90 +154,136 @@ export const RegionMap: React.FC = () => {
           Carte des Régions
         </h2>
         <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
-          {totalRegions} région{totalRegions > 1 ? 's' : ''} représentée{totalRegions > 1 ? 's' : ''} dans votre cave
+          {totalRegions} région{totalRegions > 1 ? 's' : ''} • {totalBottlesOnMap} bouteille{totalBottlesOnMap > 1 ? 's' : ''} localisées
         </p>
       </div>
 
-      {/* ── SVG Map ────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 p-4 shadow-sm">
-        <svg viewBox="0 0 420 430" className="w-full max-w-md mx-auto select-none" style={{ maxHeight: '55vh' }}>
-          {/* France fill */}
-          <path d={FRANCE_PATH} className="fill-stone-100 dark:fill-stone-800/40" />
-          <path d={FRANCE_PATH} className="fill-none stroke-stone-300 dark:stroke-stone-700" strokeWidth="1.5" />
-          {/* Corse fill + stroke */}
-          <path d={CORSE_PATH} className="fill-stone-100 dark:fill-stone-800/40" />
-          <path d={CORSE_PATH} className="fill-none stroke-stone-300 dark:stroke-stone-700" strokeWidth="1.5" />
+      {/* ── Map Card ────────────────────────────────────────────── */}
+      <div className="relative bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm overflow-hidden">
+        {/* Zoom controls */}
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
+          <button onClick={handleZoomIn} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+            <ZoomIn size={16} />
+          </button>
+          <button onClick={handleZoomOut} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+            <ZoomOut size={16} />
+          </button>
+          <button onClick={handleReset} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+            <RotateCcw size={14} />
+          </button>
+        </div>
 
-          {/* Region bubbles */}
-          {mapped.map(region => {
-            const r = bubbleR(region.totalBottles);
-            const c = bubbleColor(region.dominantType);
-            const isSel = selectedRegion === region.key;
+        {/* Map */}
+        <div onMouseMove={handleMouseMove}>
+          <ComposableMap
+            projection="geoMercator"
+            projectionConfig={{ center: [2.5, 46.5], scale: 2800 }}
+            width={500}
+            height={520}
+            style={{ width: '100%', height: 'auto', maxHeight: '62vh' }}
+          >
+            <ZoomableGroup
+              zoom={zoom}
+              center={center}
+              onMoveEnd={({ coordinates, zoom: z }) => { setCenter(coordinates as [number, number]); setZoom(z); }}
+              minZoom={1}
+              maxZoom={8}
+            >
+              <Geographies geography={geoData}>
+                {({ geographies }) =>
+                  geographies.map(geo => {
+                    const deptCode = geo.properties.code as string;
+                    const deptName = geo.properties.nom as string;
+                    const wr = DEPT_TO_WINE_REGION[deptCode];
+                    const color = getDeptColor(deptCode);
+                    const opacity = getDeptOpacity(deptCode);
+                    const isInSelectedRegion = selectedRegion && wr === selectedRegion;
 
-            return (
-              <g
-                key={region.key}
-                onClick={() => setSelectedRegion(isSel ? null : region.key)}
-                className="cursor-pointer"
-              >
-                {/* Drop shadow */}
-                <circle cx={region.x + 1} cy={region.y + 1} r={r} fill="black" opacity={0.08} />
-                {/* Bubble */}
-                <circle
-                  cx={region.x} cy={region.y} r={r}
-                  fill={c.fill}
-                  stroke={isSel ? '#7c3aed' : c.stroke}
-                  strokeWidth={isSel ? 3 : 1.5}
-                  opacity={selectedRegion && !isSel ? 0.4 : 0.9}
-                  className="transition-opacity duration-200"
-                />
-                {/* Count */}
-                <text
-                  x={region.x} y={region.y + 1}
-                  textAnchor="middle" dominantBaseline="middle"
-                  fill={c.text} fontSize={r > 20 ? 11 : 9} fontWeight="bold"
-                  className="pointer-events-none"
-                >
-                  {region.totalBottles}
-                </text>
-                {/* Label below */}
-                <text
-                  x={region.x} y={region.y + r + 11}
-                  textAnchor="middle" fontSize="9" fontWeight="500"
-                  className="fill-stone-500 dark:fill-stone-400 pointer-events-none"
-                >
-                  {region.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                    return (
+                      <Geography
+                        key={geo.rpiKey}
+                        geography={geo}
+                        onMouseEnter={(evt: any) => handleMouseEnter(deptCode, deptName, evt)}
+                        onMouseLeave={handleMouseLeave}
+                        onClick={() => handleDeptClick(deptCode)}
+                        style={{
+                          default: {
+                            fill: color || '#e7e5e4',
+                            fillOpacity: color ? opacity : 1,
+                            stroke: isInSelectedRegion ? '#7c3aed' : '#d6d3d1',
+                            strokeWidth: isInSelectedRegion ? 0.8 : 0.3,
+                            outline: 'none',
+                            cursor: wr && regionMap[wr] ? 'pointer' : 'default',
+                          },
+                          hover: {
+                            fill: color || '#d6d3d1',
+                            fillOpacity: color ? Math.min((opacity || 0) + 0.2, 1) : 0.6,
+                            stroke: color ? '#7c3aed' : '#a8a29e',
+                            strokeWidth: 0.6,
+                            outline: 'none',
+                            cursor: wr && regionMap[wr] ? 'pointer' : 'default',
+                          },
+                          pressed: { outline: 'none' },
+                        }}
+                      />
+                    );
+                  })
+                }
+              </Geographies>
+            </ZoomableGroup>
+          </ComposableMap>
+        </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-stone-500 dark:text-stone-400">
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" /> Rouge</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 inline-block" /> Blanc</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-pink-500 inline-block" /> Rosé</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> Bulles</span>
+        <div className="px-4 pb-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px]">
+          {WINE_REGIONS.filter(r => regionMap[r]?.totalBottles > 0).map(r => (
+            <button
+              key={r}
+              onClick={() => setSelectedRegion(prev => prev === r ? null : r)}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all ${
+                selectedRegion === r
+                  ? 'bg-stone-100 dark:bg-stone-800 ring-1 ring-wine-500'
+                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
+              }`}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block border border-white/30"
+                style={{ backgroundColor: REGION_FILL[r] }}
+              />
+              <span className="text-stone-600 dark:text-stone-400 font-medium">
+                {r} ({regionMap[r].totalBottles})
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Unmapped regions (non-French, etc.) ───────────────── */}
-      {unmapped.length > 0 && (
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-[100] pointer-events-none px-3 py-1.5 bg-stone-900/90 text-white text-xs rounded-lg shadow-lg whitespace-nowrap"
+          style={{ left: tooltip.x + 12, top: tooltip.y - 30 }}
+        >
+          {tooltip.text}
+        </div>
+      )}
+
+      {/* ── Unmapped regions ──────────────────────────────────── */}
+      {unmappedGroups.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">Autres régions / pays</h3>
           <div className="flex flex-wrap gap-2">
-            {unmapped.map(r => (
+            {unmappedGroups.map(([name, data]) => (
               <button
-                key={r.name}
-                onClick={() => setSelectedRegion(selectedRegion === r.name ? null : r.name)}
+                key={name}
+                onClick={() => setSelectedRegion(selectedRegion === name ? null : name)}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                  selectedRegion === r.name
+                  selectedRegion === name
                     ? 'bg-wine-600 text-white border-wine-700'
                     : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-700'
                 }`}
               >
-                {r.name} ({r.total})
+                {name} ({data.total})
               </button>
             ))}
           </div>
@@ -282,9 +333,9 @@ export const RegionMap: React.FC = () => {
       )}
 
       {/* Empty */}
-      {totalRegions === 0 && (
+      {wines.filter(w => w.inventoryCount > 0).length === 0 && (
         <div className="text-center py-20 text-stone-500 dark:text-stone-600 border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col items-center gap-3">
-          <Globe size={48} className="opacity-30" />
+          <Wine size={48} className="opacity-30" />
           <p className="text-lg font-serif">Aucun vin en stock</p>
           <p className="text-sm">Ajoutez des vins pour voir la carte des régions.</p>
         </div>
