@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3 } from 'lucide-react';
+import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useWines } from '../hooks/useWines';
+import { getPeakWindow } from '../utils/peakWindow';
 
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [tastingCount, setTastingCount] = useState(0);
+  const { wines } = useWines();
+  const totalBottles = wines.reduce((sum, w) => sum + w.inventoryCount, 0);
+  const drinkNowCount = wines.filter(w => {
+    if (w.inventoryCount === 0) return false;
+    const peak = getPeakWindow(w.vintage, w.type);
+    return peak.status === 'À Boire' || peak.status === 'Boire Vite';
+  }).length;
 
   useEffect(() => {
     // Calculate wines needing tasting notes (only after consumption and if > 365 days since last note)
@@ -108,6 +117,24 @@ export const Layout: React.FC = () => {
               {tastingCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                   {tastingCount}
+                </span>
+              )}
+            </Link>
+
+            {/* DrinkNow Button */}
+            <Link
+              to="/drink-now"
+              className={`p-2 rounded-lg transition-colors relative ${
+                isActive('/drink-now')
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                  : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+              }`}
+              title="À Boire Maintenant"
+            >
+              <Clock size={20} />
+              {drinkNowCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {drinkNowCount}
                 </span>
               )}
             </Link>
@@ -216,7 +243,14 @@ export const Layout: React.FC = () => {
                 : 'text-stone-500 dark:text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
             }`}
           >
-            <Wine size={24} className={isActive('/') ? 'scale-110' : ''} />
+            <div className="relative">
+              <Wine size={24} className={isActive('/') ? 'scale-110' : ''} />
+              {totalBottles > 0 && (
+                <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-wine-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                  {totalBottles}
+                </span>
+              )}
+            </div>
             <span className="text-xs font-medium">Cave</span>
           </Link>
 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles } from '../services/storageService';
+import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, getRacks } from '../services/storageService';
 import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
 import { AIConfig, AIProvider, Bottle } from '../types';
-import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle } from 'lucide-react';
+import { exportWinesToCsv } from '../utils/exportCsv';
+import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 
 export const Settings: React.FC = () => {
   // ✅ Utilisation du Hook
@@ -11,6 +12,7 @@ export const Settings: React.FC = () => {
   
   const [importStatus, setImportStatus] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Cleanup state
@@ -79,6 +81,19 @@ export const Settings: React.FC = () => {
         alert("Une erreur est survenue lors de l'exportation.");
     } finally {
         setIsExporting(false);
+    }
+  };
+
+  const handleCsvExport = async () => {
+    setIsExportingCsv(true);
+    try {
+        const [wines, racks] = await Promise.all([getInventory(), getRacks()]);
+        const withStock = wines.filter(w => w.inventoryCount > 0);
+        exportWinesToCsv(withStock, racks);
+    } catch (error) {
+        console.error("CSV Export failed", error);
+    } finally {
+        setIsExportingCsv(false);
     }
   };
 
@@ -236,16 +251,24 @@ export const Settings: React.FC = () => {
 
         <Section title="Gestion des Données" icon={Server}>
             <div className="flex flex-col gap-4">
-                <div className="flex gap-4">
-                    <button 
+                <div className="flex gap-3 flex-wrap">
+                    <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="flex-1 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 dark:border-stone-700 disabled:opacity-50"
+                        className="flex-1 min-w-[140px] bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 dark:border-stone-700 disabled:opacity-50"
                     >
                         {isExporting ? <Loader2 className="animate-spin" size={18}/> : <Download size={18} />}
                         {isExporting ? 'Export...' : 'Sauvegarde (JSON)'}
                     </button>
-                    <label className="flex-1 bg-wine-50 dark:bg-wine-900/20 hover:bg-wine-100 dark:hover:bg-wine-900/40 text-wine-600 dark:text-wine-400 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-wine-100 dark:border-wine-900/50 cursor-pointer">
+                    <button
+                        onClick={handleCsvExport}
+                        disabled={isExportingCsv}
+                        className="flex-1 min-w-[140px] bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-900/50 disabled:opacity-50"
+                    >
+                        {isExportingCsv ? <Loader2 className="animate-spin" size={18}/> : <FileSpreadsheet size={18} />}
+                        {isExportingCsv ? 'Export...' : 'Export (CSV)'}
+                    </button>
+                    <label className="flex-1 min-w-[140px] bg-wine-50 dark:bg-wine-900/20 hover:bg-wine-100 dark:hover:bg-wine-900/40 text-wine-600 dark:text-wine-400 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-wine-100 dark:border-wine-900/50 cursor-pointer">
                         <Upload size={18} /> Restaurer
                         <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                     </label>
