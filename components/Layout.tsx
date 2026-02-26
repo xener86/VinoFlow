@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock } from 'lucide-react';
+import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWines } from '../hooks/useWines';
@@ -176,6 +176,19 @@ export const Layout: React.FC = () => {
               title="Comparer"
             >
               <Columns3 size={20} />
+            </Link>
+
+            {/* Region Map Button */}
+            <Link
+              to="/regions"
+              className={`p-2 rounded-lg transition-colors ${
+                isActive('/regions')
+                  ? 'bg-wine-100 dark:bg-wine-900/30 text-wine-600 dark:text-wine-400'
+                  : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+              }`}
+              title="Carte des Régions"
+            >
+              <Globe size={20} />
             </Link>
 
             {/* Analytics Button */}

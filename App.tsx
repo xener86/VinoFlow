@@ -20,6 +20,7 @@ import { CellarJournal } from './pages/CellarJournal';
 import { Wishlist } from './pages/Wishlist';
 import { CompareWines } from './pages/CompareWines';
 import { DrinkNow } from './pages/DrinkNow';
+import { RegionMap } from './pages/RegionMap';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, isConfigured } = useAuth();
@@ -63,6 +64,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/compare" element={<CompareWines />} />
         <Route path="/drink-now" element={<DrinkNow />} />
+        <Route path="/regions" element={<RegionMap />} />
       </Route>
 
       {/* Fallback */}
