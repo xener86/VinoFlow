@@ -6,7 +6,7 @@ import { useRacks } from '../hooks/useRacks';
 import { CellarWine } from '../types';
 import { formatBottleLocation } from '../utils/locationFormatter';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
-import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2, Filter, RotateCcw } from 'lucide-react';
+import { Droplet, MapPin, Grape, Utensils, Sparkles, Search, X, ArrowRight, ChefHat, Loader2, Filter, RotateCcw, ArrowUpDown } from 'lucide-react';
 
 interface WineCardProps {
   wine: CellarWine;
@@ -145,6 +145,7 @@ export const Dashboard: React.FC = () => {
   const [appellationFilter, setAppellationFilter] = useState('');
   const [vintageMin, setVintageMin] = useState<number | ''>('');
   const [vintageMax, setVintageMax] = useState<number | ''>('');
+  const [sortBy, setSortBy] = useState('name');
   const navigate = useNavigate();
 
   const uniqueRegions = [...new Set(wines.map(w => w.region))].filter(Boolean).sort();
@@ -207,8 +208,24 @@ export const Dashboard: React.FC = () => {
     const matchesVintageMax = !vintageMax || w.vintage <= vintageMax;
 
     return matchesType && matchesFavorites && matchesSearch && hasStock && matchesRegion && matchesAppellation && matchesVintageMin && matchesVintageMax;
+  }).sort((a, b) => {
+    switch (sortBy) {
+      case 'name': return a.name.localeCompare(b.name, 'fr');
+      case 'vintage-desc': return b.vintage - a.vintage;
+      case 'vintage-asc': return a.vintage - b.vintage;
+      case 'stock': return b.inventoryCount - a.inventoryCount;
+      case 'region': return (a.region || '').localeCompare(b.region || '', 'fr');
+      case 'peak': {
+        const peakA = getPeakWindow(a.vintage, a.type);
+        const peakB = getPeakWindow(b.vintage, b.type);
+        const order: Record<string, number> = { 'Boire Vite': 0, 'À Boire': 1, 'Garde': 2 };
+        return (order[peakA.status] ?? 2) - (order[peakB.status] ?? 2);
+      }
+      case 'recent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      default: return 0;
+    }
   });
-  
+
   const filterLabels: Record<string, string> = {
       'ALL': 'TOUS',
       'RED': 'ROUGE',
@@ -288,7 +305,7 @@ export const Dashboard: React.FC = () => {
             />
         </div>
 
-        {/* Advanced Filters Toggle */}
+        {/* Advanced Filters Toggle + Sort */}
         <div className="flex items-center gap-3">
             <button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -304,6 +321,23 @@ export const Dashboard: React.FC = () => {
                     <span className="bg-wine-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none">{activeFilterCount}</span>
                 )}
             </button>
+
+            <div className="flex items-center gap-1.5 text-xs">
+                <ArrowUpDown size={12} className="text-stone-400" />
+                <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg px-2 py-1.5 text-xs text-stone-600 dark:text-stone-400 outline-none cursor-pointer"
+                >
+                    <option value="name">Nom A→Z</option>
+                    <option value="vintage-desc">Millésime ↓</option>
+                    <option value="vintage-asc">Millésime ↑</option>
+                    <option value="stock">Stock ↓</option>
+                    <option value="region">Région</option>
+                    <option value="peak">Apogée</option>
+                    <option value="recent">Récents</option>
+                </select>
+            </div>
         </div>
 
         {showAdvancedFilters && (
