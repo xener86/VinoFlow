@@ -66,6 +66,8 @@ export const CellarMap: React.FC = () => {
   
   const [fillTargetRack, setFillTargetRack] = useState<Rack | null>(null);
   const [emptySlotTarget, setEmptySlotTarget] = useState<EmptySlotTarget | null>(null);
+  const [slotSearchQuery, setSlotSearchQuery] = useState('');
+  const [showAllWinesInSlot, setShowAllWinesInSlot] = useState(false);
   const [showUnsortedDock, setShowUnsortedDock] = useState(true);
 
   const [optimizing, setOptimizing] = useState(false);
@@ -300,6 +302,8 @@ export const CellarMap: React.FC = () => {
       if(emptySlotTarget) {
           await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y }, wine.name, wine.vintage);
           setEmptySlotTarget(null);
+          setSlotSearchQuery('');
+          setShowAllWinesInSlot(false);
           refreshWines();
       }
   };
@@ -335,6 +339,15 @@ export const CellarMap: React.FC = () => {
   if (loadingRacks || loadingWines) {
       return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-wine-600" size={48} /></div>;
   }
+
+  // Wines available for slot placement (in stock)
+  const winesInStock = inventory.filter(w => w.inventoryCount > 0);
+  const recentWines = [...winesInStock]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
+  const slotFilteredWines = slotSearchQuery
+    ? winesInStock.filter(w => matchesWineSearch(w, slotSearchQuery))
+    : [];
 
   const shelves = racks.filter(r => r.type !== 'BOX');
   const boxes = racks.filter(r => r.type === 'BOX');
@@ -688,8 +701,16 @@ export const CellarMap: React.FC = () => {
                   </p>
                   
                   <div className="grid gap-3">
-                      <button 
-                        onClick={() => navigate('/add-wine')}
+                      <button
+                        onClick={() => {
+                          const p = new URLSearchParams();
+                          p.set('rackId', emptySlotTarget!.rackId);
+                          p.set('rackX', String(emptySlotTarget!.x));
+                          p.set('rackY', String(emptySlotTarget!.y));
+                          p.set('rackName', emptySlotTarget!.rackName);
+                          setEmptySlotTarget(null);
+                          navigate(`/add-wine?${p.toString()}`);
+                        }}
                         className="bg-wine-600 hover:bg-wine-700 text-white p-3 rounded-xl flex items-center gap-3 transition-colors"
                       >
                           <div className="bg-wine-800 p-2 rounded-lg"><Plus size={18}/></div>
@@ -701,24 +722,84 @@ export const CellarMap: React.FC = () => {
                       
                       <div className="border-t border-stone-200 dark:border-stone-800 my-1 pt-2">
                           <p className="text-xs text-stone-500 mb-2 uppercase font-bold">Ou placer un vin existant</p>
-                          <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {inventory.filter(w => w.inventoryCount > 0).map(w => (
-                                  <button
-                                    key={w.id}
-                                    onClick={() => handleAddExistingToSlot(w)}
-                                    className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800"
-                                  >
-                                      <div>
-                                          <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                          <div className="text-stone-500 text-[10px]">{w.vintage} • {w.inventoryCount} en stock</div>
-                                      </div>
-                                      <Plus size={14} className="text-stone-400"/>
-                                  </button>
-                              ))}
-                              {inventory.filter(w => w.inventoryCount > 0).length === 0 && (
-                                  <p className="text-xs text-stone-400 italic text-center py-4">Aucun vin en stock</p>
-                              )}
+
+                          {/* Search input */}
+                          <div className="relative mb-3">
+                            <Search className="absolute left-2.5 top-2.5 text-stone-400" size={14} />
+                            <input
+                              type="text"
+                              placeholder="Chercher un vin…"
+                              value={slotSearchQuery}
+                              onChange={(e) => setSlotSearchQuery(e.target.value)}
+                              className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg py-2 pl-8 pr-3 text-xs text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none"
+                              autoFocus
+                            />
                           </div>
+
+                          {slotSearchQuery ? (
+                            /* Search results */
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                              {slotFilteredWines.map(w => (
+                                <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
+                                  <div>
+                                    <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
+                                    <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
+                                  </div>
+                                  <Plus size={14} className="text-stone-400"/>
+                                </button>
+                              ))}
+                              {slotFilteredWines.length === 0 && (
+                                <p className="text-xs text-stone-400 italic text-center py-4">Aucun résultat</p>
+                              )}
+                            </div>
+                          ) : (
+                            <>
+                              {/* Recent wines */}
+                              {recentWines.length > 0 && (
+                                <div className="mb-3">
+                                  <p className="text-[10px] text-stone-400 uppercase font-medium mb-1.5">Ajouts récents</p>
+                                  <div className="space-y-1.5">
+                                    {recentWines.map(w => (
+                                      <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
+                                        <div>
+                                          <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
+                                          <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
+                                        </div>
+                                        <Plus size={14} className="text-stone-400"/>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* All wines expandable */}
+                              {winesInStock.length > recentWines.length && (
+                                <div>
+                                  <button onClick={() => setShowAllWinesInSlot(!showAllWinesInSlot)} className="w-full flex items-center justify-between text-[10px] text-stone-400 uppercase font-medium py-1.5 hover:text-stone-600 dark:hover:text-stone-300">
+                                    <span>Toutes les références ({winesInStock.length})</span>
+                                    <ChevronRight size={12} className={`transition-transform ${showAllWinesInSlot ? 'rotate-90' : ''}`} />
+                                  </button>
+                                  {showAllWinesInSlot && (
+                                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                      {winesInStock.map(w => (
+                                        <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
+                                          <div>
+                                            <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
+                                            <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
+                                          </div>
+                                          <Plus size={14} className="text-stone-400"/>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {winesInStock.length === 0 && (
+                                <p className="text-xs text-stone-400 italic text-center py-4">Aucun vin en stock</p>
+                              )}
+                            </>
+                          )}
                       </div>
                   </div>
                   <button onClick={() => setEmptySlotTarget(null)} className="w-full py-2 mt-4 text-stone-500">Annuler</button>
