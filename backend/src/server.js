@@ -150,6 +150,7 @@ app.get('/api/wines', async (req, res) => {
               'consumed_date', b.consumed_date,
               'gifted_to', b.gifted_to,
               'gift_occasion', b.gift_occasion,
+              'purchase_price', b.purchase_price,
               'created_at', b.created_at
             ) ORDER BY b.created_at
           ) FILTER (WHERE b.id IS NOT NULL),
@@ -160,7 +161,17 @@ app.get('/api/wines', async (req, res) => {
       GROUP BY w.id
       ORDER BY w.created_at DESC
     `);
-    res.json(convertKeysToCamelCase(result.rows));
+    const wines = convertKeysToCamelCase(result.rows).map(w => ({
+      ...w,
+      bottles: (w.bottles || []).map(b => {
+        // Normalize legacy {"label": "..."} locations to plain strings
+        if (b.location && typeof b.location === 'object' && 'label' in b.location && !('rackId' in b.location)) {
+          b.location = b.location.label;
+        }
+        return b;
+      })
+    }));
+    res.json(wines);
   } catch (error) {
     console.error('Error fetching wines:', error);
     res.status(500).json({ error: 'Failed to fetch wines' });
@@ -171,7 +182,7 @@ app.get('/api/wines/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
-      SELECT 
+      SELECT
         w.*,
         COALESCE(
           json_agg(
@@ -185,6 +196,7 @@ app.get('/api/wines/:id', async (req, res) => {
               'consumed_date', b.consumed_date,
               'gifted_to', b.gifted_to,
               'gift_occasion', b.gift_occasion,
+              'purchase_price', b.purchase_price,
               'created_at', b.created_at
             ) ORDER BY b.created_at
           ) FILTER (WHERE b.id IS NOT NULL),
@@ -286,7 +298,14 @@ app.delete('/api/wines/:id', async (req, res) => {
 app.get('/api/bottles', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM bottles ORDER BY created_at DESC');
-    res.json(convertKeysToCamelCase(result.rows));
+    const bottles = convertKeysToCamelCase(result.rows).map(b => {
+      // Normalize legacy {"label": "..."} locations to plain strings
+      if (b.location && typeof b.location === 'object' && 'label' in b.location && !('rackId' in b.location)) {
+        b.location = b.location.label;
+      }
+      return b;
+    });
+    res.json(bottles);
   } catch (error) {
     console.error('Error fetching bottles:', error);
     res.status(500).json({ error: 'Failed to fetch bottles' });
@@ -297,24 +316,24 @@ app.post('/api/bottles', async (req, res) => {
   try {
     const bottle = req.body;
     
-    let locationJson = bottle.location;
-    if (typeof bottle.location === 'string') {
-      locationJson = { label: bottle.location };
-    }
-    if (!locationJson) {
-      locationJson = { label: 'Non trié' };
-    }
-    
+    // Store string locations as JSON strings (not objects like {"label": "..."})
+    let locationValue = bottle.location;
+    if (!locationValue) locationValue = 'Non trié';
+    const locationJson = typeof locationValue === 'string'
+      ? JSON.stringify(locationValue)   // e.g. '"Non trié"' — valid jsonb string
+      : JSON.stringify(locationValue);  // e.g. '{"rackId":"...","x":0,"y":0}'
+
     const result = await pool.query(`
-      INSERT INTO bottles (wine_id, location, added_by_user_id, purchase_date, is_consumed)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO bottles (wine_id, location, added_by_user_id, purchase_date, is_consumed, purchase_price)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `, [
       bottle.wineId || bottle.wine_id,
-      JSON.stringify(locationJson),
+      locationJson,
       bottle.addedByUserId || bottle.added_by_user_id,
       bottle.purchaseDate || bottle.purchase_date,
-      bottle.isConsumed || bottle.is_consumed || false
+      bottle.isConsumed || bottle.is_consumed || false,
+      bottle.purchasePrice || bottle.purchase_price || null
     ]);
     
     res.status(201).json(convertKeysToCamelCase(result.rows[0]));
@@ -329,27 +348,32 @@ app.put('/api/bottles/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
-    let locationJson = updates.location;
-    if (locationJson && typeof locationJson === 'string') {
-      locationJson = { label: locationJson };
+    // Store string locations as JSON strings (not objects like {"label": "..."})
+    let locationJson = null;
+    if (updates.location !== undefined && updates.location !== null) {
+      locationJson = typeof updates.location === 'string'
+        ? JSON.stringify(updates.location)
+        : JSON.stringify(updates.location);
     }
-    
+
     const result = await pool.query(`
       UPDATE bottles SET
         location = COALESCE($2, location),
         is_consumed = COALESCE($3, is_consumed),
         consumed_date = COALESCE($4, consumed_date),
         gifted_to = COALESCE($5, gifted_to),
-        gift_occasion = COALESCE($6, gift_occasion)
+        gift_occasion = COALESCE($6, gift_occasion),
+        purchase_price = COALESCE($7, purchase_price)
       WHERE id = $1
       RETURNING *
     `, [
       id,
-      locationJson ? JSON.stringify(locationJson) : null,
+      locationJson,
       updates.isConsumed,
       updates.consumedDate,
       updates.giftedTo,
-      updates.giftOccasion
+      updates.giftOccasion,
+      updates.purchasePrice || null
     ]);
     
     if (result.rows.length === 0) {
@@ -360,6 +384,20 @@ app.put('/api/bottles/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating bottle:', error);
     res.status(500).json({ error: 'Failed to update bottle' });
+  }
+});
+
+app.delete('/api/bottles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM bottles WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bottle not found' });
+    }
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error deleting bottle:', error);
+    res.status(500).json({ error: 'Failed to delete bottle' });
   }
 });
 
@@ -393,12 +431,17 @@ app.post('/api/racks', async (req, res) => {
 app.delete('/api/racks/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    // Migrate bottles from this rack to "Non trié" before deleting
+    await pool.query(
+      `UPDATE bottles SET location = '"Non trié"'::jsonb WHERE location->>'rackId' = $1 AND is_consumed = false`,
+      [id]
+    );
     const result = await pool.query('DELETE FROM racks WHERE id = $1 RETURNING id', [id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Rack not found' });
     }
-    
+
     res.json({ success: true, id });
   } catch (error) {
     console.error('Error deleting rack:', error);
@@ -463,7 +506,16 @@ app.delete('/api/spirits/:id', async (req, res) => {
 
 app.get('/api/history', async (req, res) => {
   try {
-    res.json([]);
+    const { wineId } = req.query;
+    let query = 'SELECT * FROM journal';
+    const params = [];
+    if (wineId) {
+      query += ' WHERE wine_id = $1';
+      params.push(wineId);
+    }
+    query += ' ORDER BY date DESC';
+    const result = await pool.query(query, params);
+    res.json(convertKeysToCamelCase(result.rows));
   } catch (error) {
     console.error('Error fetching history:', error);
     res.status(500).json({ error: 'Failed to fetch history' });
@@ -472,11 +524,73 @@ app.get('/api/history', async (req, res) => {
 
 app.post('/api/history', async (req, res) => {
   try {
-    console.log('Journal entry received:', req.body);
-    res.status(201).json({ success: true, message: 'Journal entry logged' });
+    const entry = req.body;
+    const result = await pool.query(`
+      INSERT INTO journal (id, date, type, wine_id, wine_name, wine_vintage, quantity, description, from_location, to_location, recipient, occasion, note, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      entry.id || null,
+      entry.date || new Date().toISOString(),
+      entry.type || 'NOTE',
+      entry.wineId || entry.wine_id || null,
+      entry.wineName || entry.wine_name || 'Vin inconnu',
+      entry.wineVintage || entry.wine_vintage || null,
+      entry.quantity || null,
+      entry.description || null,
+      entry.fromLocation || entry.from_location || null,
+      entry.toLocation || entry.to_location || null,
+      entry.recipient || null,
+      entry.occasion || null,
+      entry.note || null,
+      entry.userId || entry.user_id || null
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating history:', error);
     res.status(500).json({ error: 'Failed to create history entry' });
+  }
+});
+
+// ========== WISHLIST ENDPOINTS ==========
+
+app.get('/api/wishlist', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM wishlist ORDER BY added_at DESC');
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching wishlist:', error);
+    res.status(500).json({ error: 'Failed to fetch wishlist' });
+  }
+});
+
+app.post('/api/wishlist', async (req, res) => {
+  try {
+    const item = req.body;
+    const result = await pool.query(`
+      INSERT INTO wishlist (name, producer, region, appellation, type, vintage, notes, source, estimated_price, priority)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      item.name, item.producer || null, item.region || null, item.appellation || null,
+      item.type || null, item.vintage || null, item.notes || null, item.source || null,
+      item.estimatedPrice || item.estimated_price || null, item.priority || 'MEDIUM'
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating wishlist item:', error);
+    res.status(500).json({ error: 'Failed to create wishlist item' });
+  }
+});
+
+app.delete('/api/wishlist/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM wishlist WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting wishlist item:', error);
+    res.status(500).json({ error: 'Failed to delete wishlist item' });
   }
 });
 
