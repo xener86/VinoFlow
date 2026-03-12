@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle, findNextAvailableSlot } from '../services/storageService';
+import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle, deleteBottle } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
-import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Edit3, ChevronLeft, ArrowLeftRight } from 'lucide-react';
+import { Search, Droplet, Gift, Move, X, Eye, PencilRuler, Plus, Wand2, Box, PackagePlus, Inbox, ChevronRight, Loader2, Trash2, Pencil, ChevronLeft, MoreVertical, ArrowLeftRight } from 'lucide-react';
 import { optimizeCellarStorage } from '../services/geminiService';
 import { RackGrid } from '../components/RackGrid';
-import { matchesWineSearch } from '../utils/wineSearch';
 
 interface SelectedBottleState {
     wine: CellarWine;
@@ -66,8 +65,6 @@ export const CellarMap: React.FC = () => {
   
   const [fillTargetRack, setFillTargetRack] = useState<Rack | null>(null);
   const [emptySlotTarget, setEmptySlotTarget] = useState<EmptySlotTarget | null>(null);
-  const [slotSearchQuery, setSlotSearchQuery] = useState('');
-  const [showAllWinesInSlot, setShowAllWinesInSlot] = useState(false);
   const [showUnsortedDock, setShowUnsortedDock] = useState(true);
 
   const [optimizing, setOptimizing] = useState(false);
@@ -77,6 +74,17 @@ export const CellarMap: React.FC = () => {
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
+
+  // Context menu for rack tabs (fixed positioned to avoid overflow clipping)
+  const [rackMenu, setRackMenu] = useState<{rackId: string, x: number, y: number} | null>(null);
+
+  const openRackMenu = (e: React.MouseEvent, rackId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (rackMenu?.rackId === rackId) { setRackMenu(null); return; }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setRackMenu({ rackId, x: rect.left, y: rect.bottom + 4 });
+  };
 
   // Initialisation de la sélection du rack une fois les données chargées
   useEffect(() => {
@@ -98,7 +106,8 @@ export const CellarMap: React.FC = () => {
       if (!searchQuery) return 0;
       let count = 0;
       inventory.forEach(w => {
-          if (matchesWineSearch(w, searchQuery)) {
+          const isMatch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) || w.vintage.toString().includes(searchQuery);
+          if (isMatch) {
               w.bottles.forEach(b => {
                   if (typeof b.location !== 'string' && b.location.rackId === rackId && !b.isConsumed) {
                       count++;
@@ -109,36 +118,7 @@ export const CellarMap: React.FC = () => {
       return count;
   };
 
-  const isUnsortedLocation = (loc: any): boolean => {
-    if (typeof loc === 'string') return loc === 'Non trié';
-    if (typeof loc === 'object' && loc !== null) return loc.label === 'Non trié';
-    return false;
-  };
-
-  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => isUnsortedLocation(b.location) && !b.isConsumed).map(b => ({ ...b, wineId: w.id, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
-
-  const [isPlacingAll, setIsPlacingAll] = useState(false);
-
-  const handlePlaceAll = async () => {
-      if (unsortedBottles.length === 0) return;
-      if (!window.confirm(`Ranger automatiquement ${unsortedBottles.length} bouteille(s) dans les emplacements libres ?`)) return;
-      setIsPlacingAll(true);
-      let placed = 0;
-      for (const bottle of unsortedBottles) {
-          const slot = await findNextAvailableSlot();
-          if (slot) {
-              await moveBottle(bottle.id, slot.location, bottle.wineName, bottle.wineVintage, bottle.wineId);
-              placed++;
-          } else {
-              break;
-          }
-      }
-      setIsPlacingAll(false);
-      refreshAll();
-      if (placed < unsortedBottles.length) {
-          alert(`${placed}/${unsortedBottles.length} bouteille(s) rangée(s). Plus d'emplacements libres.`);
-      }
-  };
+  const unsortedBottles = inventory.flatMap(w => w.bottles.filter(b => b.location === 'Non trié' && !b.isConsumed).map(b => ({ ...b, wineName: w.name, wineVintage: w.vintage, wineType: w.type, wineCuvee: w.cuvee })));
 
   const handleSlotClick = async (rackId: string, x: number, y: number, rackName: string) => {
     let occupied = false;
@@ -161,7 +141,7 @@ export const CellarMap: React.FC = () => {
            alert("Emplacement déjà occupé.");
            return;
        }
-        await moveBottle(moveSource.bottleId, { rackId, x, y }, moveSource.wine.name, moveSource.wine.vintage, moveSource.wine.id);
+        await moveBottle(moveSource.bottleId, { rackId, x, y });
         setMoveSource(null);
         refreshWines();
         return;
@@ -202,8 +182,7 @@ export const CellarMap: React.FC = () => {
           }
           if (occupied) return; 
 
-            const sourceWine = inventory.find(w => w.bottles.some(b => b.id === bottleId));
-            await moveBottle(bottleId, { rackId, x, y }, sourceWine?.name, sourceWine?.vintage, sourceWine?.id);
+            await moveBottle(bottleId, { rackId, x, y });
             setDragSourceId(null);
             refreshWines();
         }
@@ -211,7 +190,15 @@ export const CellarMap: React.FC = () => {
 
   const handleConsume = async () => {
         if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
-            await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId, selectedBottle.wine.name, selectedBottle.wine.vintage);
+            await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            setSelectedBottle(null);
+            refreshWines();
+        }
+  };
+
+  const handleDeleteBottle = async () => {
+        if (selectedBottle && window.confirm(`Supprimer définitivement cette bouteille de ${selectedBottle.wine.name} ?`)) {
+            await deleteBottle(selectedBottle.bottleId);
             setSelectedBottle(null);
             refreshWines();
         }
@@ -229,7 +216,7 @@ export const CellarMap: React.FC = () => {
   const handleConfirmGift = async () => {
       if (!selectedBottle || !giftRecipient) return;
       
-      await giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion, selectedBottle.wine.name, selectedBottle.wine.vintage);
+      await giftBottle(selectedBottle.wine.id, selectedBottle.bottleId, giftRecipient, giftOccasion);
       setShowGiftModal(false);
       setSelectedBottle(null);
       setGiftRecipient('');
@@ -300,10 +287,8 @@ export const CellarMap: React.FC = () => {
 
   const handleAddExistingToSlot = async (wine: CellarWine) => {
       if(emptySlotTarget) {
-          await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y }, wine.name, wine.vintage);
+          await addBottleAtLocation(wine.id, { rackId: emptySlotTarget.rackId, x: emptySlotTarget.x, y: emptySlotTarget.y });
           setEmptySlotTarget(null);
-          setSlotSearchQuery('');
-          setShowAllWinesInSlot(false);
           refreshWines();
       }
   };
@@ -339,15 +324,6 @@ export const CellarMap: React.FC = () => {
   if (loadingRacks || loadingWines) {
       return <div className="flex justify-center h-screen items-center"><Loader2 className="animate-spin text-wine-600" size={48} /></div>;
   }
-
-  // Wines available for slot placement (in stock)
-  const winesInStock = inventory.filter(w => w.inventoryCount > 0);
-  const recentWines = [...winesInStock]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
-  const slotFilteredWines = slotSearchQuery
-    ? winesInStock.filter(w => matchesWineSearch(w, slotSearchQuery))
-    : [];
 
   const shelves = racks.filter(r => r.type !== 'BOX');
   const boxes = racks.filter(r => r.type === 'BOX');
@@ -385,7 +361,7 @@ export const CellarMap: React.FC = () => {
             <Search className="absolute left-3 top-3 text-stone-400" size={18} />
             <input 
                 type="text"
-                placeholder="Nom, producteur, région, cépage, millésime..."
+                placeholder="Chercher dans toute la cave..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-600 outline-none"
@@ -393,37 +369,47 @@ export const CellarMap: React.FC = () => {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {shelves.map(rack => {
+            {shelves.map((rack, idx) => {
                 const matchCount = getMatchesForRack(rack.id);
                 const isSelected = selectedTabId === rack.id;
-                
+
                 return (
-                    <button
-                        key={rack.id}
-                        onClick={() => setSelectedTabId(rack.id)}
-                        className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
-                            isSelected 
-                            ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm' 
-                            : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
-                        }`}
-                        style={{marginBottom: -1}} 
-                    >
-                        {rack.name}
-                        {matchCount > 0 && (
-                            <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                                {matchCount}
-                            </span>
-                        )}
-                    </button>
+                    <div key={rack.id} className="relative flex-shrink-0">
+                        <button
+                            onClick={() => { setSelectedTabId(rack.id); setRackMenu(null); }}
+                            onContextMenu={(e) => openRackMenu(e, rack.id)}
+                            className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
+                                isSelected
+                                ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm'
+                                : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
+                            }`}
+                            style={{marginBottom: -1}}
+                        >
+                            {rack.name}
+                            {matchCount > 0 && (
+                                <span className="bg-green-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                                    {matchCount}
+                                </span>
+                            )}
+                            {isArchitectMode && isSelected && (
+                                <button
+                                    onClick={(e) => openRackMenu(e, rack.id)}
+                                    className="ml-1 p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
+                                >
+                                    <MoreVertical size={12} />
+                                </button>
+                            )}
+                        </button>
+                    </div>
                 )
             })}
 
             {boxes.length > 0 && (
                 <button
-                    onClick={() => setSelectedTabId('VIEW_ALL_BOXES')}
+                    onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenu(null); }}
                     className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                         selectedTabId === 'VIEW_ALL_BOXES'
-                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm' 
+                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm'
                         : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
                     }`}
                     style={{marginBottom: -1}}
@@ -439,7 +425,7 @@ export const CellarMap: React.FC = () => {
             )}
 
             {isArchitectMode && (
-                <button 
+                <button
                   onClick={() => setShowAddRackModal(true)}
                   className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 dark:border-stone-600 text-stone-500 hover:text-stone-800 dark:hover:text-white hover:border-stone-500 dark:hover:border-stone-400"
                 >
@@ -449,40 +435,11 @@ export const CellarMap: React.FC = () => {
         </div>
       </div>
 
-      {/* Architect Mode Toolbar */}
-      {isArchitectMode && selectedTabId && selectedTabId !== 'VIEW_ALL_BOXES' && (() => {
-          const rack = racks.find(r => r.id === selectedTabId);
-          if (!rack) return null;
-          const rackIndex = racks.findIndex(r => r.id === selectedTabId);
-          return (
-              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-2">
-                  <PencilRuler size={14} className="text-indigo-500" />
-                  <span className="text-xs text-indigo-700 dark:text-indigo-300 font-bold mr-auto">{rack.name}</span>
-                  <button onClick={() => handleReorderRack(rack.id, 'left')} disabled={rackIndex === 0} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à gauche">
-                      <ChevronLeft size={16} />
-                  </button>
-                  <button onClick={() => handleReorderRack(rack.id, 'right')} disabled={rackIndex === racks.length - 1} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 disabled:opacity-30 text-indigo-600 dark:text-indigo-400" title="Déplacer à droite">
-                      <ChevronRight size={16} />
-                  </button>
-                  <div className="w-px h-5 bg-indigo-200 dark:bg-indigo-800" />
-                  <button onClick={() => handleEditRack(rack)} className="p-1.5 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400" title="Renommer">
-                      <Edit3 size={16} />
-                  </button>
-                  <button onClick={() => handleQuickFill(rack)} className="p-1.5 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-600 dark:text-amber-400" title="Remplir">
-                      <PackagePlus size={16} />
-                  </button>
-                  <button onClick={() => handleDeleteRack(rack.id)} className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900 text-red-500" title="Supprimer">
-                      <Trash2 size={16} />
-                  </button>
-              </div>
-          );
-      })()}
-
       {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-72 max-h-[45vh] flex flex-col relative">
-               <button
+           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
+               <button 
                 onClick={() => setShowUnsortedDock(false)}
                 className="absolute -left-8 top-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-2 rounded-l-lg text-stone-400 hover:text-stone-800 dark:hover:text-white"
                >
@@ -491,55 +448,31 @@ export const CellarMap: React.FC = () => {
                <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2 border-b border-stone-200 dark:border-stone-800 pb-2">
                    <Inbox size={16} className="text-wine-600 dark:text-wine-400" />
                    <span className="text-sm font-bold">Quai de Réception</span>
-                   <span className="text-xs bg-wine-600 text-white px-2 py-0.5 rounded-full ml-auto animate-pulse">{unsortedBottles.length}</span>
+                   <span className="text-xs bg-stone-100 dark:bg-stone-800 px-2 rounded-full ml-auto">{unsortedBottles.length}</span>
                </div>
-
-               {/* Tout ranger button */}
-               <button
-                   onClick={handlePlaceAll}
-                   disabled={isPlacingAll}
-                   className="w-full mb-2 py-2 text-xs font-bold bg-wine-600 hover:bg-wine-700 disabled:opacity-50 text-white rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-               >
-                   {isPlacingAll ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                   {isPlacingAll ? 'Rangement...' : 'Tout ranger automatiquement'}
-               </button>
-
-               <p className="text-[10px] text-stone-500 italic mb-2">Glissez ou cliquez pour ranger.</p>
-               <div className="overflow-y-auto flex flex-col gap-1.5">
-                   {unsortedBottles.map(b => {
-                       const typeColors: Record<string, string> = {
-                           'RED': 'bg-red-700', 'WHITE': 'bg-yellow-300', 'ROSE': 'bg-pink-400',
-                           'SPARKLING': 'bg-amber-300', 'DESSERT': 'bg-orange-400', 'FORTIFIED': 'bg-stone-600'
-                       };
-                       return (
-                           <div
-                            key={b.id}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, b.id)}
-                            onClick={() => navigate(`/wine/${b.wineId}`)}
-                            title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
-                            className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-wine-400 dark:hover:border-wine-600 active:cursor-grabbing flex items-center gap-2 group"
-                           >
-                               <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${typeColors[b.wineType] || 'bg-stone-400'}`} />
-                               <div className="flex-1 min-w-0">
-                                   <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
-                                   <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
-                               </div>
-                               <Eye size={12} className="text-stone-300 group-hover:text-wine-500 flex-shrink-0 transition-colors" />
-                           </div>
-                       );
-                   })}
-               </div>
+               <p className="text-[10px] text-stone-500 italic">Glissez ces bouteilles vers les étagères pour les ranger.</p>
+               {unsortedBottles.map((b, i) => (
+                   <div 
+                    key={b.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, b.id)}
+                    title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
+                    className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
+                   >
+                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
+                       <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
+                   </div>
+               ))}
            </div>
         </div>
       )}
       {!showUnsortedDock && unsortedBottles.length > 0 && (
-         <button
+         <button 
             onClick={() => setShowUnsortedDock(true)}
             className="fixed bottom-24 right-0 z-40 bg-wine-600 text-white p-3 rounded-l-xl shadow-lg hover:bg-wine-500 transition-colors"
          >
              <Inbox size={20} />
-             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full animate-pulse">{unsortedBottles.length}</span>
+             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full">{unsortedBottles.length}</span>
          </button>
       )}
 
@@ -547,17 +480,45 @@ export const CellarMap: React.FC = () => {
           {(() => {
               if (selectedTabId === 'VIEW_ALL_BOXES') {
                   return boxes.map(box => (
-                      <RackGrid 
-                        key={box.id}
-                        rack={box}
-                        inventory={inventory}
-                        searchQuery={searchQuery}
-                        moveSource={moveSource}
-                        onSlotClick={handleSlotClick}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                      />
+                      <div key={box.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-sm">
+                          <div className="flex items-center justify-between px-4 py-2 border-b border-stone-100 dark:border-stone-800">
+                              <div className="flex items-center gap-2">
+                                  <Box size={14} className="text-amber-500" />
+                                  <span className="text-sm font-medium text-stone-800 dark:text-white">{box.name}</span>
+                                  <span className="text-xs text-stone-400">{box.width * box.height} empl.</span>
+                              </div>
+                              {isArchitectMode && (
+                                  <div className="flex gap-1">
+                                      <button
+                                          onClick={() => handleEditRack(box)}
+                                          className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                                          title="Renommer"
+                                      >
+                                          <Pencil size={13} />
+                                      </button>
+                                      <button
+                                          onClick={() => handleDeleteRack(box.id)}
+                                          className="p-1.5 rounded text-stone-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                          title="Supprimer"
+                                      >
+                                          <Trash2 size={13} />
+                                      </button>
+                                  </div>
+                              )}
+                          </div>
+                          <div className="p-2">
+                              <RackGrid
+                                rack={box}
+                                inventory={inventory}
+                                searchQuery={searchQuery}
+                                moveSource={moveSource}
+                                onSlotClick={handleSlotClick}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                              />
+                          </div>
+                      </div>
                   ));
               } else {
                   const rack = racks.find(r => r.id === selectedTabId);
@@ -585,33 +546,34 @@ export const CellarMap: React.FC = () => {
       {/* Modals & Popups (SelectedBottle, Gift, etc.) */}
       {/* ... [Code des modales identique au fichier d'origine mais utilisant les handlers async] ... */}
       {selectedBottle && (
-          <div className="fixed inset-0 z-50 flex items-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
-              <div className="bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 w-full rounded-t-3xl p-6 pb-28 relative z-10 shadow-2xl animate-slide-up">
-                  {/* Handle bar */}
-                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4" />
-
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <button onClick={() => setSelectedBottle(null)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
+                  
                   <div className="text-center mb-6">
                       <h3 className="text-2xl font-serif text-stone-900 dark:text-white mb-1">{selectedBottle.wine.name}</h3>
-                      {selectedBottle.wine.cuvee && <p className="text-wine-600 dark:text-wine-400 text-sm italic mb-1">Cuvée {selectedBottle.wine.cuvee}</p>}
                       <p className="text-stone-500 dark:text-stone-400">{selectedBottle.wine.producer} • {selectedBottle.wine.vintage}</p>
                       <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
                           {racks.find(r => r.id === selectedBottle.location.rackId)?.name} • {getRowLabel(selectedBottle.location.y)}{selectedBottle.location.x+1}
                       </p>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+                  <div className="grid grid-cols-2 gap-3">
                       <button onClick={handleConsume} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-xs">Boire</span>
+                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-sm">Boire</span>
                       </button>
                       <button onClick={handleStartMove} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-xs">Déplacer</span>
+                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-sm">Déplacer</span>
                       </button>
                       <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-xs">Fiche</span>
+                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
                       </button>
                       <button onClick={handleStartGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-xs">Offrir</span>
+                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
+                      </button>
+                      <button onClick={handleDeleteBottle} className="col-span-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 p-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-200 dark:border-red-900/50">
+                          <Trash2 size={18} /> <span className="text-sm">Supprimer la bouteille</span>
                       </button>
                   </div>
               </div>
@@ -619,10 +581,9 @@ export const CellarMap: React.FC = () => {
       )}
 
       {showGiftModal && selectedBottle && (
-          <div className="fixed inset-0 z-50 flex items-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
               <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-700 w-full rounded-t-3xl p-6 pb-28 relative z-10 shadow-2xl animate-slide-up">
-                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4" />
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
                   <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
                   <p className="text-sm text-stone-500 mb-4">{selectedBottle.wine.name} {selectedBottle.wine.vintage}</p>
                   
@@ -702,15 +663,7 @@ export const CellarMap: React.FC = () => {
                   
                   <div className="grid gap-3">
                       <button
-                        onClick={() => {
-                          const p = new URLSearchParams();
-                          p.set('rackId', emptySlotTarget!.rackId);
-                          p.set('rackX', String(emptySlotTarget!.x));
-                          p.set('rackY', String(emptySlotTarget!.y));
-                          p.set('rackName', emptySlotTarget!.rackName);
-                          setEmptySlotTarget(null);
-                          navigate(`/add-wine?${p.toString()}`);
-                        }}
+                        onClick={() => navigate('/add-wine', { state: { targetSlot: emptySlotTarget } })}
                         className="bg-wine-600 hover:bg-wine-700 text-white p-3 rounded-xl flex items-center gap-3 transition-colors"
                       >
                           <div className="bg-wine-800 p-2 rounded-lg"><Plus size={18}/></div>
@@ -722,84 +675,21 @@ export const CellarMap: React.FC = () => {
                       
                       <div className="border-t border-stone-200 dark:border-stone-800 my-1 pt-2">
                           <p className="text-xs text-stone-500 mb-2 uppercase font-bold">Ou placer un vin existant</p>
-
-                          {/* Search input */}
-                          <div className="relative mb-3">
-                            <Search className="absolute left-2.5 top-2.5 text-stone-400" size={14} />
-                            <input
-                              type="text"
-                              placeholder="Chercher un vin…"
-                              value={slotSearchQuery}
-                              onChange={(e) => setSlotSearchQuery(e.target.value)}
-                              className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg py-2 pl-8 pr-3 text-xs text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none"
-                              autoFocus
-                            />
-                          </div>
-
-                          {slotSearchQuery ? (
-                            /* Search results */
-                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                              {slotFilteredWines.map(w => (
-                                <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
-                                  <div>
-                                    <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                    <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
-                                  </div>
-                                  <Plus size={14} className="text-stone-400"/>
-                                </button>
-                              ))}
-                              {slotFilteredWines.length === 0 && (
-                                <p className="text-xs text-stone-400 italic text-center py-4">Aucun résultat</p>
-                              )}
-                            </div>
-                          ) : (
-                            <>
-                              {/* Recent wines */}
-                              {recentWines.length > 0 && (
-                                <div className="mb-3">
-                                  <p className="text-[10px] text-stone-400 uppercase font-medium mb-1.5">Ajouts récents</p>
-                                  <div className="space-y-1.5">
-                                    {recentWines.map(w => (
-                                      <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
-                                        <div>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {inventory.map(w => (
+                                  <button 
+                                    key={w.id} 
+                                    onClick={() => handleAddExistingToSlot(w)}
+                                    className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800"
+                                  >
+                                      <div>
                                           <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                          <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
-                                        </div>
-                                        <Plus size={14} className="text-stone-400"/>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* All wines expandable */}
-                              {winesInStock.length > recentWines.length && (
-                                <div>
-                                  <button onClick={() => setShowAllWinesInSlot(!showAllWinesInSlot)} className="w-full flex items-center justify-between text-[10px] text-stone-400 uppercase font-medium py-1.5 hover:text-stone-600 dark:hover:text-stone-300">
-                                    <span>Toutes les références ({winesInStock.length})</span>
-                                    <ChevronRight size={12} className={`transition-transform ${showAllWinesInSlot ? 'rotate-90' : ''}`} />
+                                          <div className="text-stone-500 text-[10px]">{w.vintage}</div>
+                                      </div>
+                                      <Plus size={14} className="text-stone-400"/>
                                   </button>
-                                  {showAllWinesInSlot && (
-                                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                      {winesInStock.map(w => (
-                                        <button key={w.id} onClick={() => handleAddExistingToSlot(w)} className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
-                                          <div>
-                                            <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
-                                            <div className="text-stone-500 text-[10px]">{w.vintage} • {w.producer} • {w.inventoryCount} btl</div>
-                                          </div>
-                                          <Plus size={14} className="text-stone-400"/>
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
-                              {winesInStock.length === 0 && (
-                                <p className="text-xs text-stone-400 italic text-center py-4">Aucun vin en stock</p>
-                              )}
-                            </>
-                          )}
+                              ))}
+                          </div>
                       </div>
                   </div>
                   <button onClick={() => setEmptySlotTarget(null)} className="w-full py-2 mt-4 text-stone-500">Annuler</button>
@@ -848,6 +738,38 @@ export const CellarMap: React.FC = () => {
               </div>
           </div>
       )}
+
+      {/* Fixed-position context menu for rack tabs (avoids overflow clipping) */}
+      {rackMenu && (() => {
+          const rack = racks.find(r => r.id === rackMenu.rackId);
+          if (!rack) return null;
+          return (
+              <>
+                  <div className="fixed inset-0 z-40" onClick={() => setRackMenu(null)} />
+                  <div
+                      className="fixed z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-1 w-48"
+                      style={{ top: rackMenu.y, left: rackMenu.x }}
+                  >
+                      <button onClick={() => { handleEditRack(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <Pencil size={14} className="text-stone-400" /> Renommer
+                      </button>
+                      <button onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <ChevronLeft size={14} className="text-stone-400" /> Déplacer à gauche
+                      </button>
+                      <button onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <ChevronRight size={14} className="text-stone-400" /> Déplacer à droite
+                      </button>
+                      <button onClick={() => { handleQuickFill(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <PackagePlus size={14} className="text-amber-500" /> Remplir
+                      </button>
+                      <div className="border-t border-stone-100 dark:border-stone-800 my-1" />
+                      <button onClick={() => { handleDeleteRack(rack.id); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                          <Trash2 size={14} /> Supprimer
+                      </button>
+                  </div>
+              </>
+          );
+      })()}
 
       {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">

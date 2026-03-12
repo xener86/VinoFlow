@@ -163,12 +163,31 @@ export const EditWine: React.FC = () => {
                     </div>
                     <div>
                         <label className="text-xs text-stone-500 uppercase">Format</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={wine.format}
                             onChange={e => setWine({...wine, format: e.target.value})}
                             className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
                         />
+                    </div>
+                    <div className="col-span-2">
+                        <label className="text-xs text-stone-500 uppercase">Couleur / Type</label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                            {(['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'FORTIFIED'] as const).map(t => {
+                                const labels: Record<string, string> = { RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Pétillant', DESSERT: 'Dessert', FORTIFIED: 'Fortifié' };
+                                const colors: Record<string, string> = { RED: 'bg-red-100 border-red-400 text-red-800 dark:bg-red-900/30 dark:border-red-600 dark:text-red-300', WHITE: 'bg-yellow-50 border-yellow-400 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-300', ROSE: 'bg-pink-100 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-600 dark:text-pink-300', SPARKLING: 'bg-blue-50 border-blue-400 text-blue-800 dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300', DESSERT: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-600 dark:text-amber-300', FORTIFIED: 'bg-purple-100 border-purple-400 text-purple-800 dark:bg-purple-900/20 dark:border-purple-600 dark:text-purple-300' };
+                                return (
+                                    <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setWine({...wine, type: t})}
+                                        className={`px-3 py-1.5 text-xs rounded border font-medium transition-all ${wine.type === t ? colors[t] + ' ring-2 ring-offset-1 ring-wine-500' : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+                                    >
+                                        {labels[t]}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
