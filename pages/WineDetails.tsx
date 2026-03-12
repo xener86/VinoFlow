@@ -453,10 +453,10 @@ export const WineDetails: React.FC = () => {
                       <div className="space-y-2">
                           {wine.bottles.filter(b => !b.isConsumed).map((b, i) => {
                               let locationLabel = "Non trié";
-                              if (typeof b.location !== 'string') {
+                              if (typeof b.location !== 'string' && b.location && 'rackId' in b.location) {
                                   const rackName = getRackName(b.location.rackId);
                                   locationLabel = `${rackName} [${getRowLabel(b.location.y)}${b.location.x + 1}]`;
-                              } else {
+                              } else if (typeof b.location === 'string') {
                                   locationLabel = b.location;
                               }
                               

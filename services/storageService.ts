@@ -222,6 +222,13 @@ export const giftBottle = async (wineId: string, bottleId: string, recipient: st
     });
 };
 
+export const deleteBottle = async (bottleId: string): Promise<void> => {
+    await fetch(`${API_URL}/bottles/${bottleId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+};
+
 export const fillRackWithWine = async (rackId: string, wineId: string): Promise<void> => {
     // Cette logique est complexe (calcul des slots libres).
     // Pour l'instant, on la garde côté client en récupérant tout, 

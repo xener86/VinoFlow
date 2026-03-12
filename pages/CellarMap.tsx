@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle } from '../services/storageService';
+import { consumeSpecificBottle, moveBottle, saveRack, deleteRack, fillRackWithWine, addBottleAtLocation, updateRack, reorderRack, giftBottle, deleteBottle } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { CellarWine, Rack, BottleLocation } from '../types';
@@ -75,17 +75,16 @@ export const CellarMap: React.FC = () => {
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
 
-  // Context menu for rack tabs
-  const [rackMenuId, setRackMenuId] = useState<string | null>(null);
+  // Context menu for rack tabs (fixed positioned to avoid overflow clipping)
+  const [rackMenu, setRackMenu] = useState<{rackId: string, x: number, y: number} | null>(null);
 
-  // Close rack menu on outside click
-  useEffect(() => {
-    const handleClickOutside = () => setRackMenuId(null);
-    if (rackMenuId) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [rackMenuId]);
+  const openRackMenu = (e: React.MouseEvent, rackId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (rackMenu?.rackId === rackId) { setRackMenu(null); return; }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setRackMenu({ rackId, x: rect.left, y: rect.bottom + 4 });
+  };
 
   // Initialisation de la sélection du rack une fois les données chargées
   useEffect(() => {
@@ -192,6 +191,14 @@ export const CellarMap: React.FC = () => {
   const handleConsume = async () => {
         if (selectedBottle && window.confirm(`Boire ${selectedBottle.wine.name} ?`)) {
             await consumeSpecificBottle(selectedBottle.wine.id, selectedBottle.bottleId);
+            setSelectedBottle(null);
+            refreshWines();
+        }
+  };
+
+  const handleDeleteBottle = async () => {
+        if (selectedBottle && window.confirm(`Supprimer définitivement cette bouteille de ${selectedBottle.wine.name} ?`)) {
+            await deleteBottle(selectedBottle.bottleId);
             setSelectedBottle(null);
             refreshWines();
         }
@@ -369,8 +376,8 @@ export const CellarMap: React.FC = () => {
                 return (
                     <div key={rack.id} className="relative flex-shrink-0">
                         <button
-                            onClick={() => { setSelectedTabId(rack.id); setRackMenuId(null); }}
-                            onContextMenu={(e) => { e.preventDefault(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
+                            onClick={() => { setSelectedTabId(rack.id); setRackMenu(null); }}
+                            onContextMenu={(e) => openRackMenu(e, rack.id)}
                             className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                                 isSelected
                                 ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm'
@@ -386,61 +393,20 @@ export const CellarMap: React.FC = () => {
                             )}
                             {isArchitectMode && isSelected && (
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); setRackMenuId(rackMenuId === rack.id ? null : rack.id); }}
+                                    onClick={(e) => openRackMenu(e, rack.id)}
                                     className="ml-1 p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
                                 >
                                     <MoreVertical size={12} />
                                 </button>
                             )}
                         </button>
-
-                        {/* Context menu */}
-                        {rackMenuId === rack.id && (
-                            <div className="absolute top-full left-0 mt-1 z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-2 min-w-[180px] animate-fade-in">
-                                <button
-                                    onClick={() => { handleEditRack(rack); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                >
-                                    <Pencil size={14} className="text-blue-500" /> Renommer
-                                </button>
-                                {idx > 0 && (
-                                    <button
-                                        onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenuId(null); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                    >
-                                        <ChevronLeft size={14} className="text-indigo-500" /> Déplacer à gauche
-                                    </button>
-                                )}
-                                {idx < shelves.length - 1 && (
-                                    <button
-                                        onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenuId(null); }}
-                                        className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                    >
-                                        <ChevronRight size={14} className="text-indigo-500" /> Déplacer à droite
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => { handleQuickFill(rack); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 flex items-center gap-3"
-                                >
-                                    <PackagePlus size={14} className="text-amber-500" /> Remplir
-                                </button>
-                                <div className="border-t border-stone-200 dark:border-stone-700 my-1" />
-                                <button
-                                    onClick={() => { handleDeleteRack(rack.id); setRackMenuId(null); }}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3"
-                                >
-                                    <Trash2 size={14} /> Supprimer
-                                </button>
-                            </div>
-                        )}
                     </div>
                 )
             })}
 
             {boxes.length > 0 && (
                 <button
-                    onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenuId(null); }}
+                    onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenu(null); }}
                     className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                         selectedTabId === 'VIEW_ALL_BOXES'
                         ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm'
@@ -514,17 +480,45 @@ export const CellarMap: React.FC = () => {
           {(() => {
               if (selectedTabId === 'VIEW_ALL_BOXES') {
                   return boxes.map(box => (
-                      <RackGrid 
-                        key={box.id}
-                        rack={box}
-                        inventory={inventory}
-                        searchQuery={searchQuery}
-                        moveSource={moveSource}
-                        onSlotClick={handleSlotClick}
-                        onDragStart={handleDragStart}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                      />
+                      <div key={box.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-sm">
+                          <div className="flex items-center justify-between px-4 py-2 border-b border-stone-100 dark:border-stone-800">
+                              <div className="flex items-center gap-2">
+                                  <Box size={14} className="text-amber-500" />
+                                  <span className="text-sm font-medium text-stone-800 dark:text-white">{box.name}</span>
+                                  <span className="text-xs text-stone-400">{box.width * box.height} empl.</span>
+                              </div>
+                              {isArchitectMode && (
+                                  <div className="flex gap-1">
+                                      <button
+                                          onClick={() => handleEditRack(box)}
+                                          className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                                          title="Renommer"
+                                      >
+                                          <Pencil size={13} />
+                                      </button>
+                                      <button
+                                          onClick={() => handleDeleteRack(box.id)}
+                                          className="p-1.5 rounded text-stone-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                          title="Supprimer"
+                                      >
+                                          <Trash2 size={13} />
+                                      </button>
+                                  </div>
+                              )}
+                          </div>
+                          <div className="p-2">
+                              <RackGrid
+                                rack={box}
+                                inventory={inventory}
+                                searchQuery={searchQuery}
+                                moveSource={moveSource}
+                                onSlotClick={handleSlotClick}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                              />
+                          </div>
+                      </div>
                   ));
               } else {
                   const rack = racks.find(r => r.id === selectedTabId);
@@ -577,6 +571,9 @@ export const CellarMap: React.FC = () => {
                       </button>
                       <button onClick={handleStartGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
                           <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
+                      </button>
+                      <button onClick={handleDeleteBottle} className="col-span-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 p-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-200 dark:border-red-900/50">
+                          <Trash2 size={18} /> <span className="text-sm">Supprimer la bouteille</span>
                       </button>
                   </div>
               </div>
@@ -665,8 +662,8 @@ export const CellarMap: React.FC = () => {
                   </p>
                   
                   <div className="grid gap-3">
-                      <button 
-                        onClick={() => navigate('/add-wine')}
+                      <button
+                        onClick={() => navigate('/add-wine', { state: { targetSlot: emptySlotTarget } })}
                         className="bg-wine-600 hover:bg-wine-700 text-white p-3 rounded-xl flex items-center gap-3 transition-colors"
                       >
                           <div className="bg-wine-800 p-2 rounded-lg"><Plus size={18}/></div>
@@ -741,6 +738,38 @@ export const CellarMap: React.FC = () => {
               </div>
           </div>
       )}
+
+      {/* Fixed-position context menu for rack tabs (avoids overflow clipping) */}
+      {rackMenu && (() => {
+          const rack = racks.find(r => r.id === rackMenu.rackId);
+          if (!rack) return null;
+          return (
+              <>
+                  <div className="fixed inset-0 z-40" onClick={() => setRackMenu(null)} />
+                  <div
+                      className="fixed z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-1 w-48"
+                      style={{ top: rackMenu.y, left: rackMenu.x }}
+                  >
+                      <button onClick={() => { handleEditRack(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <Pencil size={14} className="text-stone-400" /> Renommer
+                      </button>
+                      <button onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <ChevronLeft size={14} className="text-stone-400" /> Déplacer à gauche
+                      </button>
+                      <button onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <ChevronRight size={14} className="text-stone-400" /> Déplacer à droite
+                      </button>
+                      <button onClick={() => { handleQuickFill(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                          <PackagePlus size={14} className="text-amber-500" /> Remplir
+                      </button>
+                      <div className="border-t border-stone-100 dark:border-stone-800 my-1" />
+                      <button onClick={() => { handleDeleteRack(rack.id); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                          <Trash2 size={14} /> Supprimer
+                      </button>
+                  </div>
+              </>
+          );
+      })()}
 
       {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
