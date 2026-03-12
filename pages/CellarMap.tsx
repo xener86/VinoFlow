@@ -198,7 +198,7 @@ export const CellarMap: React.FC = () => {
 
   const handleDeleteBottle = async () => {
         if (selectedBottle && window.confirm(`Supprimer définitivement cette bouteille de ${selectedBottle.wine.name} ?`)) {
-            await deleteBottle(selectedBottle.bottleId);
+            await deleteBottle(selectedBottle.bottleId, selectedBottle.wine.id, selectedBottle.wine.name);
             setSelectedBottle(null);
             refreshWines();
         }
