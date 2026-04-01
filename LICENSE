@@ -1,16 +1,29 @@
-MIT License
+VinoFlow License
 
-Copyright (c) 2024-2026 xener86
+Copyright (c) 2024-2026 Xavier DIDDEN (xener86)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, and distribute the Software for personal, educational, and
+non-commercial purposes, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. NON-COMMERCIAL USE ONLY
+   The Software may not be used for commercial purposes without prior written
+   authorization from the copyright holder. Commercial use includes, but is
+   not limited to: selling the Software, offering the Software as a paid
+   service (SaaS), or integrating the Software into a commercial product.
+
+2. ATTRIBUTION
+   The above copyright notice and this permission notice shall be included
+   in all copies or substantial portions of the Software.
+
+3. MODIFICATIONS
+   You may modify the Software for personal use. Redistribution of modified
+   versions must retain this license and clearly indicate the changes made.
+
+4. COMMERCIAL LICENSING
+   For any commercial use, please contact the author to obtain a commercial
+   license: https://github.com/xener86
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
