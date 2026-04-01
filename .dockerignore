@@ -55,5 +55,13 @@ logs
 *.temp
 *~
 
+# Backup files
+*.backup
+*.old
+*.bak
+
+# Claude Code
+.claude/
+
 # Prisma
 prisma/migrations

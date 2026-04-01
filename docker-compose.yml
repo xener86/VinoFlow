@@ -1,37 +1,50 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-vinoflow}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-vinoflow}
+    volumes:
+      - vinoflow-db:/var/lib/postgresql/data
+    networks:
+      - vinoflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vinoflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
-    container_name: vinoflow-backend
     build:
       context: ./backend
     restart: unless-stopped
     environment:
       - PORT=3100
-      - DATABASE_URL=postgresql://vinoflow_user:VinoFlow2024!@postgresql-server:5432/vinoflow
+      - DATABASE_URL=${DATABASE_URL:-postgresql://vinoflow:vinoflow@db:5432/vinoflow}
+      - JWT_SECRET=${JWT_SECRET:-change_me}
       - NODE_ENV=production
     networks:
       - vinoflow-network
-      - postgresql_postgres-network
-      - proxy_net
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
-    container_name: vinoflow-frontend
     build:
       context: .
     restart: unless-stopped
     ports:
-      - "5001:80"
+      - "${VINOFLOW_PORT:-5001}:80"
     networks:
       - vinoflow-network
-      - proxy_net
     depends_on:
       - backend
+
+volumes:
+  vinoflow-db:
 
 networks:
   vinoflow-network:
     driver: bridge
-  postgresql_postgres-network:
-    external: true
-  proxy_net:
-    external: true

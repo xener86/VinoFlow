@@ -60,6 +60,14 @@ docker-compose.override.yml
 *.swo
 *~
 
+# Backup files
+*.backup
+*.old
+*.bak
+
+# Claude Code
+.claude/
+
 # Cache
 .cache/
 .eslintcache
