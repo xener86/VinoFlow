@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { customAuth } from '../services/customAuth'; // ✅ Nouveau service d'auth
-import { saveSupabaseConfig } from '../services/supabase'; // Pour compatibilité AuthContext
+import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { Wine, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 
@@ -16,15 +15,6 @@ export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Auto-configuration au montage pour satisfaire AuthContext
-  useEffect(() => {
-    // On sauvegarde une config "fictive" ou par défaut pour que isConfigured passe à true
-    // car customAuth gère maintenant la connexion en interne avec ses propres clés.
-    // Cela évite de rester bloqué sur l'écran de config si le contexte vérifie le localStorage.
-    if (!localStorage.getItem('vf_supabase_url')) {
-        saveSupabaseConfig('https://vinoflow-auth.auto', 'auto-configured');
-    }
-  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();

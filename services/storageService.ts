@@ -1,6 +1,4 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
-import { getAuthToken } from './supabase';
-
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
 
 // --- HELPERS ---
