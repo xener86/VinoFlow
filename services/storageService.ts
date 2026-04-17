@@ -1,5 +1,8 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
+import { customAuth } from './customAuth';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
+
+const currentUserId = (): string | null => customAuth.getUser()?.id ?? null;
 
 // --- HELPERS ---
 
@@ -61,50 +64,49 @@ export const getInventory = async (): Promise<CellarWine[]> => {
 };
 
 export const getWineById = async (id: string): Promise<CellarWine | null> => {
-  try {
-    const response = await fetch(`${API_URL}/wines/${id}`, { headers: getHeaders() });
-    if (!response.ok) return null;
-    const wine = await response.json();
-    
-    // On récupère aussi les bouteilles pour ce vin spécifique
-    // Idéalement le backend devrait renvoyer l'objet complet, sinon on fetch les bouteilles
-    const bottlesResponse = await fetch(`${API_URL}/bottles?wineId=${id}`, { headers: getHeaders() });
-    const bottles = bottlesResponse.ok ? await bottlesResponse.json() : [];
-    
-    return {
-      ...wine,
-      inventoryCount: bottles.filter((b: Bottle) => !b.isConsumed).length,
-      bottles: bottles.filter((b: Bottle) => !b.isConsumed)
-    };
-  } catch (e) {
-    console.error(e);
-    return null;
+  const response = await fetch(`${API_URL}/wines/${id}`, { headers: getHeaders() });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to fetch wine: ${response.status} ${response.statusText}`);
   }
+  const wine = await response.json();
+
+  const bottlesResponse = await fetch(`${API_URL}/bottles?wineId=${id}`, { headers: getHeaders() });
+  if (!bottlesResponse.ok) {
+    throw new Error(`Failed to fetch bottles: ${bottlesResponse.status} ${bottlesResponse.statusText}`);
+  }
+  const bottles = await bottlesResponse.json();
+
+  return {
+    ...wine,
+    inventoryCount: bottles.filter((b: Bottle) => !b.isConsumed).length,
+    bottles: bottles.filter((b: Bottle) => !b.isConsumed)
+  };
 };
 
 export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?: number, location?: BottleLocation): Promise<string> => {
-  // 1. Sauvegarder le vin
   let savedWine = wine;
-  
-  // Vérifier si c'est une création ou une mise à jour
+
+  // Only update if the GET explicitly returns 404 (existing === null after a
+  // successful check). Any other error bubbles up so we never create a
+  // duplicate wine when the server is unreachable or returns 500.
   const existing = await getWineById(wine.id);
-  
+
   if (existing) {
-      await updateWine(wine.id, wine);
+    await updateWine(wine.id, wine);
   } else {
-      const response = await fetch(`${API_URL}/wines`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(wine)
-      });
-      savedWine = await handleResponse(response);
+    const response = await fetch(`${API_URL}/wines`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(wine)
+    });
+    savedWine = await handleResponse(response);
   }
 
-  // 2. Ajouter les bouteilles si quantité > 0
   if (quantity > 0) {
     await addBottles(savedWine.id, quantity, location || 'Non trié', savedWine.name, savedWine.vintage, purchasePrice);
   }
-  
+
   return savedWine.id;
 };
 
@@ -152,7 +154,7 @@ export const addBottles = async (
       location,
       purchaseDate: new Date().toISOString(),
       isConsumed: false,
-      addedByUserId: 'current-user'
+      addedByUserId: currentUserId()
     };
     if (purchasePrice) bottle.purchasePrice = purchasePrice;
     promises.push(
@@ -316,7 +318,8 @@ export const fillRackWithWine = async (rackId: string, wineId: string): Promise<
                     wineId,
                     location: { rackId, x, y },
                     purchaseDate: new Date().toISOString(),
-                    isConsumed: false
+                    isConsumed: false,
+                    addedByUserId: currentUserId()
                 };
                 promises.push(
                     fetch(`${API_URL}/bottles`, {

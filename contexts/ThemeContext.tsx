@@ -20,16 +20,25 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(theme);
-    }
-    
+    const applyTheme = () => {
+      root.classList.remove('light', 'dark');
+      if (theme === 'system') {
+        root.classList.add(mediaQuery.matches ? 'dark' : 'light');
+      } else {
+        root.classList.add(theme);
+      }
+    };
+
+    applyTheme();
     localStorage.setItem('vf_theme', theme);
+
+    // Re-apply when the OS preference changes, but only while on 'system'
+    if (theme === 'system') {
+      mediaQuery.addEventListener('change', applyTheme);
+      return () => mediaQuery.removeEventListener('change', applyTheme);
+    }
   }, [theme]);
 
   return (

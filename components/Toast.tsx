@@ -30,11 +30,15 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration =
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       setExiting(true);
-      setTimeout(onClose, 300);
+      closeTimer = setTimeout(onClose, 300);
     }, duration);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (closeTimer) clearTimeout(closeTimer);
+    };
   }, [duration, onClose]);
 
   const handleClose = () => {
