@@ -90,6 +90,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Notes de Dégustation"
+              aria-label="Notes de Dégustation"
             >
               <FileText size={20} />
               {tastingCount > 0 && (
@@ -108,6 +109,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="À Boire Maintenant"
+              aria-label="À Boire Maintenant"
             >
               <Clock size={20} />
               {drinkNowCount > 0 && (
@@ -126,6 +128,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Journal de Cave"
+              aria-label="Journal de Cave"
             >
               <BookOpen size={20} />
             </Link>
@@ -139,6 +142,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Wishlist"
+              aria-label="Wishlist"
             >
               <Heart size={20} />
             </Link>
@@ -152,6 +156,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Comparer"
+              aria-label="Comparer"
             >
               <Columns3 size={20} />
             </Link>
@@ -165,6 +170,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Carte des Régions"
+              aria-label="Carte des Régions"
             >
               <Globe size={20} />
             </Link>
@@ -178,6 +184,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Statistiques"
+              aria-label="Statistiques"
             >
               <BarChart3 size={20} />
             </Link>
@@ -187,6 +194,7 @@ export const Layout: React.FC = () => {
               onClick={cycleTheme}
               className="p-2 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
               title={`Thème: ${theme}`}
+              aria-label={`Changer de thème (actuel : ${theme})`}
             >
               {getThemeIcon()}
             </button>
@@ -200,6 +208,7 @@ export const Layout: React.FC = () => {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
               }`}
               title="Paramètres"
+              aria-label="Paramètres"
             >
               <Settings size={20} />
             </Link>
@@ -209,6 +218,7 @@ export const Layout: React.FC = () => {
               onClick={() => signOut()}
               className="p-2 rounded-lg text-stone-600 dark:text-stone-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
               title="Déconnexion"
+              aria-label="Déconnexion"
             >
               <LogOut size={20} />
             </button>

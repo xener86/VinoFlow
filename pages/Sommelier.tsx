@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
     getSommelierRecommendations, 
@@ -59,31 +59,38 @@ export const Sommelier: React.FC = () => {
     setTasteProfile(getUserTasteProfile());
   }, []);
 
+  const executePairing = useCallback(async (query: string, mode: 'FOOD_TO_WINE' | 'WINE_TO_FOOD') => {
+      if (!query) return;
+      setLoadingPairing(true);
+      const result = await getPairingAdvice(query, mode, inventory);
+      setPairingResult(result);
+      setLoadingPairing(false);
+  }, [inventory]);
+
+  // Track queries we've already auto-triggered so the effect doesn't re-fire
+  // on every inventory refresh or tab switch.
+  const autoPairedRef = useRef<string | null>(null);
+
   useEffect(() => {
       const mode = searchParams.get('mode');
       const q = searchParams.get('q');
 
-      if (mode === 'PAIRING') {
-          setActiveTab('PAIRING');
-          if (q) {
-              setPairingQuery(q);
-              setPairingMode('FOOD_TO_WINE');
-              // On attend que l'inventaire soit chargé avant de lancer l'auto-pairing
-              if (!loadingWines && inventory.length > 0) {
-                  executePairing(q, 'FOOD_TO_WINE');
-              }
-          }
-      }
-  }, [searchParams, loadingWines]); // Ajout de dépendance loadingWines
+      if (mode !== 'PAIRING') return;
 
-  const executePairing = async (query: string, mode: 'FOOD_TO_WINE' | 'WINE_TO_FOOD') => {
-      if(!query) return;
-      setLoadingPairing(true);
-      // ✅ On utilise 'inventory' du hook, plus d'appel direct à getInventory()
-      const result = await getPairingAdvice(query, mode, inventory);
-      setPairingResult(result);
-      setLoadingPairing(false);
-  };
+      setActiveTab('PAIRING');
+      if (!q) return;
+
+      setPairingQuery(q);
+      setPairingMode('FOOD_TO_WINE');
+
+      // Wait until inventory is actually loaded before running the pairing.
+      // Re-runs once inventory transitions from loading → loaded.
+      if (loadingWines || inventory.length === 0) return;
+      if (autoPairedRef.current === q) return;
+
+      autoPairedRef.current = q;
+      executePairing(q, 'FOOD_TO_WINE');
+  }, [searchParams, loadingWines, inventory, executePairing]);
 
   const handleGetAdvice = async (e: React.FormEvent) => {
       e.preventDefault();
