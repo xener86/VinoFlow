@@ -6,6 +6,9 @@
 
 Modern, AI-powered wine cellar management with tasting notes, cocktail recipes, and sommelier recommendations.
 
+[![CI](https://github.com/xener86/VinoFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/xener86/VinoFlow/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Custom-blue.svg)](LICENSE)
+
 [Features](#features) · [Installation](#installation) · [Configuration](#configuration) · [Screenshots](#screenshots) · [License](#license)
 
 </div>
