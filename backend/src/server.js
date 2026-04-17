@@ -9,11 +9,30 @@ const { Pool } = pg;
 const app = express();
 const port = process.env.PORT || 3100;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'votre-jwt-secret-super-securise-changez-moi-absolument';
+// Fail-fast: JWT_SECRET is mandatory. No silent fallback.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change_me') {
+  console.error('❌ JWT_SECRET is missing or insecure. Set JWT_SECRET to a long random string in your .env file.');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// CORS: restrict to the frontend origin. Defaults to localhost for dev.
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5001';
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+app.use(express.json({ limit: '1mb' }));
+
+// Auth middleware: verifies JWT and attaches req.user
+const authenticate = (req, res, next) => {
+  const header = req.headers.authorization;
+  const token = header && header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ msg: 'Unauthorized' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ msg: 'Invalid or expired token' });
+  }
+};
 
 // PostgreSQL connection
 const pool = new Pool({
@@ -130,6 +149,10 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
+
+// ========== Protected routes (require JWT) ==========
+// All /api/* routes below this point require a valid JWT token.
+app.use('/api', authenticate);
 
 // ========== WINES ENDPOINTS ==========
 
