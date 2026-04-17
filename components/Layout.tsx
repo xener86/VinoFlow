@@ -1,17 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWines } from '../hooks/useWines';
+import { useTastingNotes } from '../hooks/useTastingNotes';
+import { getBottles } from '../services/storageService';
 import { getPeakWindow } from '../utils/peakWindow';
+import type { Bottle } from '../types';
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 export const Layout: React.FC = () => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [tastingCount, setTastingCount] = useState(0);
   const { wines } = useWines();
+  const { notes: tastingNotes } = useTastingNotes();
+  const [allBottles, setAllBottles] = useState<Bottle[]>([]);
+
+  useEffect(() => {
+    getBottles().then(b => setAllBottles(Array.isArray(b) ? b : [])).catch(() => setAllBottles([]));
+  }, [location.pathname]);
+
   const totalBottles = wines.reduce((sum, w) => sum + w.inventoryCount, 0);
   const drinkNowCount = wines.filter(w => {
     if (w.inventoryCount === 0) return false;
@@ -19,57 +30,24 @@ export const Layout: React.FC = () => {
     return peak.status === 'À Boire' || peak.status === 'Boire Vite';
   }).length;
 
-  useEffect(() => {
-    // Calculate wines needing tasting notes (only after consumption and if > 365 days since last note)
-    const winesData = localStorage.getItem('vf_wines');
-    const wines = winesData ? JSON.parse(winesData) : [];
-    const bottlesData = localStorage.getItem('vf_bottles');
-    const bottles = bottlesData ? JSON.parse(bottlesData) : [];
-    const tastingNotes = JSON.parse(localStorage.getItem('vf_tasting_notes') || '[]');
-    
+  // Wines that need a tasting note: consumed bottles with no recent note (>1 year)
+  const tastingCount = useMemo(() => {
     const now = Date.now();
-    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-    
-    const winesToTaste = wines.filter((wine: any) => {
-      // Vérifier si le vin a des bouteilles consommées
-      const consumedBottles = bottles.filter((b: any) => 
-        b.wineId === wine.id && b.isConsumed && b.consumedDate
-      );
-      
+    return wines.filter(wine => {
+      const consumedBottles = allBottles.filter(b => b.wineId === wine.id && b.isConsumed && b.consumedDate);
       if (consumedBottles.length === 0) return false;
-      
-      // Trouver la dernière bouteille consommée
-      const lastConsumed = consumedBottles.reduce((latest: any, current: any) => {
-        const currentDate = new Date(current.consumedDate).getTime();
-        const latestDate = new Date(latest.consumedDate).getTime();
-        return currentDate > latestDate ? current : latest;
-      });
-      
-      // Trouver la dernière note de dégustation
-      const wineNotes = tastingNotes.filter((note: any) => note.wineId === wine.id);
-      if (wineNotes.length === 0) {
-        // Pas de note mais bouteille consommée = notification
-        return true;
-      }
-      
-      // Vérifier si la dernière note est > 365 jours
-      const lastNote = wineNotes.reduce((latest: any, current: any) => {
-        const currentDate = new Date(current.date).getTime();
-        const latestDate = new Date(latest.date).getTime();
-        return currentDate > latestDate ? current : latest;
-      });
-      
-      const lastNoteTime = new Date(lastNote.date).getTime();
-      const lastConsumedTime = new Date(lastConsumed.consumedDate).getTime();
-      
-      // Notification si:
-      // - La dernière consommation est après la dernière note
-      // - ET plus de 365 jours depuis la dernière note
+
+      const lastConsumedTime = Math.max(
+        ...consumedBottles.map(b => new Date(b.consumedDate!).getTime())
+      );
+
+      const wineNotes = tastingNotes.filter(n => n.wineId === wine.id);
+      if (wineNotes.length === 0) return true;
+
+      const lastNoteTime = Math.max(...wineNotes.map(n => new Date(n.date).getTime()));
       return lastConsumedTime > lastNoteTime && (now - lastNoteTime) > ONE_YEAR_MS;
-    });
-    
-    setTastingCount(winesToTaste.length);
-  }, [location.pathname]);
+    }).length;
+  }, [wines, tastingNotes, allBottles]);
 
   const isActive = (path: string) => location.pathname === path;
 

@@ -1,22 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { useWines } from '../hooks/useWines';
-import { SensoryProfile } from '../types';
+import { SensoryProfile, Bottle } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import { TrendingUp, Calendar, Droplet, Lightbulb, BookOpen, Loader2 } from 'lucide-react';
 import { generateEducationalContent } from '../services/geminiService';
+import { getBottles } from '../services/storageService';
 import { getPeakWindow } from '../utils/peakWindow';
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const Analytics: React.FC = () => {
   const { wines: inventory, loading } = useWines();
   const [totalBottles, setTotalBottles] = useState(0);
+  const [rotationPct, setRotationPct] = useState(0);
   const [avgProfile, setAvgProfile] = useState<SensoryProfile | null>(null);
   const [maturityData, setMaturityData] = useState<any[]>([]);
   const [typeData, setTypeData] = useState<any[]>([]);
-  
+
   // Educational/Insight State
   const [dailyFact, setDailyFact] = useState<string | null>(null);
   const [loadingFact, setLoadingFact] = useState(false);
+
+  // Compute real rotation: bottles consumed in last 30 days / total stock at start of period
+  useEffect(() => {
+    getBottles().then((bottles: Bottle[]) => {
+      if (!Array.isArray(bottles)) return;
+      const now = Date.now();
+      const consumedLast30 = bottles.filter(b =>
+        b.isConsumed && b.consumedDate && (now - new Date(b.consumedDate).getTime()) < THIRTY_DAYS_MS
+      ).length;
+      const currentStock = bottles.filter(b => !b.isConsumed).length;
+      const denom = currentStock + consumedLast30;
+      setRotationPct(denom > 0 ? Math.round((consumedLast30 / denom) * 100) : 0);
+    }).catch(() => setRotationPct(0));
+  }, [inventory]);
 
   useEffect(() => {
     if (loading) return;
@@ -24,22 +42,23 @@ export const Analytics: React.FC = () => {
     const total = inventory.reduce((acc, w) => acc + w.inventoryCount, 0);
     setTotalBottles(total);
 
-    if (inventory.length > 0) {
-      const profileSum = inventory.reduce((acc, w) => ({
-        body: acc.body + w.sensoryProfile.body,
-        acidity: acc.acidity + w.sensoryProfile.acidity,
-        tannin: acc.tannin + w.sensoryProfile.tannin,
-        sweetness: acc.sweetness + w.sensoryProfile.sweetness,
-        alcohol: acc.alcohol + w.sensoryProfile.alcohol,
+    const winesWithProfile = inventory.filter(w => w.sensoryProfile);
+    if (winesWithProfile.length > 0) {
+      const profileSum = winesWithProfile.reduce((acc, w) => ({
+        body: acc.body + (w.sensoryProfile?.body ?? 0),
+        acidity: acc.acidity + (w.sensoryProfile?.acidity ?? 0),
+        tannin: acc.tannin + (w.sensoryProfile?.tannin ?? 0),
+        sweetness: acc.sweetness + (w.sensoryProfile?.sweetness ?? 0),
+        alcohol: acc.alcohol + (w.sensoryProfile?.alcohol ?? 0),
         flavors: []
       }), { body: 0, acidity: 0, tannin: 0, sweetness: 0, alcohol: 0, flavors: [] });
 
       setAvgProfile({
-        body: Math.round(profileSum.body / inventory.length),
-        acidity: Math.round(profileSum.acidity / inventory.length),
-        tannin: Math.round(profileSum.tannin / inventory.length),
-        sweetness: Math.round(profileSum.sweetness / inventory.length),
-        alcohol: Math.round(profileSum.alcohol / inventory.length),
+        body: Math.round(profileSum.body / winesWithProfile.length),
+        acidity: Math.round(profileSum.acidity / winesWithProfile.length),
+        tannin: Math.round(profileSum.tannin / winesWithProfile.length),
+        sweetness: Math.round(profileSum.sweetness / winesWithProfile.length),
+        alcohol: Math.round(profileSum.alcohol / winesWithProfile.length),
         flavors: []
       });
     }
@@ -123,7 +142,7 @@ export const Analytics: React.FC = () => {
              <TrendingUp size={16} />
            </div>
            <div>
-             <span className="text-3xl font-bold text-wine-600 dark:text-wine-500">12%</span>
+             <span className="text-3xl font-bold text-wine-600 dark:text-wine-500">{rotationPct}%</span>
              <span className="text-xs text-stone-500 ml-1">ce mois</span>
            </div>
         </div>

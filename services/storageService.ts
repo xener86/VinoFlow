@@ -109,18 +109,20 @@ export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?:
 };
 
 export const updateWine = async (id: string, updates: Partial<Wine>): Promise<void> => {
-  await fetch(`${API_URL}/wines/${id}`, {
+  const response = await fetch(`${API_URL}/wines/${id}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(updates)
   });
+  await handleResponse(response);
 };
 
 export const deleteWine = async (id: string): Promise<void> => {
-  await fetch(`${API_URL}/wines/${id}`, {
+  const response = await fetch(`${API_URL}/wines/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
+  await handleResponse(response);
 };
 
 export const toggleFavorite = async (id: string): Promise<void> => {
@@ -379,18 +381,20 @@ export const saveRack = async (rack: Rack): Promise<void> => {
 };
 
 export const updateRack = async (id: string, updates: Partial<Rack>): Promise<void> => {
-  await fetch(`${API_URL}/racks/${id}`, {
+  const response = await fetch(`${API_URL}/racks/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(updates)
   });
+  await handleResponse(response);
 };
 
 export const deleteRack = async (id: string): Promise<void> => {
-  await fetch(`${API_URL}/racks/${id}`, {
+  const response = await fetch(`${API_URL}/racks/${id}`, {
       method: 'DELETE',
       headers: getHeaders()
   });
+  await handleResponse(response);
 };
 
 export const reorderRack = async (id: string, direction: 'left' | 'right'): Promise<void> => {
@@ -431,18 +435,20 @@ export const saveSpirit = async (spirit: Spirit): Promise<void> => {
   const method = existing ? 'PUT' : 'POST';
   const url = existing ? `${API_URL}/spirits/${spirit.id}` : `${API_URL}/spirits`;
 
-  await fetch(url, {
+  const response = await fetch(url, {
       method,
       headers: getHeaders(),
       body: JSON.stringify(spirit)
   });
+  await handleResponse(response);
 };
 
 export const deleteSpirit = async (id: string): Promise<void> => {
-  await fetch(`${API_URL}/spirits/${id}`, {
+  const response = await fetch(`${API_URL}/spirits/${id}`, {
       method: 'DELETE',
       headers: getHeaders()
   });
+  await handleResponse(response);
 };
 
 // --- COCKTAIL FUNCTIONS ---

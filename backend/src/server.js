@@ -263,7 +263,7 @@ app.post('/api/wines', async (req, res) => {
     res.status(201).json(convertKeysToCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating wine:', error);
-    res.status(500).json({ error: 'Failed to create wine', details: error.message });
+    res.status(500).json({ error: 'Failed to create wine' });
   }
 });
 
@@ -320,7 +320,12 @@ app.delete('/api/wines/:id', async (req, res) => {
 
 app.get('/api/bottles', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM bottles ORDER BY created_at DESC');
+    const { wineId } = req.query;
+    const query = wineId
+      ? 'SELECT * FROM bottles WHERE wine_id = $1 ORDER BY created_at DESC'
+      : 'SELECT * FROM bottles ORDER BY created_at DESC';
+    const params = wineId ? [wineId] : [];
+    const result = await pool.query(query, params);
     const bottles = convertKeysToCamelCase(result.rows).map(b => {
       // Normalize legacy {"label": "..."} locations to plain strings
       if (b.location && typeof b.location === 'object' && 'label' in b.location && !('rackId' in b.location)) {
@@ -351,18 +356,18 @@ app.post('/api/bottles', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `, [
-      bottle.wineId || bottle.wine_id,
+      bottle.wineId ?? bottle.wine_id,
       locationJson,
-      bottle.addedByUserId || bottle.added_by_user_id,
-      bottle.purchaseDate || bottle.purchase_date,
-      bottle.isConsumed || bottle.is_consumed || false,
-      bottle.purchasePrice || bottle.purchase_price || null
+      bottle.addedByUserId ?? bottle.added_by_user_id,
+      bottle.purchaseDate ?? bottle.purchase_date,
+      bottle.isConsumed ?? bottle.is_consumed ?? false,
+      bottle.purchasePrice ?? bottle.purchase_price ?? null
     ]);
     
     res.status(201).json(convertKeysToCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating bottle:', error);
-    res.status(500).json({ error: 'Failed to create bottle', details: error.message });
+    res.status(500).json({ error: 'Failed to create bottle' });
   }
 });
 
@@ -370,34 +375,33 @@ app.put('/api/bottles/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
-    // Store string locations as JSON strings (not objects like {"label": "..."})
-    let locationJson = null;
-    if (updates.location !== undefined && updates.location !== null) {
-      locationJson = typeof updates.location === 'string'
-        ? JSON.stringify(updates.location)
-        : JSON.stringify(updates.location);
+
+    // Build a dynamic partial UPDATE based on which fields the client sent.
+    // This lets clients explicitly set fields to null (clearing them) while
+    // leaving untouched fields alone.
+    const fields = [];
+    const values = [id];
+    let i = 2;
+    const add = (col, val) => { fields.push(`${col} = $${i++}`); values.push(val); };
+
+    if ('location' in updates) {
+      const locValue = updates.location ?? 'Non trié';
+      add('location', JSON.stringify(locValue));
+    }
+    if ('isConsumed' in updates) add('is_consumed', updates.isConsumed);
+    if ('consumedDate' in updates) add('consumed_date', updates.consumedDate);
+    if ('giftedTo' in updates) add('gifted_to', updates.giftedTo);
+    if ('giftOccasion' in updates) add('gift_occasion', updates.giftOccasion);
+    if ('purchasePrice' in updates) add('purchase_price', updates.purchasePrice);
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No updatable fields provided' });
     }
 
-    const result = await pool.query(`
-      UPDATE bottles SET
-        location = COALESCE($2, location),
-        is_consumed = COALESCE($3, is_consumed),
-        consumed_date = COALESCE($4, consumed_date),
-        gifted_to = COALESCE($5, gifted_to),
-        gift_occasion = COALESCE($6, gift_occasion),
-        purchase_price = COALESCE($7, purchase_price)
-      WHERE id = $1
-      RETURNING *
-    `, [
-      id,
-      locationJson,
-      updates.isConsumed,
-      updates.consumedDate,
-      updates.giftedTo,
-      updates.giftOccasion,
-      updates.purchasePrice || null
-    ]);
+    const result = await pool.query(
+      `UPDATE bottles SET ${fields.join(', ')} WHERE id = $1 RETURNING *`,
+      values
+    );
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Bottle not found' });
@@ -428,7 +432,7 @@ app.delete('/api/bottles/:id', async (req, res) => {
 
 app.get('/api/racks', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM racks ORDER BY created_at DESC');
+    const result = await pool.query('SELECT * FROM racks ORDER BY sort_order ASC, created_at ASC');
     res.json(convertKeysToCamelCase(result.rows));
   } catch (error) {
     console.error('Error fetching racks:', error);
@@ -451,24 +455,85 @@ app.post('/api/racks', async (req, res) => {
   }
 });
 
-app.delete('/api/racks/:id', async (req, res) => {
+app.put('/api/racks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Migrate bottles from this rack to "Non trié" before deleting
-    await pool.query(
-      `UPDATE bottles SET location = '"Non trié"'::jsonb WHERE location->>'rackId' = $1 AND is_consumed = false`,
-      [id]
-    );
-    const result = await pool.query('DELETE FROM racks WHERE id = $1 RETURNING id', [id]);
+    const updates = req.body;
+    const fields = [];
+    const values = [id];
+    let i = 2;
+    const add = (col, val) => { fields.push(`${col} = $${i++}`); values.push(val); };
+    if ('name' in updates) add('name', updates.name);
+    if ('width' in updates) add('width', updates.width);
+    if ('height' in updates) add('height', updates.height);
+    if ('type' in updates) add('type', updates.type);
+    if ('sortOrder' in updates) add('sort_order', updates.sortOrder);
 
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'No updatable fields provided' });
+    }
+
+    const result = await pool.query(
+      `UPDATE racks SET ${fields.join(', ')} WHERE id = $1 RETURNING *`,
+      values
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Rack not found' });
     }
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error updating rack:', error);
+    res.status(500).json({ error: 'Failed to update rack' });
+  }
+});
 
+app.post('/api/racks/reorder', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { rackIds } = req.body;
+    if (!Array.isArray(rackIds)) {
+      return res.status(400).json({ error: 'rackIds must be an array' });
+    }
+    await client.query('BEGIN');
+    for (let i = 0; i < rackIds.length; i++) {
+      await client.query('UPDATE racks SET sort_order = $1 WHERE id = $2', [i, rackIds[i]]);
+    }
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error reordering racks:', error);
+    res.status(500).json({ error: 'Failed to reorder racks' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/racks/:id', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    await client.query('BEGIN');
+    // Migrate bottles from this rack to "Non trié" before deleting
+    await client.query(
+      `UPDATE bottles SET location = '"Non trié"'::jsonb WHERE location->>'rackId' = $1 AND is_consumed = false`,
+      [id]
+    );
+    const result = await client.query('DELETE FROM racks WHERE id = $1 RETURNING id', [id]);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Rack not found' });
+    }
+
+    await client.query('COMMIT');
     res.json({ success: true, id });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error deleting rack:', error);
     res.status(500).json({ error: 'Failed to delete rack' });
+  } finally {
+    client.release();
   }
 });
 
@@ -481,6 +546,20 @@ app.get('/api/spirits', async (req, res) => {
   } catch (error) {
     console.error('Error fetching spirits:', error);
     res.status(500).json({ error: 'Failed to fetch spirits' });
+  }
+});
+
+app.get('/api/spirits/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('SELECT * FROM spirits WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Spirit not found' });
+    }
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error fetching spirit:', error);
+    res.status(500).json({ error: 'Failed to fetch spirit' });
   }
 });
 
@@ -509,6 +588,36 @@ app.post('/api/spirits', async (req, res) => {
   }
 });
 
+app.put('/api/spirits/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const spirit = req.body;
+    const result = await pool.query(`
+      UPDATE spirits SET
+        name = $1, category = $2, distillery = $3, region = $4, country = $5,
+        age = $6, cask_type = $7, abv = $8, format = $9, description = $10,
+        producer_history = $11, tasting_notes = $12, aroma_profile = $13,
+        suggested_cocktails = $14, culinary_pairings = $15, enriched_by_ai = $16,
+        is_opened = $17, inventory_level = $18, is_luxury = $19
+      WHERE id = $20
+      RETURNING *
+    `, [
+      spirit.name, spirit.category, spirit.distillery, spirit.region, spirit.country,
+      spirit.age, spirit.caskType, spirit.abv, spirit.format, spirit.description,
+      spirit.producerHistory, spirit.tastingNotes, spirit.aromaProfile,
+      spirit.suggestedCocktails, spirit.culinaryPairings, spirit.enrichedByAi,
+      spirit.isOpened, spirit.inventoryLevel, spirit.isLuxury, id
+    ]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Spirit not found' });
+    }
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error updating spirit:', error);
+    res.status(500).json({ error: 'Failed to update spirit' });
+  }
+});
+
 app.delete('/api/spirits/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -522,6 +631,63 @@ app.delete('/api/spirits/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting spirit:', error);
     res.status(500).json({ error: 'Failed to delete spirit' });
+  }
+});
+
+// ========== TASTING NOTES ENDPOINTS ==========
+
+app.get('/api/tasting-notes', async (req, res) => {
+  try {
+    const { wineId } = req.query;
+    const query = wineId
+      ? 'SELECT * FROM tasting_notes WHERE wine_id = $1 ORDER BY date DESC'
+      : 'SELECT * FROM tasting_notes ORDER BY date DESC';
+    const params = wineId ? [wineId] : [];
+    const result = await pool.query(query, params);
+    res.json(convertKeysToCamelCase(result.rows));
+  } catch (error) {
+    console.error('Error fetching tasting notes:', error);
+    res.status(500).json({ error: 'Failed to fetch tasting notes' });
+  }
+});
+
+app.post('/api/tasting-notes', async (req, res) => {
+  try {
+    const note = req.body;
+    const result = await pool.query(`
+      INSERT INTO tasting_notes (
+        wine_id, date, overall_rating, visual_notes, nose_notes, palate_notes,
+        general_notes, occasion, companions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      note.wineId, note.date || new Date().toISOString(),
+      note.overallRating ?? null,
+      note.visualNotes ?? null,
+      note.noseNotes ?? null,
+      note.palateNotes ?? null,
+      note.generalNotes ?? null,
+      note.occasion ?? null,
+      note.companions ?? null
+    ]);
+    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Error creating tasting note:', error);
+    res.status(500).json({ error: 'Failed to create tasting note' });
+  }
+});
+
+app.delete('/api/tasting-notes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM tasting_notes WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tasting note not found' });
+    }
+    res.json({ success: true, id });
+  } catch (error) {
+    console.error('Error deleting tasting note:', error);
+    res.status(500).json({ error: 'Failed to delete tasting note' });
   }
 });
 
@@ -548,12 +714,13 @@ app.get('/api/history', async (req, res) => {
 app.post('/api/history', async (req, res) => {
   try {
     const entry = req.body;
+    // ID is always server-generated (gen_random_uuid default) to prevent
+    // clients from spoofing or colliding IDs.
     const result = await pool.query(`
-      INSERT INTO journal (id, date, type, wine_id, wine_name, wine_vintage, quantity, description, from_location, to_location, recipient, occasion, note, user_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      INSERT INTO journal (date, type, wine_id, wine_name, wine_vintage, quantity, description, from_location, to_location, recipient, occasion, note, user_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `, [
-      entry.id || null,
       entry.date || new Date().toISOString(),
       entry.type || 'NOTE',
       entry.wineId || entry.wine_id || null,
@@ -597,7 +764,7 @@ app.post('/api/wishlist', async (req, res) => {
     `, [
       item.name, item.producer || null, item.region || null, item.appellation || null,
       item.type || null, item.vintage || null, item.notes || null, item.source || null,
-      item.estimatedPrice || item.estimated_price || null, item.priority || 'MEDIUM'
+      item.estimatedPrice ?? item.estimated_price ?? null, item.priority || 'MEDIUM'
     ]);
     res.status(201).json(convertKeysToCamelCase(result.rows[0]));
   } catch (error) {
