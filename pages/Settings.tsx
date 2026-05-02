@@ -3,7 +3,8 @@ import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottle
 import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
 import { AIConfig, AIProvider, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
-import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles } from 'lucide-react';
+import { getAvailableAIProviders } from '../services/storageService';
 
 export const Settings: React.FC = () => {
   // ✅ Utilisation du Hook
@@ -20,6 +21,12 @@ export const Settings: React.FC = () => {
   const [orphanedBottles, setOrphanedBottles] = useState<Bottle[] | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<{ orphaned: number; cleaned: number } | null>(null);
+
+  // Backend AI providers status
+  const [backendProviders, setBackendProviders] = useState<{ providers: any; defaults: any } | null>(null);
+  useEffect(() => {
+      getAvailableAIProviders().then(setBackendProviders).catch(() => {});
+  }, []);
 
   // Synchronisation de l'état local une fois la config chargée
   useEffect(() => {
@@ -144,18 +151,39 @@ export const Settings: React.FC = () => {
 
         <Section title="Intelligence Artificielle" icon={Cpu}>
              <div className="space-y-6">
-                 <div className="grid grid-cols-3 gap-2">
-                     {(['GEMINI', 'OPENAI', 'MISTRAL'] as AIProvider[]).map(p => (
+                 {backendProviders && (
+                     <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-900/50 rounded-lg p-3 text-xs text-indigo-900 dark:text-indigo-200">
+                         <div className="flex items-center gap-2 font-bold mb-2">
+                             <Sparkles size={12} /> Sommelier v2 — Providers backend
+                         </div>
+                         <div className="space-y-1">
+                             <div className="flex items-center gap-2">
+                                 <span className={backendProviders.providers.gemini ? 'text-green-600' : 'text-stone-400'}>●</span>
+                                 Gemini : {backendProviders.providers.gemini ? 'configuré' : 'GEMINI_API_KEY manquante'}
+                             </div>
+                             <div className="flex items-center gap-2">
+                                 <span className={backendProviders.providers.claude ? 'text-green-600' : 'text-stone-400'}>●</span>
+                                 Claude : {backendProviders.providers.claude ? 'configuré' : 'ANTHROPIC_API_KEY manquante'}
+                             </div>
+                         </div>
+                         <p className="mt-2 text-[10px] opacity-70">
+                             Configurez ces clés dans le fichier <code>.env</code> du backend pour activer le sommelier v2 (decomposition + 3 propositions).
+                         </p>
+                     </div>
+                 )}
+
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                     {(['GEMINI', 'OPENAI', 'MISTRAL', 'CLAUDE'] as AIProvider[]).map(p => (
                          <button
                             key={p}
                             onClick={() => setLocalConfig({...localConfig, provider: p})}
                             className={`py-3 rounded-lg text-sm font-bold border transition-all ${
-                                localConfig.provider === p 
-                                ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                localConfig.provider === p
+                                ? 'bg-indigo-600 border-indigo-500 text-white'
                                 : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
                             }`}
                          >
-                             {p === 'GEMINI' ? 'Google Gemini' : p === 'OPENAI' ? 'OpenAI' : 'Mistral AI'}
+                             {p === 'GEMINI' ? 'Google Gemini' : p === 'OPENAI' ? 'OpenAI' : p === 'MISTRAL' ? 'Mistral AI' : 'Claude'}
                          </button>
                      ))}
                  </div>
@@ -183,12 +211,22 @@ export const Settings: React.FC = () => {
                      </div>
                      <div>
                          <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API Mistral (La Plateforme)</label>
-                         <input 
+                         <input
                             type="password"
                             value={localConfig.keys.mistral}
                             onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, mistral: e.target.value}})}
                             className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
                             placeholder="key..."
+                         />
+                     </div>
+                     <div>
+                         <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API Claude (Anthropic)</label>
+                         <input
+                            type="password"
+                            value={localConfig.keys.claude || ''}
+                            onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, claude: e.target.value}})}
+                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
+                            placeholder="sk-ant-..."
                          />
                      </div>
                  </div>

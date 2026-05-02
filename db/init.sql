@@ -33,6 +33,12 @@ CREATE TABLE IF NOT EXISTS wines (
     personal_notes text[],
     sensory_description text,
     aroma_profile text[],
+    -- Confidence & provenance for the aroma profile (Phase 1)
+    aroma_confidence text,           -- HIGH | MEDIUM | LOW
+    aroma_source text,               -- AI | USER | TASTING | COMMUNITY | CONSENSUS
+    aroma_verified_at timestamp with time zone,
+    aroma_verified_by uuid,          -- references users(id)
+    aroma_provider text,             -- gemini | claude | openai | manual
     tasting_notes text,
     suggested_food_pairings text[],
     producer_history text,
@@ -43,11 +49,14 @@ CREATE TABLE IF NOT EXISTS wines (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT wines_ai_confidence_check CHECK (ai_confidence = ANY (ARRAY['HIGH', 'MEDIUM', 'LOW'])),
+    CONSTRAINT wines_aroma_confidence_check CHECK (aroma_confidence IS NULL OR aroma_confidence = ANY (ARRAY['HIGH', 'MEDIUM', 'LOW'])),
+    CONSTRAINT wines_aroma_source_check CHECK (aroma_source IS NULL OR aroma_source = ANY (ARRAY['AI', 'USER', 'TASTING', 'COMMUNITY', 'CONSENSUS'])),
     CONSTRAINT wines_type_check CHECK (type = ANY (ARRAY['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'FORTIFIED']))
 );
 
 CREATE INDEX IF NOT EXISTS idx_wines_region ON wines (region);
 CREATE INDEX IF NOT EXISTS idx_wines_type ON wines (type);
+CREATE INDEX IF NOT EXISTS idx_wines_aroma_confidence ON wines (aroma_confidence);
 
 -- ──────────────────────────────────────────
 -- Bottles (individual bottles of each wine)
@@ -164,4 +173,56 @@ CREATE TABLE IF NOT EXISTS wishlist (
     estimated_price numeric(10,2),
     priority character varying(10) DEFAULT 'MEDIUM',
     added_at timestamp without time zone DEFAULT now()
+);
+
+-- ──────────────────────────────────────────
+-- Pairing feedback (Phase 2.7 + 2.10)
+-- Records user's thumb up/down on sommelier suggestions.
+-- Used to refine the personal taste profile over time.
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pairing_feedback (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid,
+    wine_id uuid REFERENCES wines(id) ON DELETE SET NULL,
+    dish text NOT NULL,
+    rating text NOT NULL,            -- UP | DOWN
+    category text,                   -- SAFE | PERSONAL | CREATIVE
+    criteria_json jsonb,             -- the LLM1 criteria that produced this suggestion
+    context_json jsonb,              -- any additional context (mood, occasion...)
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT pairing_feedback_rating_check CHECK (rating = ANY (ARRAY['UP', 'DOWN']))
+);
+
+CREATE INDEX IF NOT EXISTS idx_pairing_feedback_user ON pairing_feedback (user_id);
+CREATE INDEX IF NOT EXISTS idx_pairing_feedback_wine ON pairing_feedback (wine_id);
+CREATE INDEX IF NOT EXISTS idx_pairing_feedback_dish ON pairing_feedback (dish);
+
+-- ──────────────────────────────────────────
+-- Pairing cache (Phase 4.1 + 4.2)
+-- Two-level cache for sommelier suggestions.
+-- Level 1: dish → criteria (rarely changes per dish)
+-- Level 2: dish + cave_hash → final suggestions (invalidated when cave changes)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pairing_cache (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    dish_normalized text NOT NULL,   -- lowercased + trimmed
+    cave_hash text,                  -- null for level-1, hash of cave content for level-2
+    user_id uuid,                    -- null for shared/global cache
+    payload jsonb NOT NULL,          -- the cached criteria or suggestions
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pairing_cache_lookup ON pairing_cache (dish_normalized, cave_hash, user_id);
+CREATE INDEX IF NOT EXISTS idx_pairing_cache_expiry ON pairing_cache (expires_at);
+
+-- ──────────────────────────────────────────
+-- Taste profile (Phase 2.10)
+-- Persistent per-user taste preferences derived from feedback.
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS taste_profile (
+    user_id uuid PRIMARY KEY,
+    profile_json jsonb NOT NULL,     -- {preferred_regions, preferred_grapes, body_pref, oak_pref, ...}
+    feedback_count integer DEFAULT 0,
+    updated_at timestamp with time zone DEFAULT now()
 );

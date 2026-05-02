@@ -127,6 +127,57 @@ export const deleteWine = async (id: string): Promise<void> => {
   await handleResponse(response);
 };
 
+export const updateAromaProfile = async (
+  id: string,
+  aromaProfile: string[],
+  source: 'USER' | 'AI',
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW'
+): Promise<void> => {
+  const response = await fetch(`${API_URL}/wines/${id}/aroma-profile`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ aromaProfile, source, confidence }),
+  });
+  await handleResponse(response);
+};
+
+// Sommelier v2 API
+export const sommelierPair = async (dish: string, context?: any, skipCache = false) => {
+  const response = await fetch(`${API_URL}/sommelier/pair`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ dish, context, skipCache }),
+  });
+  return handleResponse(response);
+};
+
+export const sommelierFeedback = async (params: {
+  wineId?: string;
+  dish: string;
+  rating: 'UP' | 'DOWN';
+  category?: 'SAFE' | 'PERSONAL' | 'CREATIVE';
+  criteria?: any;
+  context?: any;
+}) => {
+  const response = await fetch(`${API_URL}/sommelier/feedback`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(params),
+  });
+  await handleResponse(response);
+};
+
+export const getRemoteTasteProfile = async () => {
+  const response = await fetch(`${API_URL}/sommelier/taste-profile`, { headers: getHeaders() });
+  if (response.status === 401) return null;
+  return handleResponse(response);
+};
+
+export const getAvailableAIProviders = async () => {
+  const response = await fetch(`${API_URL}/ai/providers`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça

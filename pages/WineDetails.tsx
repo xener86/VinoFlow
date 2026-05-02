@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getWineHistory, addBottles, giftBottle, toggleFavorite } from '../services/storageService';
+import { getWineHistory, addBottles, giftBottle, toggleFavorite, updateAromaProfile } from '../services/storageService';
+import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
+import { AromaProfileEditor } from '../components/AromaProfileEditor';
 import { generateTastingQuestionnaire } from '../services/geminiService'; // Import direct si disponible, sinon conserver la fonction locale
 import { useWines } from '../hooks/useWines'; // ✅ Hook Async
 import { useRacks } from '../hooks/useRacks'; // ✅ Hook Async
@@ -48,6 +50,11 @@ export const WineDetails: React.FC = () => {
   
   // État Modal Cadeau
   const [showGiftModal, setShowGiftModal] = useState(false);
+
+  // État profil aromatique
+  const [showAromaEditor, setShowAromaEditor] = useState(false);
+  const [savingAroma, setSavingAroma] = useState(false);
+  const refresh = async () => { await refreshWines(); };
   const [giftRecipient, setGiftRecipient] = useState('');
   const [giftOccasion, setGiftOccasion] = useState('');
 
@@ -278,12 +285,47 @@ export const WineDetails: React.FC = () => {
                     <div className="w-full md:w-1/2 bg-stone-50 dark:bg-stone-950/50 rounded-xl p-4 border border-stone-100 dark:border-stone-800">
                        <FlavorRadar data={wine.sensoryProfile} />
                     </div>
-                    <div className="w-full md:w-1/2 flex flex-wrap gap-2 content-start">
-                        {wine.aromaProfile?.map((aroma, i) => (
-                          <span key={i} className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-sm border border-stone-200 dark:border-stone-700">
-                            {aroma}
-                          </span>
-                        ))}
+                    <div className="w-full md:w-1/2 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <AromaConfidenceBadge
+                                source={(wine as any).aromaSource}
+                                confidence={(wine as any).aromaConfidence}
+                            />
+                            {!(wine as any).aromaVerifiedAt && wine.aromaProfile && wine.aromaProfile.length > 0 && (
+                                <button
+                                    onClick={() => setShowAromaEditor(s => !s)}
+                                    className="text-xs text-wine-600 dark:text-wine-400 underline hover:text-wine-700"
+                                >
+                                    {showAromaEditor ? 'Fermer' : 'Vérifier'}
+                                </button>
+                            )}
+                        </div>
+                        {showAromaEditor ? (
+                            <AromaProfileEditor
+                                initial={wine.aromaProfile || []}
+                                source={(wine as any).aromaSource}
+                                confidence={(wine as any).aromaConfidence}
+                                saving={savingAroma}
+                                onSave={async (aromas, source, confidence) => {
+                                    setSavingAroma(true);
+                                    try {
+                                        await updateAromaProfile(wine.id, aromas, source, confidence);
+                                        await refresh();
+                                        setShowAromaEditor(false);
+                                    } catch (e) { console.error(e); }
+                                    finally { setSavingAroma(false); }
+                                }}
+                                onIgnore={() => setShowAromaEditor(false)}
+                            />
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {wine.aromaProfile?.map((aroma, i) => (
+                                  <span key={i} className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-sm border border-stone-200 dark:border-stone-700">
+                                    {aroma}
+                                  </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
              </div>

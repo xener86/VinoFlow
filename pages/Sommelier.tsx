@@ -11,11 +11,12 @@ import { getUserTasteProfile } from '../services/storageService'; // On garde ce
 import { useWines } from '../hooks/useWines'; // ✅ Nouveau Hook
 import { useSpirits } from '../hooks/useSpirits'; // ✅ Nouveau Hook
 import { CellarWine, SommelierRecommendation, EveningPlan, UserTasteProfile, CellarGapAnalysis, OutOfCellarSuggestion } from '../types';
-import { 
-    Sparkles, Calendar, MessageSquare, Utensils, Moon, ArrowRight, Loader2, 
-    Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers, 
-    Thermometer, Droplet, Heart, Award, MapPin 
+import {
+    Sparkles, Calendar, MessageSquare, Utensils, Moon, ArrowRight, Loader2,
+    Send, ShoppingBag, CheckCircle2, TrendingUp, AlertTriangle, Layers,
+    Thermometer, Droplet, Heart, Award, MapPin
 } from 'lucide-react';
+import { SommelierV2 } from '../components/SommelierV2';
 
 export const Sommelier: React.FC = () => {
   const navigate = useNavigate();
@@ -470,6 +471,13 @@ export const Sommelier: React.FC = () => {
       {/* --- PAIRING MODE --- */}
       {activeTab === 'PAIRING' && (
           <div className="space-y-6 animate-fade-in">
+              {/* Sommelier v2 - 3 propositions categorisees avec feedback */}
+              <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+                  <SommelierV2 inventory={inventory} />
+              </div>
+
+              <div className="text-center text-xs text-stone-400 uppercase tracking-wider">— ou mode classique —</div>
+
               <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800">
                   <button onClick={() => setPairingMode('FOOD_TO_WINE')} className={`flex-1 py-2 text-xs rounded-lg ${pairingMode === 'FOOD_TO_WINE' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500'}`}>Plat → Vin</button>
                   <button onClick={() => setPairingMode('WINE_TO_FOOD')} className={`flex-1 py-2 text-xs rounded-lg ${pairingMode === 'WINE_TO_FOOD' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500'}`}>Vin → Plat</button>

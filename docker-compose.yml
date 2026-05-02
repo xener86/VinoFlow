@@ -26,6 +26,8 @@ services:
       - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL in .env}
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env (use a long random string)}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5001}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - NODE_ENV=production
     networks:
       - vinoflow-network

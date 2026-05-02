@@ -239,7 +239,7 @@ export interface CellarGapAnalysis {
   }[];
 }
 
-export type AIProvider = 'GEMINI' | 'OPENAI' | 'MISTRAL';
+export type AIProvider = 'GEMINI' | 'OPENAI' | 'MISTRAL' | 'CLAUDE';
 
 export interface AIConfig {
   provider: AIProvider;
@@ -247,6 +247,7 @@ export interface AIConfig {
     gemini: string;
     openai: string;
     mistral: string;
+    claude?: string;
   };
 }
 

@@ -4,6 +4,9 @@ import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
+import { runPairing } from './sommelier/coordinator.js';
+import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/tasteProfile.js';
+import { isProviderConfigured, getTaskDefaults } from './services/aiService.js';
 
 const { Pool } = pg;
 const app = express();
@@ -781,6 +784,156 @@ app.delete('/api/wishlist/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting wishlist item:', error);
     res.status(500).json({ error: 'Failed to delete wishlist item' });
+  }
+});
+
+// ========== SOMMELIER V2 ENDPOINTS ==========
+
+// Helper: load full inventory for a user
+const loadInventory = async () => {
+  const result = await pool.query(`
+    SELECT
+      w.*,
+      COALESCE(
+        (SELECT count(*) FROM bottles b WHERE b.wine_id = w.id AND b.is_consumed = false),
+        0
+      )::int AS inventory_count
+    FROM wines w
+    ORDER BY w.created_at DESC
+  `);
+  return convertKeysToCamelCase(result.rows);
+};
+
+// Run the full pairing pipeline (LLM1 → rules → score → LLM2)
+app.post('/api/sommelier/pair', async (req, res) => {
+  try {
+    const { dish, context, skipCache } = req.body;
+    if (!dish) return res.status(400).json({ error: 'dish is required' });
+
+    const inventory = await loadInventory();
+    const userId = req.user?.userId;
+
+    // Load few-shot from feedback (limited to recent 30 entries)
+    let userFeedback = [];
+    if (userId) {
+      const fb = await pool.query(`
+        SELECT pf.dish, pf.rating, pf.category, w.name || ' ' || COALESCE(w.vintage::text, '') AS wine_label
+          FROM pairing_feedback pf
+          LEFT JOIN wines w ON w.id = pf.wine_id
+         WHERE pf.user_id = $1
+         ORDER BY pf.created_at DESC
+         LIMIT 30
+      `, [userId]);
+      userFeedback = fb.rows;
+    }
+
+    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
+
+    const result = await runPairing({
+      pool,
+      inventory,
+      dish,
+      context: context || {},
+      userId,
+      userFeedback,
+      tasteProfile,
+      skipCache: Boolean(skipCache),
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Sommelier pair error:', error);
+    res.status(500).json({ error: 'Failed to compute pairing', details: error.message });
+  }
+});
+
+// Record user feedback on a sommelier suggestion
+app.post('/api/sommelier/feedback', async (req, res) => {
+  try {
+    const { wineId, dish, rating, category, criteria, context } = req.body;
+    if (!dish || !rating || !['UP', 'DOWN'].includes(rating)) {
+      return res.status(400).json({ error: 'dish and rating (UP|DOWN) are required' });
+    }
+
+    const userId = req.user?.userId;
+    await pool.query(`
+      INSERT INTO pairing_feedback (user_id, wine_id, dish, rating, category, criteria_json, context_json)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [userId, wineId || null, dish, rating, category || null, criteria || null, context || null]);
+
+    // Update taste profile (Phase 2.10)
+    if (userId && wineId) {
+      const wineRes = await pool.query('SELECT * FROM wines WHERE id = $1', [wineId]);
+      if (wineRes.rows.length > 0) {
+        const wine = convertKeysToCamelCase(wineRes.rows[0]);
+        const current = await getTasteProfile(pool, userId);
+        const next = applyFeedback(current, wine, rating);
+        await upsertTasteProfile(pool, userId, next);
+      }
+    }
+
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Sommelier feedback error:', error);
+    res.status(500).json({ error: 'Failed to record feedback' });
+  }
+});
+
+// Get current user's taste profile
+app.get('/api/sommelier/taste-profile', async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const profile = await getTasteProfile(pool, userId);
+    res.json(profile || null);
+  } catch (error) {
+    console.error('Get taste-profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch taste profile' });
+  }
+});
+
+// Discover which AI providers are configured (used by frontend Settings)
+app.get('/api/ai/providers', async (req, res) => {
+  res.json({
+    providers: {
+      gemini: isProviderConfigured('gemini'),
+      claude: isProviderConfigured('claude'),
+    },
+    defaults: getTaskDefaults(),
+  });
+});
+
+// Update aroma profile manually (Phase 1.4 - validation UI)
+app.put('/api/wines/:id/aroma-profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { aromaProfile, source, confidence } = req.body;
+    if (!Array.isArray(aromaProfile)) {
+      return res.status(400).json({ error: 'aromaProfile must be an array' });
+    }
+    const userId = req.user?.userId;
+    const result = await pool.query(`
+      UPDATE wines SET
+        aroma_profile = $1,
+        aroma_source = $2,
+        aroma_confidence = $3,
+        aroma_verified_at = now(),
+        aroma_verified_by = $4,
+        updated_at = now()
+      WHERE id = $5
+      RETURNING *
+    `, [
+      aromaProfile,
+      source || 'USER',
+      confidence || 'HIGH',
+      userId || null,
+      id,
+    ]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Update aroma-profile error:', error);
+    res.status(500).json({ error: 'Failed to update aroma profile' });
   }
 });
 
