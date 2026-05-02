@@ -315,6 +315,310 @@ server.tool(
     }
 );
 
+// ──────────────────────────────────────────
+// Sommelier v2 tools
+// ──────────────────────────────────────────
+
+server.tool(
+    'sommelier_pair',
+    'Get 3 categorized wine pairing recommendations for a dish (SAFE / PERSONAL / CREATIVE) using the Sommelier v2 pipeline (LLM decomposition + scoring + argumentation)',
+    {
+        dish: z.string().describe('The dish to pair with a wine (in French preferred)'),
+        constraints: z.object({
+            maxPrice: z.number().optional(),
+            types: z.array(z.string()).optional(),
+            regions: z.array(z.string()).optional(),
+        }).optional().describe('Optional constraints (budget, types, regions)'),
+    },
+    async ({ dish, constraints }) => {
+        try {
+            const result = await client.sommelierPair(dish, { constraints });
+            const formatPick = (label: string, p: any) => {
+                if (!p) return `**${label}**: aucun`;
+                return `**${label}**: ${p.wine_id}\n  ${p.reason}${p.service_temp_c ? ` · service ${p.service_temp_c}°C` : ''}${p.decant_minutes ? ` · décantage ${p.decant_minutes}min` : ''}`;
+            };
+            const text = [
+                `# Accords pour: ${dish}`,
+                `Cave: ${result.cave_size} vins → ${result.cave_after_filter} après pré-filtrage`,
+                '',
+                formatPick('🛡️ SAFE (classique)', result.picks.safe),
+                formatPick('💖 PERSONAL (selon vos goûts)', result.picks.personal),
+                formatPick('✨ CREATIVE (audacieux)', result.picks.creative),
+                '',
+                result.picks.global_advice ? `💡 ${result.picks.global_advice}` : '',
+            ].filter(Boolean).join('\n');
+            return { content: [{ type: 'text' as const, text }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'sommelier_reverse_pair',
+    'Given a specific wine, suggest 5 dishes that would pair well with it. Useful when you want to open a specific bottle.',
+    { wine_id: z.string().describe('The wine ID') },
+    async ({ wine_id }) => {
+        try {
+            const result = await client.sommelierReversePair(wine_id);
+            const lines = result.suggestions.map((s: any) =>
+                `- **${s.dish}** (${s.type}) — ${s.reason}`
+            ).join('\n');
+            return { content: [{ type: 'text' as const, text: `# Plats suggérés\n\n${lines}\n\n💡 ${result.global_advice}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'sommelier_menu',
+    'Pair a multi-course menu (entrée → plat → dessert), keeping wine progression coherent across courses',
+    {
+        dishes: z.array(z.string()).describe('Array of dishes in order (1-3 items)'),
+    },
+    async ({ dishes }) => {
+        try {
+            const result = await client.sommelierMenu(dishes);
+            const lines = result.courses.map((c: any, i: number) => {
+                const safePick = c.picks?.safe;
+                return `## Service ${i + 1}: ${c.dish}\n${safePick ? `→ Vin: ${safePick.wine_id}\n  ${safePick.reason}` : 'Aucun accord trouvé'}`;
+            }).join('\n\n');
+            return { content: [{ type: 'text' as const, text: `# Menu accordé\n\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'sommelier_explain',
+    'Get a detailed pedagogical explanation of why a specific wine pairs (or not) with a dish',
+    {
+        dish: z.string().describe('The dish'),
+        wine_id: z.string().describe('The wine ID'),
+    },
+    async ({ dish, wine_id }) => {
+        try {
+            const result = await client.sommelierExplain(dish, wine_id);
+            return { content: [{ type: 'text' as const, text: result.explanation }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'sommelier_compare',
+    'Compare two wines for a specific dish and recommend the best one with reasoning',
+    {
+        dish: z.string(),
+        wine_a_id: z.string(),
+        wine_b_id: z.string(),
+    },
+    async ({ dish, wine_a_id, wine_b_id }) => {
+        try {
+            const result = await client.sommelierCompare(dish, wine_a_id, wine_b_id);
+            const text = [
+                `# Comparaison pour: ${dish}`,
+                `**Gagnant**: ${result.winner === 'tie' ? 'Match nul' : `Vin ${result.winner}`}`,
+                '',
+                result.reasoning,
+                '',
+                `## Vin A`,
+                `Forces: ${result.wine_a_strengths}`,
+                `Faiblesses: ${result.wine_a_weaknesses}`,
+                '',
+                `## Vin B`,
+                `Forces: ${result.wine_b_strengths}`,
+                `Faiblesses: ${result.wine_b_weaknesses}`,
+                '',
+                result.advice ? `💡 ${result.advice}` : '',
+            ].filter(Boolean).join('\n');
+            return { content: [{ type: 'text' as const, text }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'sommelier_vertical',
+    'Build a vertical tasting from multiple vintages of the same producer in the cellar',
+    { producer: z.string().describe('Producer name') },
+    async ({ producer }) => {
+        try {
+            const result = await client.sommelierVertical(producer);
+            if (result.wines.length === 0) {
+                return { content: [{ type: 'text' as const, text: result.note || 'Pas assez de millésimes' }] };
+            }
+            const lines = result.wines.map((w: any, i: number) =>
+                `${i + 1}. **${w.cuvee || w.name} ${w.vintage}** — ${w.peak?.status || ''}`
+            ).join('\n');
+            return { content: [{ type: 'text' as const, text: `# Verticale ${producer}\n\n${lines}\n\n${result.note}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+// ──────────────────────────────────────────
+// Proactive insights tools
+// ──────────────────────────────────────────
+
+server.tool(
+    'get_drink_before_alerts',
+    'List wines that are reaching the end of their drinking window. Use this to suggest what to drink soon.',
+    { horizon_months: z.number().optional().describe('Look-ahead horizon in months (default 12)') },
+    async ({ horizon_months }) => {
+        try {
+            const result = await client.getDrinkBeforeAlerts(horizon_months || 12);
+            if (result.count === 0) {
+                return { content: [{ type: 'text' as const, text: 'Aucun vin en fin de fenêtre.' }] };
+            }
+            const lines = result.alerts.slice(0, 20).map((a: any) =>
+                `- **${a.wine.name} ${a.wine.vintage}** (${a.wine.producer}) — ${a.monthsLeft <= 0 ? 'Apogée passée' : `${a.monthsLeft} mois`}`
+            ).join('\n');
+            return { content: [{ type: 'text' as const, text: `# À boire avant (${result.count} vins)\n\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'get_purchase_suggestions',
+    'Get predictive purchase suggestions based on consumption rate and current stock',
+    {},
+    async () => {
+        try {
+            const result = await client.getPurchaseSuggestions();
+            if (result.count === 0) {
+                return { content: [{ type: 'text' as const, text: 'Aucun manque détecté.' }] };
+            }
+            const lines = result.suggestions.map((s: any) =>
+                `- **${s.type}** — Stock: ${s.current_stock} · Conso: ${s.monthly_rate}/mois · Reste ${s.months_of_stock || '∞'} mois → suggérer +${s.suggested_purchase} (priorité ${s.priority})`
+            ).join('\n');
+            return { content: [{ type: 'text' as const, text: `# Suggestions d'achat\n\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'get_aging_recommendations',
+    'Get aging status for every wine in stock (AGING / PEAK / PAST) with messages',
+    {},
+    async () => {
+        try {
+            const result = await client.getAgingRecommendations();
+            const groups: Record<string, any[]> = { AGING: [], PEAK: [], PAST: [] };
+            for (const r of result.recommendations) groups[r.phase]?.push(r);
+            const text = [
+                `# Phase d'âge (${result.count} vins)`,
+                `\n## 🟢 À leur apogée (${groups.PEAK.length})`,
+                ...groups.PEAK.slice(0, 10).map((r: any) => `- ${r.wine.name} ${r.wine.vintage} — ${r.message}`),
+                `\n## 🔴 Passés (${groups.PAST.length})`,
+                ...groups.PAST.slice(0, 10).map((r: any) => `- ${r.wine.name} ${r.wine.vintage} — ${r.message}`),
+                `\n## 🔵 Encore en garde (${groups.AGING.length})`,
+                ...groups.AGING.slice(0, 5).map((r: any) => `- ${r.wine.name} ${r.wine.vintage} — ${r.message}`),
+            ].join('\n');
+            return { content: [{ type: 'text' as const, text }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'get_cellar_projection',
+    'Project the cellar size N years ahead based on current consumption rate',
+    { years_ahead: z.number().optional().describe('Years to project (default 5)') },
+    async ({ years_ahead }) => {
+        try {
+            const result = await client.getCellarProjection(years_ahead || 5);
+            const lines = result.projection.map((p: any) => `+${p.year_offset}an: ${p.projected_stock} btl`).join(' · ');
+            return { content: [{ type: 'text' as const, text: `# Projection\n\nConso: ${result.monthly_consumption} btl/mois\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'get_cellar_budget',
+    'Get cellar spending stats for a recent period (total, average, per type, cellar value estimate)',
+    { months: z.number().optional().describe('Look-back period in months (default 12)') },
+    async ({ months }) => {
+        try {
+            const result = await client.getCellarBudget(months || 12);
+            const text = [
+                `# Budget (${result.period_months} mois)`,
+                `**Total dépensé**: ${result.total_spent} €`,
+                `**Bouteilles achetées**: ${result.total_bottles}`,
+                `**Prix moyen**: ${result.avg_price} €`,
+                `**Moyenne mensuelle**: ${result.monthly_avg} €`,
+                `**Valeur cave estimée**: ${result.cellar_value_estimate} €`,
+            ].join('\n');
+            return { content: [{ type: 'text' as const, text }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'find_duplicates',
+    'Find potentially duplicate wines (same producer + name + vintage)',
+    {},
+    async () => {
+        try {
+            const result = await client.findDuplicates();
+            if (result.count === 0) return { content: [{ type: 'text' as const, text: 'Aucun doublon.' }] };
+            const lines = result.groups.map((g: any) => `- ${g.label} (${g.wines.length} entrées)`).join('\n');
+            return { content: [{ type: 'text' as const, text: `# Doublons potentiels\n\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'audit_wines',
+    'Audit the cellar for wines with weak/missing aroma profiles. Returns wines needing enrichment.',
+    {},
+    async () => {
+        try {
+            const result = await client.auditWines();
+            if (result.count === 0) return { content: [{ type: 'text' as const, text: 'Tous les vins ont un profil aromatique correct.' }] };
+            const lines = result.wines.slice(0, 20).map((w: any) =>
+                `- **${w.name} ${w.vintage}** — ${w.aromaProfile?.length || 0} arômes · ${w.aromaConfidence || 'pas de confiance'}`
+            ).join('\n');
+            return { content: [{ type: 'text' as const, text: `# Vins à enrichir (${result.count})\n\n${lines}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
+    'enrich_wine_aromas',
+    'Enrich wines without aroma profile in batch. Useful after import or for wines added manually.',
+    {
+        use_consensus: z.boolean().optional().describe('Cross-reference Gemini + Claude for higher confidence (slower, more expensive)'),
+        limit: z.number().optional().describe('Max wines to process (default 50)'),
+    },
+    async ({ use_consensus, limit }) => {
+        try {
+            const result = await client.enrichAromas(use_consensus || false, limit || 50);
+            return { content: [{ type: 'text' as const, text: `Enrichissement: ${result.enriched}/${result.processed} vins enrichis. ${result.failed > 0 ? `${result.failed} échecs.` : ''}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
 // --- Start Server ---
 async function main() {
     const transport = new StdioServerTransport();

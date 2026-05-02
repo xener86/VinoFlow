@@ -255,6 +255,116 @@ export function formatCellarContextForFair(inventory: CellarWine[], stats: {
     ].filter(Boolean).join('\n');
 }
 
+// ──────────────────────────────────────────
+// Sommelier v2 — pairing
+// ──────────────────────────────────────────
+
+export interface SommelierPick {
+    wine_id: string;
+    reason: string;
+    service_temp_c: number | null;
+    decant_minutes: number;
+}
+
+export interface SommelierResult {
+    criteria: any;
+    candidates: { wine_id: string; score: number }[];
+    picks: {
+        safe: SommelierPick | null;
+        personal: SommelierPick | null;
+        creative: SommelierPick | null;
+        global_advice: string;
+    };
+    cave_size: number;
+    cave_after_filter: number;
+    no_match?: boolean;
+}
+
+export async function sommelierPair(dish: string, context?: any): Promise<SommelierResult> {
+    return fetchJSON<SommelierResult>('/sommelier/pair', {
+        method: 'POST',
+        body: JSON.stringify({ dish, context }),
+    });
+}
+
+export async function sommelierReversePair(wineId: string): Promise<{ suggestions: any[]; global_advice: string }> {
+    return fetchJSON('/sommelier/reverse-pair', {
+        method: 'POST',
+        body: JSON.stringify({ wineId }),
+    });
+}
+
+export async function sommelierMenu(dishes: string[]): Promise<{ courses: any[] }> {
+    return fetchJSON('/sommelier/menu', {
+        method: 'POST',
+        body: JSON.stringify({ dishes }),
+    });
+}
+
+export async function sommelierExplain(dish: string, wineId: string): Promise<{ explanation: string }> {
+    return fetchJSON('/sommelier/explain', {
+        method: 'POST',
+        body: JSON.stringify({ dish, wineId }),
+    });
+}
+
+export async function sommelierCompare(dish: string, wineAId: string, wineBId: string): Promise<any> {
+    return fetchJSON('/sommelier/compare', {
+        method: 'POST',
+        body: JSON.stringify({ dish, wineAId, wineBId }),
+    });
+}
+
+export async function sommelierVertical(producer: string): Promise<{ wines: any[]; note: string }> {
+    return fetchJSON('/sommelier/vertical', {
+        method: 'POST',
+        body: JSON.stringify({ producer }),
+    });
+}
+
+// ──────────────────────────────────────────
+// Proactive insights
+// ──────────────────────────────────────────
+
+export async function getDrinkBeforeAlerts(horizonMonths = 12): Promise<{ count: number; alerts: any[] }> {
+    return fetchJSON(`/sommelier/alerts/drink-before?horizonMonths=${horizonMonths}`);
+}
+
+export async function getPurchaseSuggestions(): Promise<{ count: number; suggestions: any[] }> {
+    return fetchJSON('/sommelier/purchase-suggestions');
+}
+
+export async function getAgingRecommendations(): Promise<{ count: number; recommendations: any[] }> {
+    return fetchJSON('/wines/aging-recommendations');
+}
+
+export async function getCellarProjection(yearsAhead = 5): Promise<any> {
+    return fetchJSON(`/cellar/projection?yearsAhead=${yearsAhead}`);
+}
+
+export async function getCellarBudget(months = 12): Promise<any> {
+    return fetchJSON(`/cellar/budget?months=${months}`);
+}
+
+export async function findDuplicates(): Promise<{ count: number; groups: any[] }> {
+    return fetchJSON('/wines/duplicates');
+}
+
+export async function auditWines(): Promise<{ count: number; wines: any[] }> {
+    return fetchJSON('/wines/audit');
+}
+
+export async function enrichAromas(useConsensus = false, limit = 50): Promise<any> {
+    return fetchJSON('/wines/enrich-aromas', {
+        method: 'POST',
+        body: JSON.stringify({ onlyMissing: true, useConsensus, limit }),
+    });
+}
+
+// ──────────────────────────────────────────
+// Original stats
+// ──────────────────────────────────────────
+
 export async function getCellarStats(): Promise<{
     totalWines: number;
     totalBottles: number;
