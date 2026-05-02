@@ -468,41 +468,15 @@ export const Sommelier: React.FC = () => {
           </div>
       )}
 
-      {/* --- PAIRING MODE --- */}
+      {/* --- PAIRING MODE — Sommelier v2 fullscreen --- */}
       {activeTab === 'PAIRING' && (
-          <div className="space-y-6 animate-fade-in">
-              {/* Sommelier v2 - 3 propositions categorisees avec feedback */}
-              <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">
+          <div className="animate-fade-in">
+              <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-sm">
                   <SommelierV2 inventory={inventory} />
               </div>
-
-              <div className="text-center text-xs text-stone-400 uppercase tracking-wider">— ou mode classique —</div>
-
-              <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800">
-                  <button onClick={() => setPairingMode('FOOD_TO_WINE')} className={`flex-1 py-2 text-xs rounded-lg ${pairingMode === 'FOOD_TO_WINE' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500'}`}>Plat → Vin</button>
-                  <button onClick={() => setPairingMode('WINE_TO_FOOD')} className={`flex-1 py-2 text-xs rounded-lg ${pairingMode === 'WINE_TO_FOOD' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500'}`}>Vin → Plat</button>
-              </div>
-
-              <form onSubmit={handleGetPairing} className="relative">
-                  <input 
-                      type="text"
-                      placeholder={pairingMode === 'FOOD_TO_WINE' ? "Quel plat cuisinez-vous ?" : "Quel vin voulez-vous servir ?"}
-                      value={pairingQuery}
-                      onChange={(e) => setPairingQuery(e.target.value)}
-                      className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 pr-12 text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none"
-                  />
-                  <button type="submit" disabled={loadingPairing} className="absolute right-2 top-2 p-2 bg-wine-600 text-white rounded-lg hover:bg-wine-700 disabled:opacity-50">
-                      {loadingPairing ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />}
-                  </button>
-              </form>
-
-              {pairingResult && (
-                  <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-sm">
-                      <div className="prose prose-sm max-w-none text-stone-700 dark:text-stone-300">
-                          <div className="whitespace-pre-wrap">{pairingResult}</div>
-                      </div>
-                  </div>
-              )}
+              <p className="mt-4 text-center text-xs text-stone-400">
+                  Besoin d'autres modes (verticale, decision, mode aveugle) ? <a href="/sommelier-tools" className="text-wine-600 hover:underline">Boîte à outils du sommelier →</a>
+              </p>
           </div>
       )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff } from 'lucide-react';
+import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle } from 'lucide-react';
 import { sommelierPair, sommelierFeedback } from '../services/storageService';
 import { CellarWine } from '../types';
 
@@ -67,17 +67,28 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
 
   const wineById = (id: string) => inventory.find(w => w.id === id);
 
+  const [progressStep, setProgressStep] = useState<number>(0);
   const handlePair = async (skipCache = false) => {
     if (!dish.trim()) return;
     setLoading(true);
     setError(null);
     setFeedbackGiven({});
+    setProgressStep(0);
+
+    // Simulated progression (LLM doesn't stream natively here, so we fake it
+    // with timed steps to give the user a sense of activity)
+    const tick = setInterval(() => {
+      setProgressStep(s => Math.min(s + 1, 2));
+    }, 3000);
+
     try {
       const res = await sommelierPair(dish, {}, skipCache);
+      setProgressStep(3);
       setResult(res);
     } catch (e: any) {
       setError(e.message || 'Une erreur est survenue');
     } finally {
+      clearInterval(tick);
       setLoading(false);
     }
   };
@@ -137,6 +148,29 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 p-3 rounded-lg text-sm">
           {error}
+        </div>
+      )}
+
+      {loading && !result && (
+        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 space-y-3">
+          <ProgressStep
+            done={progressStep >= 1}
+            inProgress={progressStep === 0}
+            label="Analyse du plat"
+            sublabel="Décomposition (protéine, sauce, cuisson, intensité)"
+          />
+          <ProgressStep
+            done={progressStep >= 2}
+            inProgress={progressStep === 1}
+            label="Recherche dans votre cave"
+            sublabel="Pré-filtrage et calcul des scores"
+          />
+          <ProgressStep
+            done={progressStep >= 3}
+            inProgress={progressStep === 2}
+            label="Sélection finale"
+            sublabel="3 propositions argumentées"
+          />
         </div>
       )}
 
@@ -207,6 +241,18 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
     </div>
   );
 };
+
+const ProgressStep: React.FC<{ done: boolean; inProgress: boolean; label: string; sublabel: string }> = ({ done, inProgress, label, sublabel }) => (
+  <div className="flex items-start gap-3">
+    <div className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center ${done ? 'bg-green-600 text-white' : inProgress ? 'bg-wine-100 dark:bg-wine-900/30 text-wine-600 dark:text-wine-400' : 'bg-stone-200 dark:bg-stone-800 text-stone-400'}`}>
+      {done ? <Check size={12} /> : inProgress ? <Loader2 className="animate-spin" size={12} /> : <Circle size={8} />}
+    </div>
+    <div className="flex-1">
+      <div className={`text-sm font-medium ${done || inProgress ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>{label}</div>
+      <div className="text-xs text-stone-500">{sublabel}</div>
+    </div>
+  </div>
+);
 
 const PickCard: React.FC<{
   category: 'SAFE' | 'PERSONAL' | 'CREATIVE';

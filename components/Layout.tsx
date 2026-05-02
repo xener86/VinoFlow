@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock, Globe, Lightbulb } from 'lucide-react';
+import { Wine, Map, PlusCircle, FileText, GlassWater, BookOpen, BarChart3, Settings, LogOut, Moon, Sun, Monitor, Sparkles, Heart, Columns3, Clock, Globe, Lightbulb, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useWines } from '../hooks/useWines';
@@ -173,6 +173,20 @@ export const Layout: React.FC = () => {
               aria-label="Carte des Régions"
             >
               <Globe size={20} />
+            </Link>
+
+            {/* Sommelier Tools - boite a outils du sommelier */}
+            <Link
+              to="/sommelier-tools"
+              className={`p-2 rounded-lg transition-colors ${
+                isActive('/sommelier-tools')
+                  ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
+                  : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+              }`}
+              title="Boîte à outils sommelier"
+              aria-label="Boîte à outils sommelier"
+            >
+              <Wand2 size={20} />
             </Link>
 
             {/* Insights Button (Phase 8/11) */}

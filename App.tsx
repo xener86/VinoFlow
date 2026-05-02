@@ -23,6 +23,7 @@ import { CompareWines } from './pages/CompareWines';
 import { DrinkNow } from './pages/DrinkNow';
 import { RegionMap } from './pages/RegionMap';
 import { Insights } from './pages/Insights';
+import { SommelierTools } from './pages/SommelierTools';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, isConfigured } = useAuth();
@@ -68,6 +69,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/drink-now" element={<DrinkNow />} />
         <Route path="/regions" element={<RegionMap />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/sommelier-tools" element={<SommelierTools />} />
       </Route>
 
       {/* Fallback */}
