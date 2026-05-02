@@ -45,7 +45,7 @@ const getClient = () => {
 export const extractFromLabel = async (base64, mimeType = 'image/jpeg') => {
   const client = getClient();
   const response = await client.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash',
     contents: [{
       role: 'user',
       parts: [

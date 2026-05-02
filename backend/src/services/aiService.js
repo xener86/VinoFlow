@@ -30,10 +30,10 @@ export const runWithRequestKeys = (keys, fn) => requestKeysStore.run(keys || {},
 const getRequestKeys = () => requestKeysStore.getStore() || {};
 
 const TASK_DEFAULTS = {
-  'extract-criteria': { provider: 'gemini', model: 'gemini-2.0-flash-exp' },
+  'extract-criteria': { provider: 'gemini', model: 'gemini-2.5-flash' },
   'argue':            { provider: 'claude', model: 'claude-sonnet-4-5' },
   'enrich':           { provider: 'claude', model: 'claude-sonnet-4-5' },
-  'ocr':              { provider: 'gemini', model: 'gemini-2.0-flash-exp' },
+  'ocr':              { provider: 'gemini', model: 'gemini-2.5-flash' },
   'embedding':        { provider: 'gemini', model: 'text-embedding-004' },
 };
 
