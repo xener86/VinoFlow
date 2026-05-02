@@ -178,6 +178,129 @@ export const getAvailableAIProviders = async () => {
   return handleResponse(response);
 };
 
+// Phase 3 - Enrichissement
+export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; useConsensus?: boolean; limit?: number } = {}) => {
+  const response = await fetch(`${API_URL}/wines/enrich-aromas`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(params),
+  });
+  return handleResponse(response);
+};
+
+export const auditWines = async () => {
+  const response = await fetch(`${API_URL}/wines/audit`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const refreshAromaFromTastings = async (wineId: string) => {
+  const response = await fetch(`${API_URL}/wines/${wineId}/refresh-from-tastings`, {
+    method: 'POST',
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+// Phase 6.1 - OCR
+export const extractWineFromImage = async (base64: string, mimeType = 'image/jpeg') => {
+  const response = await fetch(`${API_URL}/wines/extract-from-image`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ image: base64, mimeType }),
+  });
+  return handleResponse(response);
+};
+
+// Phase 7 - Modes de pairing avancés
+export const sommelierReversePair = async (wineId: string) => {
+  const response = await fetch(`${API_URL}/sommelier/reverse-pair`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ wineId }),
+  });
+  return handleResponse(response);
+};
+
+export const sommelierMenu = async (dishes: string[]) => {
+  const response = await fetch(`${API_URL}/sommelier/menu`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ dishes }),
+  });
+  return handleResponse(response);
+};
+
+export const sommelierExplain = async (dish: string, wineId: string, criteria?: any) => {
+  const response = await fetch(`${API_URL}/sommelier/explain`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ dish, wineId, criteria }),
+  });
+  return handleResponse(response);
+};
+
+// Phase 8 - Proactive
+export const getDrinkBeforeAlerts = async (horizonMonths = 12) => {
+  const response = await fetch(`${API_URL}/sommelier/alerts/drink-before?horizonMonths=${horizonMonths}`, {
+    headers: getHeaders(),
+  });
+  return handleResponse(response);
+};
+
+export const getAnticipationForEvent = async (eventDate: string, limit = 5) => {
+  const response = await fetch(`${API_URL}/sommelier/anticipation`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ eventDate, limit }),
+  });
+  return handleResponse(response);
+};
+
+export const getPurchaseSuggestions = async () => {
+  const response = await fetch(`${API_URL}/sommelier/purchase-suggestions`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+// Phase 10 - Advanced
+export const sommelierVertical = async (producer: string) => {
+  const response = await fetch(`${API_URL}/sommelier/vertical`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ producer }),
+  });
+  return handleResponse(response);
+};
+
+export const sommelierCompare = async (dish: string, wineAId: string, wineBId: string) => {
+  const response = await fetch(`${API_URL}/sommelier/compare`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ dish, wineAId, wineBId }),
+  });
+  return handleResponse(response);
+};
+
+export const sommelierBlind = async () => {
+  const response = await fetch(`${API_URL}/sommelier/blind`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+// Phase 11 - Wine lifecycle
+export const getAgingRecommendations = async () => {
+  const response = await fetch(`${API_URL}/wines/aging-recommendations`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const findWineDuplicates = async () => {
+  const response = await fetch(`${API_URL}/wines/duplicates`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getCellarProjection = async (yearsAhead = 5) => {
+  const response = await fetch(`${API_URL}/cellar/projection?yearsAhead=${yearsAhead}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça

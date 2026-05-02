@@ -3,8 +3,8 @@ import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottle
 import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
 import { AIConfig, AIProvider, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
-import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles } from 'lucide-react';
-import { getAvailableAIProviders } from '../services/storageService';
+import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, Wand2 } from 'lucide-react';
+import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
 
 export const Settings: React.FC = () => {
   // ✅ Utilisation du Hook
@@ -27,6 +27,35 @@ export const Settings: React.FC = () => {
   useEffect(() => {
       getAvailableAIProviders().then(setBackendProviders).catch(() => {});
   }, []);
+
+  // Phase 3 - Batch enrichment
+  const [enriching, setEnriching] = useState(false);
+  const [enrichResult, setEnrichResult] = useState<{ enriched: number; failed: number; processed: number } | null>(null);
+  const [auditing, setAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<{ count: number; wines: any[] } | null>(null);
+
+  const handleEnrich = async (useConsensus: boolean) => {
+      setEnriching(true);
+      setEnrichResult(null);
+      try {
+          const r = await enrichAromaProfilesBatch({ onlyMissing: true, useConsensus, limit: 50 });
+          setEnrichResult(r);
+      } catch (e: any) {
+          alert('Échec : ' + (e.message || 'erreur'));
+      } finally {
+          setEnriching(false);
+      }
+  };
+
+  const handleAudit = async () => {
+      setAuditing(true);
+      try {
+          const r = await auditWines();
+          setAuditResult(r);
+      } finally {
+          setAuditing(false);
+      }
+  };
 
   // Synchronisation de l'état local une fois la config chargée
   useEffect(() => {
@@ -239,6 +268,64 @@ export const Settings: React.FC = () => {
                      {saved ? 'Configuration Enregistrée' : 'Sauvegarder les Clés'}
                  </button>
              </div>
+        </Section>
+
+        <Section title="Sommelier — Enrichissement de la cave" icon={Wand2}>
+            <div className="space-y-4">
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                    Génère le profil aromatique IA des vins qui n'en ont pas encore (ou avec un profil pauvre). Recommandé après l'import d'une cave existante.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => handleEnrich(false)}
+                        disabled={enriching}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {enriching ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                        Enrichir (rapide)
+                    </button>
+                    <button
+                        onClick={() => handleEnrich(true)}
+                        disabled={enriching}
+                        className="bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-900 dark:text-white py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                        title="Croise Gemini + Claude pour augmenter la confiance (plus lent, plus coûteux)"
+                    >
+                        Enrichir avec consensus 2 IA
+                    </button>
+                </div>
+                {enrichResult && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-lg text-sm text-green-700 dark:text-green-300">
+                        ✓ {enrichResult.enriched} vins enrichis sur {enrichResult.processed} traités. {enrichResult.failed > 0 && ` ${enrichResult.failed} échecs.`}
+                    </div>
+                )}
+
+                <div className="border-t border-stone-200 dark:border-stone-800 pt-4">
+                    <p className="text-sm text-stone-500 dark:text-stone-400 mb-2">
+                        Audit des profils faibles ou suspects.
+                    </p>
+                    <button
+                        onClick={handleAudit}
+                        disabled={auditing}
+                        className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-white py-2 px-4 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
+                    >
+                        {auditing ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
+                        Auditer
+                    </button>
+                    {auditResult && (
+                        <div className="mt-3 text-sm">
+                            <div className="font-bold mb-2">{auditResult.count} vins suspects</div>
+                            {auditResult.wines.slice(0, 10).map(w => (
+                                <div key={w.id} className="flex items-center justify-between py-1 border-b border-stone-100 dark:border-stone-800 text-xs">
+                                    <span>{w.name} {w.vintage}</span>
+                                    <span className="text-stone-500">
+                                        {w.aromaProfile ? `${w.aromaProfile.length} arômes` : 'pas de profil'} · {w.aromaConfidence || '?'}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
         </Section>
 
         <Section title="Nettoyage de la Cave" icon={Trash2}>

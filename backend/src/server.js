@@ -4,9 +4,24 @@ import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
-import { runPairing } from './sommelier/coordinator.js';
+import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from './sommelier/coordinator.js';
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/tasteProfile.js';
 import { isProviderConfigured, getTaskDefaults } from './services/aiService.js';
+import { enrichWine, aromasFromTastingNotes } from './sommelier/enrich.js';
+import { extractFromLabel } from './sommelier/ocr.js';
+import {
+  drinkBeforeAlerts,
+  anticipationForEvent,
+  purchaseSuggestions,
+} from './sommelier/proactive.js';
+import {
+  buildVerticalTasting,
+  compareForDish,
+  blindTasting,
+  agingRecommendations,
+  findDuplicates,
+  cellarProjection,
+} from './sommelier/advanced.js';
 
 const { Pool } = pg;
 const app = express();
@@ -879,6 +894,197 @@ app.post('/api/sommelier/feedback', async (req, res) => {
   }
 });
 
+// Phase 7.1 — Reverse pairing: vin → plats
+app.post('/api/sommelier/reverse-pair', async (req, res) => {
+  try {
+    const { wineId } = req.body;
+    if (!wineId) return res.status(400).json({ error: 'wineId required' });
+    const wineRes = await pool.query('SELECT * FROM wines WHERE id = $1', [wineId]);
+    if (wineRes.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    const wine = convertKeysToCamelCase(wineRes.rows[0]);
+    const result = await suggestDishesForWine(wine);
+    res.json(result);
+  } catch (error) {
+    console.error('Reverse pair error:', error);
+    res.status(500).json({ error: 'Failed to compute reverse pairing' });
+  }
+});
+
+// Phase 7.2 — Multi-course menu pairing
+app.post('/api/sommelier/menu', async (req, res) => {
+  try {
+    const { dishes, context } = req.body;
+    if (!Array.isArray(dishes) || dishes.length === 0) {
+      return res.status(400).json({ error: 'dishes must be a non-empty array' });
+    }
+    const userId = req.user?.userId;
+    const inventory = await loadInventory();
+    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
+    const result = await pairMenu({ pool, inventory, dishes, userId, userFeedback: [], tasteProfile });
+    res.json(result);
+  } catch (error) {
+    console.error('Menu pair error:', error);
+    res.status(500).json({ error: 'Failed to pair menu' });
+  }
+});
+
+// Phase 13.1 — Mode "explique-moi" pour un accord
+app.post('/api/sommelier/explain', async (req, res) => {
+  try {
+    const { dish, wineId, criteria } = req.body;
+    if (!dish || !wineId) return res.status(400).json({ error: 'dish and wineId required' });
+    const wineRes = await pool.query('SELECT * FROM wines WHERE id = $1', [wineId]);
+    if (wineRes.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    const wine = convertKeysToCamelCase(wineRes.rows[0]);
+    const explanation = await explainPairing(dish, wine, criteria);
+    res.json({ explanation });
+  } catch (error) {
+    console.error('Explain pairing error:', error);
+    res.status(500).json({ error: 'Failed to explain pairing' });
+  }
+});
+
+// ────────────────────────────────────────────
+// Phase 8 — Proactive features
+// ────────────────────────────────────────────
+
+app.get('/api/sommelier/alerts/drink-before', async (req, res) => {
+  try {
+    const horizon = parseInt(req.query.horizonMonths) || 12;
+    const inventory = await loadInventory();
+    const alerts = drinkBeforeAlerts(inventory, { horizonMonths: horizon });
+    res.json({ count: alerts.length, alerts });
+  } catch (error) {
+    console.error('drink-before error:', error);
+    res.status(500).json({ error: 'Failed to compute alerts' });
+  }
+});
+
+app.post('/api/sommelier/anticipation', async (req, res) => {
+  try {
+    const { eventDate, limit } = req.body;
+    if (!eventDate) return res.status(400).json({ error: 'eventDate required' });
+    const inventory = await loadInventory();
+    const result = anticipationForEvent(inventory, eventDate, { limit: limit ?? 5 });
+    res.json({ event: eventDate, count: result.length, suggestions: result });
+  } catch (error) {
+    console.error('anticipation error:', error);
+    res.status(500).json({ error: 'Failed to compute anticipation' });
+  }
+});
+
+app.get('/api/sommelier/purchase-suggestions', async (req, res) => {
+  try {
+    const inventory = await loadInventory();
+    const journal = (await pool.query('SELECT * FROM journal ORDER BY date DESC LIMIT 500')).rows;
+    const suggestions = purchaseSuggestions(inventory, convertKeysToCamelCase(journal));
+    res.json({ count: suggestions.length, suggestions });
+  } catch (error) {
+    console.error('purchase-suggestions error:', error);
+    res.status(500).json({ error: 'Failed to compute purchase suggestions' });
+  }
+});
+
+// ────────────────────────────────────────────
+// Phase 10 — Advanced pairing modes
+// ────────────────────────────────────────────
+
+app.post('/api/sommelier/vertical', async (req, res) => {
+  try {
+    const { producer } = req.body;
+    if (!producer) return res.status(400).json({ error: 'producer required' });
+    const inventory = await loadInventory();
+    const result = buildVerticalTasting(inventory, producer);
+    res.json(result);
+  } catch (error) {
+    console.error('vertical error:', error);
+    res.status(500).json({ error: 'Failed to build vertical' });
+  }
+});
+
+app.post('/api/sommelier/compare', async (req, res) => {
+  try {
+    const { dish, wineAId, wineBId } = req.body;
+    if (!dish || !wineAId || !wineBId) {
+      return res.status(400).json({ error: 'dish, wineAId, wineBId required' });
+    }
+    const r = await pool.query('SELECT * FROM wines WHERE id = ANY($1)', [[wineAId, wineBId]]);
+    if (r.rows.length !== 2) return res.status(404).json({ error: 'Wines not found' });
+    const wineA = convertKeysToCamelCase(r.rows.find(w => w.id === wineAId));
+    const wineB = convertKeysToCamelCase(r.rows.find(w => w.id === wineBId));
+    const result = await compareForDish(dish, wineA, wineB);
+    res.json(result);
+  } catch (error) {
+    console.error('compare error:', error);
+    res.status(500).json({ error: 'Failed to compare wines' });
+  }
+});
+
+app.get('/api/sommelier/blind', async (req, res) => {
+  try {
+    const inventory = await loadInventory();
+    const result = blindTasting(inventory);
+    if (!result) return res.status(404).json({ error: 'No wine in cave' });
+    res.json(result);
+  } catch (error) {
+    console.error('blind error:', error);
+    res.status(500).json({ error: 'Failed to start blind tasting' });
+  }
+});
+
+// ────────────────────────────────────────────
+// Phase 11 — Wine lifecycle
+// ────────────────────────────────────────────
+
+app.get('/api/wines/aging-recommendations', async (req, res) => {
+  try {
+    const inventory = await loadInventory();
+    const recs = agingRecommendations(inventory);
+    res.json({ count: recs.length, recommendations: recs });
+  } catch (error) {
+    console.error('aging-recommendations error:', error);
+    res.status(500).json({ error: 'Failed to compute aging recommendations' });
+  }
+});
+
+app.get('/api/wines/duplicates', async (req, res) => {
+  try {
+    const inventory = await loadInventory();
+    const dupes = findDuplicates(inventory);
+    res.json({ count: dupes.length, groups: dupes });
+  } catch (error) {
+    console.error('duplicates error:', error);
+    res.status(500).json({ error: 'Failed to find duplicates' });
+  }
+});
+
+app.get('/api/cellar/projection', async (req, res) => {
+  try {
+    const yearsAhead = parseInt(req.query.yearsAhead) || 5;
+    const inventory = await loadInventory();
+    const journal = (await pool.query('SELECT * FROM journal ORDER BY date DESC LIMIT 500')).rows;
+    const result = cellarProjection(inventory, convertKeysToCamelCase(journal), { yearsAhead });
+    res.json(result);
+  } catch (error) {
+    console.error('projection error:', error);
+    res.status(500).json({ error: 'Failed to compute projection' });
+  }
+});
+
+// Phase 6.1 — OCR: extract wine info from a label image
+// Body: { image: "base64...", mimeType: "image/jpeg" }
+app.post('/api/wines/extract-from-image', async (req, res) => {
+  try {
+    const { image, mimeType } = req.body;
+    if (!image) return res.status(400).json({ error: 'image (base64) required' });
+    const extracted = await extractFromLabel(image, mimeType || 'image/jpeg');
+    res.json(extracted);
+  } catch (error) {
+    console.error('OCR error:', error);
+    res.status(500).json({ error: 'Failed to extract from image', details: error.message });
+  }
+});
+
 // Get current user's taste profile
 app.get('/api/sommelier/taste-profile', async (req, res) => {
   try {
@@ -901,6 +1107,121 @@ app.get('/api/ai/providers', async (req, res) => {
     },
     defaults: getTaskDefaults(),
   });
+});
+
+// Phase 3.1 - Enrich aromas in batch (vins sans profil)
+// Body: { onlyMissing: boolean, useConsensus: boolean, limit: number }
+app.post('/api/wines/enrich-aromas', async (req, res) => {
+  try {
+    const { onlyMissing = true, useConsensus = false, limit = 50 } = req.body || {};
+    const userId = req.user?.userId;
+
+    const filter = onlyMissing
+      ? `WHERE aroma_profile IS NULL OR array_length(aroma_profile, 1) IS NULL OR array_length(aroma_profile, 1) < 3 OR aroma_source IS NULL`
+      : '';
+    const result = await pool.query(`SELECT * FROM wines ${filter} ORDER BY created_at DESC LIMIT $1`, [limit]);
+    const wines = convertKeysToCamelCase(result.rows);
+
+    const enriched = [];
+    const failed = [];
+
+    for (const wine of wines) {
+      try {
+        const profile = await enrichWine(wine, { useConsensus });
+        await pool.query(`
+          UPDATE wines SET
+            aroma_profile = $1,
+            aroma_source = $2,
+            aroma_confidence = $3,
+            aroma_provider = $4,
+            aroma_verified_at = CASE WHEN $2 = 'CONSENSUS' THEN now() ELSE aroma_verified_at END,
+            updated_at = now()
+          WHERE id = $5
+        `, [
+          profile.aromas,
+          profile.source,
+          profile.confidence,
+          (profile.providers || []).join(',') || 'gemini',
+          wine.id,
+        ]);
+        enriched.push({ id: wine.id, name: wine.name, aromas: profile.aromas, confidence: profile.confidence });
+      } catch (err) {
+        console.error(`Enrich failed for ${wine.id}:`, err.message);
+        failed.push({ id: wine.id, name: wine.name, error: err.message });
+      }
+    }
+
+    res.json({
+      processed: wines.length,
+      enriched: enriched.length,
+      failed: failed.length,
+      results: enriched,
+      errors: failed,
+    });
+  } catch (error) {
+    console.error('Batch enrich error:', error);
+    res.status(500).json({ error: 'Failed to enrich aromas', details: error.message });
+  }
+});
+
+// Phase 3.4 - Audit dashboard: vins suspects (profils faibles ou vides)
+app.get('/api/wines/audit', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id, name, producer, vintage, region, type,
+        aroma_profile, aroma_source, aroma_confidence, aroma_verified_at, updated_at
+      FROM wines
+      WHERE
+        aroma_profile IS NULL
+        OR array_length(aroma_profile, 1) IS NULL
+        OR array_length(aroma_profile, 1) < 3
+        OR aroma_source IS NULL
+        OR (aroma_source = 'AI' AND aroma_confidence = 'LOW')
+        OR (aroma_source = 'AI' AND updated_at < now() - interval '12 months')
+      ORDER BY
+        CASE WHEN aroma_profile IS NULL THEN 0 ELSE 1 END,
+        CASE WHEN aroma_confidence = 'LOW' THEN 0 WHEN aroma_confidence = 'MEDIUM' THEN 1 ELSE 2 END,
+        updated_at ASC
+      LIMIT 100
+    `);
+    res.json({
+      count: result.rowCount,
+      wines: convertKeysToCamelCase(result.rows),
+    });
+  } catch (error) {
+    console.error('Audit error:', error);
+    res.status(500).json({ error: 'Failed to run audit' });
+  }
+});
+
+// Phase 3.3 - Re-derive aroma profile from tasting notes (closes the loop)
+app.post('/api/wines/:id/refresh-from-tastings', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.userId;
+    const notesRes = await pool.query('SELECT * FROM tasting_notes WHERE wine_id = $1 ORDER BY date DESC', [id]);
+    const aromas = aromasFromTastingNotes(convertKeysToCamelCase(notesRes.rows));
+    if (aromas.length < 3) {
+      return res.status(400).json({ error: 'Not enough aromas in tasting notes (need ≥3)', found: aromas.length });
+    }
+    const result = await pool.query(`
+      UPDATE wines SET
+        aroma_profile = $1,
+        aroma_source = 'TASTING',
+        aroma_confidence = 'HIGH',
+        aroma_verified_at = now(),
+        aroma_verified_by = $2,
+        updated_at = now()
+      WHERE id = $3
+      RETURNING *
+    `, [aromas, userId || null, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    res.json({ wine: convertKeysToCamelCase(result.rows[0]), aromas });
+  } catch (error) {
+    console.error('Refresh-from-tastings error:', error);
+    res.status(500).json({ error: 'Failed to refresh from tastings' });
+  }
 });
 
 // Update aroma profile manually (Phase 1.4 - validation UI)
