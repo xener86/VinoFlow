@@ -9,6 +9,11 @@ import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/
 import { isProviderConfigured, getTaskDefaults } from './services/aiService.js';
 import { enrichWine, aromasFromTastingNotes } from './sommelier/enrich.js';
 import { extractFromLabel } from './sommelier/ocr.js';
+import { computeBudget } from './sommelier/budget.js';
+import { fetchCommunityData, fetchMarketValue, fetchPressScores } from './services/externalData.js';
+import { updateMissingEmbeddings } from './sommelier/embeddings.js';
+import { extractCriteria } from './sommelier/llm1.js';
+import { setCriteriaCache } from './sommelier/cache.js';
 import {
   drinkBeforeAlerts,
   anticipationForEvent,
@@ -1071,6 +1076,118 @@ app.get('/api/cellar/projection', async (req, res) => {
   }
 });
 
+// Phase 13.3 — Budget tracking
+app.get('/api/cellar/budget', async (req, res) => {
+  try {
+    const months = parseInt(req.query.months) || 12;
+    const inventory = await loadInventory();
+    // Inventory needs bottles attached for budget; fetch them
+    const bottlesRes = await pool.query('SELECT * FROM bottles');
+    const bottles = convertKeysToCamelCase(bottlesRes.rows);
+    const enriched = inventory.map(w => ({ ...w, bottles: bottles.filter(b => b.wineId === w.id) }));
+    const journal = (await pool.query('SELECT * FROM journal ORDER BY date DESC LIMIT 500')).rows;
+    const result = computeBudget(enriched, convertKeysToCamelCase(journal), { monthsBack: months });
+    res.json(result);
+  } catch (error) {
+    console.error('budget error:', error);
+    res.status(500).json({ error: 'Failed to compute budget' });
+  }
+});
+
+// Phase 9 — External data (stubs that use AI estimates today, replace with real APIs)
+app.get('/api/wines/:id/external/community', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    const wine = convertKeysToCamelCase(r.rows[0]);
+    const data = await fetchCommunityData(wine);
+    res.json(data || { source: 'NONE', error: 'No data available' });
+  } catch (error) {
+    console.error('community error:', error);
+    res.status(500).json({ error: 'Failed to fetch community data' });
+  }
+});
+
+app.get('/api/wines/:id/external/market-value', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    const wine = convertKeysToCamelCase(r.rows[0]);
+    const data = await fetchMarketValue(wine);
+    res.json(data || { source: 'NONE' });
+  } catch (error) {
+    console.error('market-value error:', error);
+    res.status(500).json({ error: 'Failed to fetch market value' });
+  }
+});
+
+app.get('/api/wines/:id/external/press', async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    const wine = convertKeysToCamelCase(r.rows[0]);
+    const data = await fetchPressScores(wine);
+    res.json(data || { source: 'NONE' });
+  } catch (error) {
+    console.error('press error:', error);
+    res.status(500).json({ error: 'Failed to fetch press scores' });
+  }
+});
+
+// Phase 5 — pgvector embeddings management
+app.post('/api/wines/refresh-embeddings', async (req, res) => {
+  try {
+    const limit = parseInt(req.body?.limit) || 100;
+    const result = await updateMissingEmbeddings(pool, { limit });
+    res.json(result);
+  } catch (error) {
+    console.error('refresh-embeddings error:', error);
+    res.status(500).json({ error: 'Failed to refresh embeddings', details: error.message });
+  }
+});
+
+// Phase 4.3 — Streaming sommelier (Server-Sent Events)
+// Sends partial events: criteria → candidates → picks
+app.get('/api/sommelier/pair-stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  try {
+    const dish = req.query.dish;
+    if (!dish) {
+      send('error', { message: 'dish required' });
+      return res.end();
+    }
+    send('status', { phase: 'extract-criteria' });
+
+    const criteria = await extractCriteria(dish, {});
+    send('criteria', criteria);
+
+    send('status', { phase: 'matching' });
+    const inventory = await loadInventory();
+    const userId = req.user?.userId;
+    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
+
+    const result = await runPairing({
+      pool, inventory, dish, context: {}, userId, userFeedback: [], tasteProfile, skipCache: false,
+    });
+
+    send('candidates', result.candidates);
+    send('picks', result.picks);
+    send('done', { fromCache: result.fromCache, cave_size: result.cave_size });
+  } catch (error) {
+    send('error', { message: error.message });
+  } finally {
+    res.end();
+  }
+});
+
 // Phase 6.1 — OCR: extract wine info from a label image
 // Body: { image: "base64...", mimeType: "image/jpeg" }
 app.post('/api/wines/extract-from-image', async (req, res) => {
@@ -1258,7 +1375,43 @@ app.put('/api/wines/:id/aroma-profile', async (req, res) => {
   }
 });
 
+// Phase 4.4 — Pre-warming common dishes at startup.
+// Pre-computes LLM1 criteria for the 50 most common dishes so the very first
+// pairing request is fast.
+const COMMON_DISHES = [
+  'poulet rôti', 'saumon grillé', 'sushis', 'fromage de chèvre', 'fromage à pâte dure',
+  'magret de canard', 'côte de bœuf', 'agneau de pré-salé', 'cassoulet', 'choucroute',
+  'bouillabaisse', 'risotto aux champignons', 'pâtes carbonara', 'pizza margherita', 'fondue savoyarde',
+  'raclette', 'plateau de charcuterie', 'huîtres', 'tartare de bœuf', 'curry de poulet',
+  'bo bun', 'pad thaï', 'paella', 'tagine d\'agneau', 'couscous',
+  'tajine de poisson', 'apéritif léger', 'apéritif charcuterie', 'foie gras', 'comté',
+  'roquefort', 'tarte au citron', 'tarte tatin', 'fondant chocolat', 'crème brûlée',
+  'salade de chèvre chaud', 'pissaladière', 'quiche lorraine', 'blanquette de veau', 'navarin d\'agneau',
+  'pintade rôtie', 'lapin moutarde', 'gigot d\'agneau', 'magret au miel', 'truite aux amandes',
+  'lotte au safran', 'cabillaud beurre blanc', 'sole meunière', 'noix de saint-jacques', 'risotto truffe',
+];
+
+const prewarmCommonDishes = async () => {
+  if (process.env.VINOFLOW_PREWARM !== 'true') return;
+  console.log('🔥 Pre-warming pairing cache for common dishes...');
+  let warmed = 0;
+  for (const dish of COMMON_DISHES) {
+    try {
+      const criteria = await extractCriteria(dish, {});
+      await setCriteriaCache(pool, dish, criteria);
+      warmed++;
+    } catch (e) {
+      // Skip silently — likely no API key
+    }
+    // Avoid hammering the API
+    await new Promise(r => setTimeout(r, 500));
+  }
+  console.log(`🔥 Pre-warmed ${warmed}/${COMMON_DISHES.length} dishes`);
+};
+
 // Start server
 app.listen(port, () => {
   console.log(`🍷 VinoFlow Backend running on port ${port}`);
+  // Run pre-warming in background after server is up
+  setTimeout(() => { prewarmCommonDishes().catch(() => {}); }, 5000);
 });

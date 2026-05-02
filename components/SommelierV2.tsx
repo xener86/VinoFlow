@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff } from 'lucide-react';
 import { sommelierPair, sommelierFeedback } from '../services/storageService';
 import { CellarWine } from '../types';
 
@@ -34,6 +34,36 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
   const [result, setResult] = useState<PairingResult | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'UP' | 'DOWN'>>({});
   const [error, setError] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Phase 13.2 — Voice input via Web Speech API
+  const toggleVoiceInput = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setError('Reconnaissance vocale non supportée par ce navigateur');
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setDish(transcript);
+      setListening(false);
+    };
+    recognition.onerror = () => setListening(false);
+    recognition.onend = () => setListening(false);
+    recognition.start();
+    recognitionRef.current = recognition;
+    setListening(true);
+  };
 
   const wineById = (id: string) => inventory.find(w => w.id === id);
 
@@ -85,6 +115,15 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
           placeholder="Décrivez votre plat (ex: curry de poulet aux noix de cajou)"
           className="flex-1 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
         />
+        <button
+          type="button"
+          onClick={toggleVoiceInput}
+          aria-label={listening ? 'Arrêter la dictée' : 'Dicter le plat'}
+          title="Dicter à voix haute"
+          className={`px-3 rounded-xl flex items-center transition-colors ${listening ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'}`}
+        >
+          {listening ? <MicOff size={16} /> : <Mic size={16} />}
+        </button>
         <button
           type="submit"
           disabled={loading || !dish.trim()}

@@ -1,6 +1,8 @@
 services:
   db:
-    image: postgres:16-alpine
+    # Use pgvector image for semantic search (Phase 5). If you don't need that,
+    # you can swap back to postgres:16-alpine.
+    image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-vinoflow}
@@ -8,7 +10,8 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-vinoflow}
     volumes:
       - vinoflow-db:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./db/migrations/002_pgvector.sql:/docker-entrypoint-initdb.d/02_pgvector.sql:ro
     networks:
       - vinoflow-network
     healthcheck:
