@@ -80,7 +80,13 @@ const getGeminiClient = (apiKey) => {
 
 /**
  * Resolve the provider/model to use for a given task.
- * Priority: explicit options > env override (VINOFLOW_PROVIDER_<task>) > default.
+ * Priority:
+ *   1. Explicit options
+ *   2. Env override (VINOFLOW_PROVIDER_<task>)
+ *   3. Task default
+ * Then automatically fall back to the other provider if the chosen one isn't
+ * configured — so a user with only Gemini can still use tasks that default
+ * to Claude (and vice versa).
  */
 const resolveTask = (task, options = {}) => {
   const def = TASK_DEFAULTS[task];
@@ -89,10 +95,23 @@ const resolveTask = (task, options = {}) => {
   const envProvider = process.env[`VINOFLOW_PROVIDER_${task.toUpperCase().replace(/-/g, '_')}`];
   const envModel    = process.env[`VINOFLOW_MODEL_${task.toUpperCase().replace(/-/g, '_')}`];
 
+  let provider = options.provider || envProvider || def.provider;
+  let model    = options.model    || envModel    || def.model;
+
+  // Auto-fallback: if the chosen provider isn't configured, switch to the other.
+  if (!isProviderConfigured(provider)) {
+    const fallbackProvider = provider === 'claude' ? 'gemini' : 'claude';
+    if (isProviderConfigured(fallbackProvider)) {
+      provider = fallbackProvider;
+      // Match the fallback's preferred model for this task type
+      model = fallbackProvider === 'gemini' ? 'gemini-2.5-flash' : 'claude-sonnet-4-5';
+    }
+  }
+
   return {
-    provider: options.provider || envProvider || def.provider,
-    model:    options.model    || envModel    || def.model,
-    apiKey:   options.apiKey,
+    provider,
+    model,
+    apiKey: options.apiKey,
   };
 };
 
