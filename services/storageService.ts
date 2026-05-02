@@ -6,12 +6,26 @@ const currentUserId = (): string | null => customAuth.getUser()?.id ?? null;
 
 // --- HELPERS ---
 
-const getHeaders = () => {
+const getHeaders = (): Record<string, string> => {
   const token = localStorage.getItem('auth_token');
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : ''
+    'Authorization': token ? `Bearer ${token}` : '',
   };
+  // Pass user-configured AI keys (from Settings) to the backend so it can
+  // use them when its env vars are not set. The backend gives priority to
+  // env vars, falling back to these.
+  try {
+    const aiConfig = localStorage.getItem('vf_ai_config');
+    if (aiConfig) {
+      const cfg = JSON.parse(aiConfig);
+      if (cfg.keys?.gemini) headers['X-Vinoflow-Gemini-Key'] = cfg.keys.gemini;
+      if (cfg.keys?.claude) headers['X-Vinoflow-Claude-Key'] = cfg.keys.claude;
+    }
+  } catch {
+    // ignore malformed config
+  }
+  return headers;
 };
 
 const handleResponse = async (response: Response) => {

@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from './sommelier/coordinator.js';
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/tasteProfile.js';
-import { isProviderConfigured, getTaskDefaults } from './services/aiService.js';
+import { isProviderConfigured, getTaskDefaults, runWithRequestKeys } from './services/aiService.js';
 import { enrichWine, aromasFromTastingNotes } from './sommelier/enrich.js';
 import { extractFromLabel } from './sommelier/ocr.js';
 import { computeBudget } from './sommelier/budget.js';
@@ -176,6 +176,18 @@ app.post('/api/auth/logout', (req, res) => {
 // ========== Protected routes (require JWT) ==========
 // All /api/* routes below this point require a valid JWT token.
 app.use('/api', authenticate);
+
+// ========== AI keys per-request middleware ==========
+// Frontend can send the user's Settings keys via headers, so the backend can
+// use them when env vars are not set. AsyncLocalStorage propagates them through
+// the entire request chain without changing function signatures.
+app.use('/api', (req, res, next) => {
+  const keys = {
+    gemini: req.headers['x-vinoflow-gemini-key'] || null,
+    claude: req.headers['x-vinoflow-claude-key'] || null,
+  };
+  runWithRequestKeys(keys, () => next());
+});
 
 // ========== WINES ENDPOINTS ==========
 

@@ -26,7 +26,7 @@ export const Sommelier: React.FC = () => {
   const { wines: inventory, loading: loadingWines } = useWines();
   const { spirits, loading: loadingSpirits } = useSpirits();
 
-  const [activeTab, setActiveTab] = useState<'ADVICE' | 'PAIRING' | 'SHOPPING' | 'CHAT'>('ADVICE');
+  const [activeTab, setActiveTab] = useState<'ADVICE' | 'PAIRING' | 'SHOPPING' | 'CHAT'>('PAIRING');
   const [tasteProfile, setTasteProfile] = useState<UserTasteProfile | null>(null);
   
   // Advice State
@@ -194,8 +194,8 @@ export const Sommelier: React.FC = () => {
       {/* Tabs */}
       <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar">
           {[
+              { id: 'PAIRING', label: 'Accords IA', icon: Sparkles },
               { id: 'ADVICE', label: 'Conseil', icon: Layers },
-              { id: 'PAIRING', label: 'Accords', icon: Utensils },
               { id: 'SHOPPING', label: 'Achats', icon: ShoppingBag },
               { id: 'CHAT', label: 'Chat', icon: MessageSquare },
           ].map(tab => (

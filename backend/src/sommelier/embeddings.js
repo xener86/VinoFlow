@@ -8,12 +8,16 @@
 // Docker image, or `CREATE EXTENSION vector` on a vanilla postgres).
 
 import { GoogleGenAI } from '@google/genai';
+import { resolveProviderKey } from '../services/aiService.js';
 
 let lazyClient = null;
+let lazyKey = null;
 const getClient = () => {
-  if (!lazyClient) {
-    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY required for embeddings');
-    lazyClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const key = resolveProviderKey('gemini');
+  if (!key) throw new Error('Gemini key required for embeddings');
+  if (!lazyClient || lazyKey !== key) {
+    lazyClient = new GoogleGenAI({ apiKey: key });
+    lazyKey = key;
   }
   return lazyClient;
 };

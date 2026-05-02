@@ -3,6 +3,7 @@
 // the structured wine fields it could detect.
 
 import { GoogleGenAI } from '@google/genai';
+import { resolveProviderKey } from '../services/aiService.js';
 
 const SYSTEM_PROMPT = `Tu es un expert en lecture d'étiquettes de vin. À partir d'une photo, extrais les informations factuelles et structure-les en JSON.
 
@@ -26,10 +27,13 @@ Réponds UNIQUEMENT en JSON, structure exacte:
 }`;
 
 let lazyClient = null;
+let lazyKey = null;
 const getClient = () => {
-  if (!lazyClient) {
-    if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
-    lazyClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const key = resolveProviderKey('gemini');
+  if (!key) throw new Error('No Gemini API key (set GEMINI_API_KEY in backend .env or configure it in Settings)');
+  if (!lazyClient || lazyKey !== key) {
+    lazyClient = new GoogleGenAI({ apiKey: key });
+    lazyKey = key;
   }
   return lazyClient;
 };

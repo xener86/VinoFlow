@@ -11,6 +11,23 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+// Per-request AI keys storage (filled by the middleware in server.js).
+// Using AsyncLocalStorage so we don't have to thread keys through every
+// sommelier function signature — they're resolved automatically from the
+// current async context.
+const requestKeysStore = new AsyncLocalStorage();
+
+/**
+ * Run a function with a per-request set of AI keys (called from middleware).
+ */
+export const runWithRequestKeys = (keys, fn) => requestKeysStore.run(keys || {}, fn);
+
+/**
+ * Get the per-request keys (or empty object if none set).
+ */
+const getRequestKeys = () => requestKeysStore.getStore() || {};
 
 const TASK_DEFAULTS = {
   'extract-criteria': { provider: 'gemini', model: 'gemini-2.0-flash-exp' },
@@ -22,9 +39,28 @@ const TASK_DEFAULTS = {
 
 const lazy = {};
 
+/**
+ * Resolve the API key for a provider from (in order):
+ *   1. explicit value passed in
+ *   2. per-request key (from frontend Settings via headers)
+ *   3. environment variable
+ */
+export const resolveProviderKey = (provider, explicitKey) => {
+  if (explicitKey) return explicitKey;
+  // Per-request key from frontend (Settings → localStorage → headers)
+  const requestKeys = getRequestKeys();
+  if (provider === 'claude' && requestKeys.claude) return requestKeys.claude;
+  if (provider === 'gemini' && requestKeys.gemini) return requestKeys.gemini;
+  // Fallback to environment variable
+  if (provider === 'claude') return process.env.ANTHROPIC_API_KEY;
+  if (provider === 'gemini') return process.env.GEMINI_API_KEY;
+  return null;
+};
+
 const getClaudeClient = (apiKey) => {
-  const key = apiKey || process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error('ANTHROPIC_API_KEY not set');
+  const key = resolveProviderKey('claude', apiKey);
+  if (!key) throw new Error('No Anthropic API key found (set ANTHROPIC_API_KEY in backend .env or configure Claude key in Settings)');
+  // Cache per-key to avoid recreating clients on every call
   if (!lazy.claude || lazy.claudeKey !== key) {
     lazy.claude = new Anthropic({ apiKey: key });
     lazy.claudeKey = key;
@@ -33,8 +69,8 @@ const getClaudeClient = (apiKey) => {
 };
 
 const getGeminiClient = (apiKey) => {
-  const key = apiKey || process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY not set');
+  const key = resolveProviderKey('gemini', apiKey);
+  if (!key) throw new Error('No Gemini API key found (set GEMINI_API_KEY in backend .env or configure Gemini key in Settings)');
   if (!lazy.gemini || lazy.geminiKey !== key) {
     lazy.gemini = new GoogleGenAI({ apiKey: key });
     lazy.geminiKey = key;
@@ -229,8 +265,13 @@ const mergeResponses = (a, b) => {
 };
 
 export const isProviderConfigured = (provider) => {
-  if (provider === 'claude') return Boolean(process.env.ANTHROPIC_API_KEY);
-  if (provider === 'gemini') return Boolean(process.env.GEMINI_API_KEY);
+  // Configured if either backend env or per-request key is available
+  if (provider === 'claude') {
+    return Boolean(process.env.ANTHROPIC_API_KEY) || Boolean(getRequestKeys().claude);
+  }
+  if (provider === 'gemini') {
+    return Boolean(process.env.GEMINI_API_KEY) || Boolean(getRequestKeys().gemini);
+  }
   return false;
 };
 
