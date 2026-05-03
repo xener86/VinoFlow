@@ -603,6 +603,28 @@ server.tool(
 );
 
 server.tool(
+    'bulk_set_wine_peaks',
+    'Set the drinking peak window for many wines at once, with values judged by YOU (Claude). This is the preferred way for Claude in the chat to apply its own wine knowledge: provide an array of {wine_id, peak_start, peak_end, reasoning, confidence}. Skips the backend LLM entirely.',
+    {
+        updates: z.array(z.object({
+            wineId: z.string().describe('Wine ID'),
+            peakStart: z.number().int().describe('Year peak window starts (e.g., 2025)'),
+            peakEnd: z.number().int().describe('Year peak window ends (e.g., 2040)'),
+            reasoning: z.string().optional().describe('Short justification (1 sentence)'),
+            confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional().describe('Your confidence in this judgement'),
+        })).describe('Array of peak updates to apply'),
+    },
+    async ({ updates }) => {
+        try {
+            const result = await client.bulkSetPeaks(updates as any);
+            return { content: [{ type: 'text' as const, text: `Bulk peaks: ${result.success}/${result.processed} mis a jour. ${result.failed > 0 ? `${result.failed} echecs.` : ''}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
     'refresh_peaks',
     'Compute realistic drinking peak windows for wines via LLM, considering producer prestige, appellation level, vintage quality. Replaces the naive vintage+5 formula with per-wine intelligent windows (e.g., a Margaux Grand Cru 1983 has peak ~1995-2030+, not vintage+5..+10).',
     {

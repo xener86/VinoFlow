@@ -1145,6 +1145,49 @@ app.post('/api/wines/refresh-peaks', async (req, res) => {
   }
 });
 
+// Bulk peak update — accepts an array of {wineId, peakStart, peakEnd, reasoning}.
+// Designed for Claude (in the chat) to set all wines' peaks at once based on
+// its own knowledge, instead of having the backend call an LLM.
+// source defaults to 'AI' but caller can pass 'USER' for manual reviews.
+app.post('/api/wines/bulk-set-peaks', async (req, res) => {
+  try {
+    const { updates, source = 'AI', confidence = 'HIGH' } = req.body || {};
+    if (!Array.isArray(updates)) {
+      return res.status(400).json({ error: 'updates must be an array' });
+    }
+    const userId = req.user?.userId;
+    let success = 0;
+    const errors = [];
+    for (const u of updates) {
+      if (!u.wineId || !Number.isInteger(u.peakStart) || !Number.isInteger(u.peakEnd) || u.peakEnd < u.peakStart) {
+        errors.push({ wineId: u.wineId, error: 'Invalid payload' });
+        continue;
+      }
+      try {
+        const result = await pool.query(`
+          UPDATE wines SET
+            peak_start = $1, peak_end = $2,
+            peak_source = $3, peak_confidence = $4,
+            peak_reasoning = $5,
+            peak_verified_by = $6,
+            peak_computed_at = now(),
+            updated_at = now()
+          WHERE id = $7
+          RETURNING id
+        `, [u.peakStart, u.peakEnd, source, u.confidence || confidence, u.reasoning || null, userId || null, u.wineId]);
+        if (result.rowCount > 0) success++;
+        else errors.push({ wineId: u.wineId, error: 'Wine not found' });
+      } catch (err) {
+        errors.push({ wineId: u.wineId, error: err.message });
+      }
+    }
+    res.json({ processed: updates.length, success, failed: errors.length, errors });
+  } catch (error) {
+    console.error('Bulk peaks error:', error);
+    res.status(500).json({ error: 'Bulk update failed', details: error.message });
+  }
+});
+
 // Manual peak override (USER source)
 app.put('/api/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/peak', async (req, res) => {
   try {

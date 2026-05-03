@@ -12,6 +12,7 @@ ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_source text;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_confidence text;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_computed_at timestamp with time zone;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_reasoning text;
+ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_verified_by uuid;
 
 DO $$
 BEGIN

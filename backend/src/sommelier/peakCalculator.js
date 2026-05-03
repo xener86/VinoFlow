@@ -55,7 +55,10 @@ export const computePeak = async (wine) => {
       : null,
   ].filter(Boolean).join('\n');
 
-  const result = await generateJson('extract-criteria', {
+  // Use the 'enrich' task which defaults to Claude Sonnet — better for
+  // wine knowledge (less hallucination, more honest about confidence).
+  // Falls back to Gemini if Anthropic is not configured.
+  const result = await generateJson('enrich', {
     system: SYSTEM_PROMPT,
     user: userPrompt,
   });

@@ -368,6 +368,21 @@ export async function refreshPeaks(force = false, limit = 50): Promise<any> {
     });
 }
 
+export interface PeakUpdate {
+    wineId: string;
+    peakStart: number;
+    peakEnd: number;
+    reasoning?: string;
+    confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
+export async function bulkSetPeaks(updates: PeakUpdate[]): Promise<any> {
+    return fetchJSON('/wines/bulk-set-peaks', {
+        method: 'POST',
+        body: JSON.stringify({ updates, source: 'AI', confidence: 'HIGH' }),
+    });
+}
+
 // ──────────────────────────────────────────
 // Original stats
 // ──────────────────────────────────────────
