@@ -25,6 +25,10 @@ export interface Wine {
   sensoryProfile: SensoryProfile;
   createdAt: string;
   updatedAt: string;
+  // Peak drinking window — optionally stored by AI/USER on the backend
+  peakStart?: number;
+  peakEnd?: number;
+  peakSource?: 'AI' | 'USER' | 'NAIVE';
 }
 
 export interface Bottle {
