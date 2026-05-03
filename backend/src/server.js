@@ -236,7 +236,7 @@ app.get('/api/wines', async (req, res) => {
   }
 });
 
-app.get('/api/wines/:id', async (req, res) => {
+app.get('/api/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(`
@@ -302,7 +302,7 @@ app.post('/api/wines', async (req, res) => {
   }
 });
 
-app.put('/api/wines/:id', async (req, res) => {
+app.put('/api/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', async (req, res) => {
   try {
     const { id } = req.params;
     const wine = req.body;
@@ -335,7 +335,7 @@ app.put('/api/wines/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/wines/:id', async (req, res) => {
+app.delete('/api/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query('DELETE FROM wines WHERE id = $1 RETURNING id', [id]);
