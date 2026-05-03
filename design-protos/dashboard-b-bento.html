@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VinoFlow · Bento modulaire</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Outfit', 'system-ui'],
+          serif: ['"Playfair Display"', 'Georgia'],
+        },
+        colors: {
+          wine: { 50:'#fdf6f6',100:'#fbe9e9',200:'#f5cfcf',300:'#eba6a6',400:'#dc7575',500:'#c44545',600:'#9b1c1c',700:'#7f1d1d',800:'#5c1414' },
+          paper: { 50:'#fcfaf6',100:'#f7f3eb',200:'#ede6d8',300:'#ddd1ba',400:'#c5b390' },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: Outfit, system-ui; -webkit-font-smoothing: antialiased; background:#f4efe5; }
+  .serif-it { font-family: 'Playfair Display', serif; font-style: italic; }
+  .tile { background:white; border-radius:24px; border:1px solid rgba(0,0,0,0.04); box-shadow:0 1px 0 rgba(0,0,0,0.02), 0 8px 24px -16px rgba(0,0,0,0.08); transition:transform .15s ease, box-shadow .15s ease; }
+  .tile:hover { transform:translateY(-1px); box-shadow:0 1px 0 rgba(0,0,0,0.02), 0 16px 40px -20px rgba(0,0,0,0.12); }
+  .tile-tinted { background:linear-gradient(180deg,#fdfcf9 0%,#f7f3eb 100%); }
+  .tile-wine { background:linear-gradient(180deg,#9b1c1c 0%,#7a1414 100%); color:white; border-color:transparent; }
+  .tile-ink { background:#1a1816; color:#fcfaf6; border-color:transparent; }
+  .scrollbar-hide::-webkit-scrollbar { display:none; }
+  .ringel { box-shadow:inset 0 0 0 1px rgba(0,0,0,0.04); }
+</style>
+</head>
+<body class="min-h-screen text-stone-900">
+
+<header class="sticky top-0 z-30 backdrop-blur-md bg-paper-50/80 border-b border-stone-900/5">
+  <div class="px-8 h-16 flex items-center gap-4 max-w-[1480px] mx-auto">
+    <div class="flex items-center gap-2">
+      <svg class="w-7 h-7" viewBox="0 0 32 32" fill="none"><path d="M12 4h8l-1 6c-.3 1.6.2 3.3 1.5 4.5 2 2 3.5 4.5 3.5 8 0 3.5-2.5 5.5-7 5.5s-7-2-7-5.5c0-3.5 1.5-6 3.5-8 1.3-1.2 1.8-2.9 1.5-4.5l-1-6h-2z" fill="#9b1c1c"/></svg>
+      <span class="serif-it text-2xl">VinoFlow</span>
+    </div>
+    <nav class="ml-8 flex items-center gap-1 text-sm">
+      <a class="px-3.5 h-9 rounded-full bg-stone-900 text-white inline-flex items-center font-medium">Tableau de bord</a>
+      <a class="px-3.5 h-9 rounded-full hover:bg-stone-900/5 inline-flex items-center text-stone-700">Cave</a>
+      <a class="px-3.5 h-9 rounded-full hover:bg-stone-900/5 inline-flex items-center text-stone-700">Sommelier</a>
+      <a class="px-3.5 h-9 rounded-full hover:bg-stone-900/5 inline-flex items-center text-stone-700">Insights <span class="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-wine-600 text-white text-[10px] font-medium">4</span></a>
+    </nav>
+    <div class="flex-1"></div>
+    <button class="h-9 px-4 rounded-full bg-white border border-stone-900/10 hover:bg-stone-50 inline-flex items-center gap-2 text-sm">
+      <svg class="w-4 h-4 text-stone-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <span class="text-stone-500">Cherche</span>
+      <span class="text-[10px] font-medium text-stone-500 bg-stone-100 rounded px-1.5 py-0.5 ml-2">⌘K</span>
+    </button>
+    <button class="h-9 px-4 rounded-full bg-wine-600 hover:bg-wine-700 text-white text-sm font-medium inline-flex items-center gap-1.5 shadow-lg shadow-wine-600/20">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      Ajouter
+    </button>
+    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-wine-600 to-wine-800 text-white text-sm font-medium flex items-center justify-center">JD</div>
+  </div>
+</header>
+
+<main class="max-w-[1480px] mx-auto px-8 py-8">
+  <div class="mb-7">
+    <div class="text-[13px] tracking-wide text-stone-500 uppercase">Lundi 4 mai · 19h42</div>
+    <h1 class="text-[40px] leading-tight font-medium tracking-tight mt-1">
+      Bonsoir Julien. <span class="serif-it text-stone-500">— prêt à choisir ?</span>
+    </h1>
+  </div>
+
+  <div class="grid grid-cols-12 gap-4 auto-rows-[minmax(140px,auto)]">
+
+    <section class="col-span-7 row-span-2 tile-wine p-7 flex flex-col relative overflow-hidden">
+      <svg class="absolute -right-12 -top-12 w-72 h-72 text-white/10" viewBox="0 0 200 200" fill="currentColor"><circle cx="100" cy="100" r="100"/><circle cx="100" cy="100" r="70" fill="none" stroke="currentColor" stroke-width="0.5"/><circle cx="100" cy="100" r="50" fill="none" stroke="currentColor" stroke-width="0.5"/></svg>
+      <div class="text-[11px] tracking-[0.2em] uppercase opacity-70">Sommelier</div>
+      <h2 class="text-[44px] leading-[1.05] font-medium mt-2 max-w-md">Que boire <span class="serif-it">ce soir</span> ?</h2>
+      <p class="text-white/70 text-sm mt-2 max-w-sm">Décris le moment, le plat, l'humeur. Trois propositions en retour : sûre, personnelle, audacieuse.</p>
+      <div class="mt-auto pt-6 relative z-10">
+        <div class="bg-white/10 backdrop-blur rounded-2xl p-2 flex items-center gap-2 border border-white/10">
+          <input class="bg-transparent flex-1 text-[15px] outline-none px-3 placeholder:text-white/50" placeholder="ex. agneau aux herbes, à deux, mardi soir" />
+          <button class="w-9 h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-white/80">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M19 11a7 7 0 0 1-14 0M12 19v3"/></svg>
+          </button>
+          <button class="h-9 px-4 rounded-xl bg-white text-wine-700 font-medium text-sm hover:bg-paper-50">Demander →</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5 mt-3">
+          <span class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-xs cursor-pointer border border-white/10">À deux</span>
+          <span class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-xs cursor-pointer border border-white/10">Festif</span>
+          <span class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-xs cursor-pointer border border-white/10">Solo</span>
+          <span class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/15 text-xs cursor-pointer border border-white/10">Surprise-moi</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-span-3 tile p-5 flex flex-col">
+      <div class="flex items-center justify-between">
+        <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Bouteilles</div>
+        <div class="w-7 h-7 rounded-full bg-paper-100 flex items-center justify-center">
+          <svg class="w-3.5 h-3.5 text-stone-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 2h6v4l-1 1c-1 1-1 2.5-.5 3.7L16 14v6a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-6l1.5-3.3c.5-1.2.5-2.7-.5-3.7L8 6V2z"/></svg>
+        </div>
+      </div>
+      <div class="mt-2 text-[44px] font-medium leading-none tracking-tight">290</div>
+      <div class="mt-auto flex items-center gap-1.5 text-[12px] text-emerald-700">
+        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>
+        +12 ce mois
+      </div>
+    </section>
+
+    <section class="col-span-2 tile p-5 flex flex-col">
+      <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Stock</div>
+      <div class="mt-2"><span class="text-[44px] font-medium leading-none tracking-tight">14</span><span class="text-2xl text-stone-400">.2</span></div>
+      <div class="mt-auto text-[11px] text-stone-500">mois</div>
+    </section>
+
+    <section class="col-span-3 tile-tinted p-5 flex flex-col relative overflow-hidden ringel">
+      <div class="flex items-center gap-1.5">
+        <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-wine-500 opacity-60 animate-ping"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-wine-600"></span></span>
+        <div class="text-[11px] tracking-[0.15em] uppercase text-wine-700 font-medium">Alerte garde</div>
+      </div>
+      <div class="mt-2 text-[28px] font-medium leading-tight">4 vins <span class="serif-it text-wine-700">en fin de fenêtre</span></div>
+      <div class="mt-1 text-[12px] text-stone-600">Dans les 60 prochains jours</div>
+      <button class="mt-auto w-fit text-xs font-medium text-wine-700 hover:underline pt-3">Voir l'alerte →</button>
+    </section>
+
+    <section class="col-span-2 tile-ink p-5 flex flex-col">
+      <div class="text-[11px] tracking-[0.15em] uppercase text-paper-300">Dégust. '26</div>
+      <div class="mt-2 text-[44px] font-medium leading-none tracking-tight">38</div>
+      <div class="flex gap-1 mt-auto items-end h-7">
+        <div class="flex-1 bg-paper-300/30 rounded-sm" style="height:30%"></div>
+        <div class="flex-1 bg-paper-300/30 rounded-sm" style="height:50%"></div>
+        <div class="flex-1 bg-paper-300/30 rounded-sm" style="height:40%"></div>
+        <div class="flex-1 bg-paper-300/30 rounded-sm" style="height:65%"></div>
+        <div class="flex-1 bg-paper-300/30 rounded-sm" style="height:55%"></div>
+        <div class="flex-1 bg-wine-500 rounded-sm" style="height:80%"></div>
+        <div class="flex-1 bg-wine-500 rounded-sm" style="height:95%"></div>
+      </div>
+    </section>
+
+    <section class="col-span-3 tile p-5 flex items-center gap-4">
+      <div class="relative w-20 h-20 flex-shrink-0">
+        <svg viewBox="0 0 36 36" class="w-20 h-20 -rotate-90">
+          <circle cx="18" cy="18" r="14" fill="none" stroke="#f0e8d8" stroke-width="6"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="#9b1c1c" stroke-width="6" stroke-dasharray="32 88" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="#dc7575" stroke-width="6" stroke-dasharray="22 88" stroke-dashoffset="-32" stroke-linecap="round"/>
+          <circle cx="18" cy="18" r="14" fill="none" stroke="#c5b390" stroke-width="6" stroke-dasharray="18 88" stroke-dashoffset="-54" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Régions</div>
+        <div class="mt-1 space-y-0.5 text-[12px]">
+          <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-wine-600"></span>Rhône <span class="text-stone-500 ml-auto">36%</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-wine-400"></span>Bourgogne <span class="text-stone-500 ml-auto">25%</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-paper-400"></span>Loire <span class="text-stone-500 ml-auto">20%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="col-span-5 row-span-2 tile p-6 flex flex-col">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">À boire ce mois</div>
+          <h3 class="text-[22px] font-medium serif-it leading-tight mt-0.5">Avant qu'ils ne passent leur pic</h3>
+        </div>
+        <span class="text-[11px] tracking-wider text-stone-500 px-2.5 py-1 rounded-full bg-paper-100">7 vins</span>
+      </div>
+      <div class="space-y-1 -mx-2 flex-1 overflow-auto scrollbar-hide">
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-paper-100/60 cursor-pointer">
+          <div class="w-8 h-12 rounded-md bg-gradient-to-b from-wine-700 to-wine-900 relative flex-shrink-0"><div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-stone-900 rounded-sm"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium truncate">Pommard 1er Cru Rugiens</div>
+            <div class="text-[12px] text-stone-500">Bourgogne · <span class="serif-it text-stone-700">2018</span> · case A2</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[11px] font-medium text-wine-700">↘ juin</div>
+            <div class="text-[11px] text-stone-500">8.5/10</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-paper-100/60 cursor-pointer">
+          <div class="w-8 h-12 rounded-md bg-gradient-to-b from-paper-300 to-paper-400 relative flex-shrink-0"><div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-stone-900 rounded-sm"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium truncate">Sancerre Les Caillottes</div>
+            <div class="text-[12px] text-stone-500">Loire · <span class="serif-it text-stone-700">2020</span> · case B4</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[11px] font-medium text-wine-700">↘ juin</div>
+            <div class="text-[11px] text-stone-500">8.0/10</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-paper-100/60 cursor-pointer">
+          <div class="w-8 h-12 rounded-md bg-gradient-to-b from-wine-700 to-wine-900 relative flex-shrink-0"><div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-stone-900 rounded-sm"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium truncate">Côte-Rôtie La Landonne</div>
+            <div class="text-[12px] text-stone-500">Rhône Nord · <span class="serif-it text-stone-700">2014</span> · case C1</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[11px] font-medium text-stone-600">↘ août</div>
+            <div class="text-[11px] text-stone-500">— /10</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-paper-100/60 cursor-pointer">
+          <div class="w-8 h-12 rounded-md bg-gradient-to-b from-paper-300 to-paper-400 relative flex-shrink-0"><div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-stone-900 rounded-sm"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium truncate">Chablis Vaudésir</div>
+            <div class="text-[12px] text-stone-500">Bourgogne · <span class="serif-it text-stone-700">2019</span> · case B7</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[11px] font-medium text-stone-600">↘ juin</div>
+            <div class="text-[11px] text-stone-500">7.5/10</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-paper-100/60 cursor-pointer">
+          <div class="w-8 h-12 rounded-md bg-gradient-to-b from-wine-700 to-wine-900 relative flex-shrink-0"><div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2.5 h-2 bg-stone-900 rounded-sm"></div></div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium truncate">Vacqueyras Le Sang</div>
+            <div class="text-[12px] text-stone-500">Rhône Sud · <span class="serif-it text-stone-700">2017</span> · case C5</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[11px] font-medium text-stone-600">↘ juil.</div>
+            <div class="text-[11px] text-stone-500">— /10</div>
+          </div>
+        </div>
+      </div>
+      <a class="mt-3 text-xs text-stone-700 hover:text-wine-700 font-medium">Voir les 7 →</a>
+    </section>
+
+    <section class="col-span-4 row-span-3 tile-tinted p-6 flex flex-col relative overflow-hidden">
+      <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Hall of Fame</div>
+      <h3 class="text-[24px] font-medium serif-it leading-tight mt-0.5">Coups de cœur</h3>
+      <div class="text-[12px] text-stone-500 mt-1">Top 5 sur 290</div>
+      <ol class="mt-5 space-y-3.5 flex-1">
+        <li class="flex items-start gap-3">
+          <span class="serif-it text-3xl text-wine-700 leading-none w-7">I</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium leading-tight">Hermitage La Chapelle</div>
+            <div class="text-[12px] text-stone-500"><span class="serif-it">2010</span> · Rhône Nord</div>
+            <div class="text-[12px] text-stone-600 italic mt-1.5 leading-snug">« avec un agneau, un samedi d'hiver »</div>
+          </div>
+          <div class="text-2xl font-medium text-wine-700 leading-none">9.5</div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="serif-it text-3xl text-wine-700 leading-none w-7">II</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium leading-tight">Pavillon Blanc</div>
+            <div class="text-[12px] text-stone-500"><span class="serif-it">2017</span> · Margaux</div>
+            <div class="text-[12px] text-stone-600 italic mt-1.5 leading-snug">« anniversaire de M., la terrasse »</div>
+          </div>
+          <div class="text-2xl font-medium text-wine-700 leading-none">9.0</div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="serif-it text-3xl text-wine-700 leading-none w-7">III</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium leading-tight">Chambolle-Musigny</div>
+            <div class="text-[12px] text-stone-500"><span class="serif-it">2015</span> · Bourgogne</div>
+            <div class="text-[12px] text-stone-600 italic mt-1.5 leading-snug">« dimanche pluvieux, seul »</div>
+          </div>
+          <div class="text-2xl font-medium text-wine-700 leading-none">8.5</div>
+        </li>
+        <li class="flex items-start gap-3">
+          <span class="serif-it text-3xl text-stone-400 leading-none w-7">IV</span>
+          <div class="flex-1 min-w-0">
+            <div class="text-[15px] font-medium leading-tight">Vouvray moelleux</div>
+            <div class="text-[12px] text-stone-500"><span class="serif-it">2011</span> · Foreau, Loire</div>
+            <div class="text-[12px] text-stone-600 italic mt-1.5 leading-snug">« foie gras de Noël »</div>
+          </div>
+          <div class="text-2xl font-medium text-stone-700 leading-none">8.0</div>
+        </li>
+      </ol>
+      <a class="mt-3 text-xs text-stone-700 hover:text-wine-700 font-medium">Voir le Hall of Fame complet →</a>
+    </section>
+
+    <section class="col-span-4 tile p-5 flex items-center gap-4">
+      <div class="w-12 h-16 rounded-md bg-gradient-to-b from-wine-700 to-wine-900 relative flex-shrink-0">
+        <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-stone-900 rounded-sm"></div>
+        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-9 h-5 bg-paper-100 rounded-sm"></div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Pick du soir</div>
+        <div class="text-[18px] font-medium serif-it leading-tight">Crozes-Hermitage Graillot</div>
+        <div class="text-[12px] text-stone-500">★ 8.7 moyen · 4 dégustations · case A5</div>
+      </div>
+      <button class="h-9 px-4 rounded-full bg-stone-900 text-white text-sm font-medium hover:bg-stone-800">Voir →</button>
+    </section>
+
+    <section class="col-span-4 tile p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-[11px] tracking-[0.15em] uppercase text-stone-500">Journal</div>
+        <a class="text-[11px] text-stone-500 hover:text-wine-700">Tout →</a>
+      </div>
+      <ul class="space-y-2 text-[13px]">
+        <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span><span class="text-stone-900">+3 bourgognes</span><span class="text-stone-400 ml-auto">2h</span></li>
+        <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-wine-500"></span><span class="text-stone-900">Crozes-H. dégusté · 8.5</span><span class="text-stone-400 ml-auto">5h</span></li>
+        <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-stone-400"></span><span class="text-stone-900">Sancerre · A4 → B2</span><span class="text-stone-400 ml-auto">2 j</span></li>
+        <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span><span class="text-stone-900">+ Bandol Tempier '20</span><span class="text-stone-400 ml-auto">3 j</span></li>
+      </ul>
+    </section>
+
+  </div>
+</main>
+
+</body>
+</html>

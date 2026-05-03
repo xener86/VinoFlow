@@ -71,3 +71,4 @@ docker-compose.override.yml
 # Cache
 .cache/
 .eslintcache
+design-protos/node_modules/

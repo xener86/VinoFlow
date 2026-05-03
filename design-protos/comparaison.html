@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VinoFlow · Comparer les 3 directions</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  body { font-family: Outfit, system-ui; -webkit-font-smoothing: antialiased; background:#1a1816; color:#ece7dc; }
+  .serif-it { font-family: 'Playfair Display', serif; font-style: italic; }
+  .preview-frame { position:relative; width:100%; aspect-ratio: 1480 / 980; background:#fff; border-radius:14px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); box-shadow:0 12px 40px rgba(0,0,0,0.4); }
+  .preview-frame iframe { border:0; position:absolute; top:0; left:0; width:1480px; height:980px; transform-origin: top left; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="px-10 py-8 border-b border-white/5">
+  <div class="text-[11px] tracking-[0.2em] uppercase text-stone-500">VinoFlow · Tableau de bord</div>
+  <div class="flex items-baseline justify-between mt-1">
+    <h1 class="serif-it text-4xl">Trois directions à comparer.</h1>
+    <div class="text-sm text-stone-400">Même contenu, esthétiques différentes</div>
+  </div>
+</header>
+
+<main class="px-10 py-8 grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+  <article class="space-y-3">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <div class="text-[10px] tracking-[0.2em] uppercase text-stone-500">Variante A</div>
+        <h2 class="text-2xl mt-1">Cockpit œnologue</h2>
+        <p class="text-stone-400 text-sm mt-1 max-w-md">Dark, dense, monochrome. Référence : Linear, Anthropic Console.</p>
+      </div>
+      <a href="dashboard-a-cockpit.html" target="_blank" class="text-[12px] px-3 h-8 rounded-full bg-white/10 hover:bg-white/20 inline-flex items-center gap-1.5 ml-2 flex-shrink-0">Ouvrir →</a>
+    </header>
+    <a href="dashboard-a-cockpit.html" target="_blank" class="block preview-frame">
+      <iframe data-src="dashboard-a-cockpit.html" loading="lazy" scrolling="no"></iframe>
+    </a>
+    <ul class="text-[12px] text-stone-400 space-y-1">
+      <li>+ Information dense, lisible d'un coup</li>
+      <li>+ Mono pour timestamps, codes, IDs</li>
+      <li>+ Wine red discret en accent</li>
+      <li>− Peut intimider si tu n'aimes pas le dark</li>
+    </ul>
+  </article>
+
+  <article class="space-y-3">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <div class="text-[10px] tracking-[0.2em] uppercase text-stone-500">Variante B</div>
+        <h2 class="text-2xl mt-1">Bento modulaire</h2>
+        <p class="text-stone-400 text-sm mt-1 max-w-md">Tuiles arrondies de tailles variées. Référence : iOS 17, Vercel.</p>
+      </div>
+      <a href="dashboard-b-bento.html" target="_blank" class="text-[12px] px-3 h-8 rounded-full bg-white/10 hover:bg-white/20 inline-flex items-center gap-1.5 ml-2 flex-shrink-0">Ouvrir →</a>
+    </header>
+    <a href="dashboard-b-bento.html" target="_blank" class="block preview-frame">
+      <iframe data-src="dashboard-b-bento.html" loading="lazy" scrolling="no"></iframe>
+    </a>
+    <ul class="text-[12px] text-stone-400 space-y-1">
+      <li>+ Modulaire — ajout/retrait de tuiles facile</li>
+      <li>+ Hero wine red plein, magnétique</li>
+      <li>+ Espacement aéré, calme</li>
+      <li>− Plus d'espace = moins d'info à l'écran</li>
+    </ul>
+  </article>
+
+  <article class="space-y-3">
+    <header class="flex items-baseline justify-between">
+      <div>
+        <div class="text-[10px] tracking-[0.2em] uppercase text-stone-500">Variante C</div>
+        <h2 class="text-2xl mt-1">Compagnon IA</h2>
+        <p class="text-stone-400 text-sm mt-1 max-w-md">Hero sommelier centré, indigo + wine red. Référence : claude.ai, granola.</p>
+      </div>
+      <a href="dashboard-c-compagnon.html" target="_blank" class="text-[12px] px-3 h-8 rounded-full bg-white/10 hover:bg-white/20 inline-flex items-center gap-1.5 ml-2 flex-shrink-0">Ouvrir →</a>
+    </header>
+    <a href="dashboard-c-compagnon.html" target="_blank" class="block preview-frame">
+      <iframe data-src="dashboard-c-compagnon.html" loading="lazy" scrolling="no"></iframe>
+    </a>
+    <ul class="text-[12px] text-stone-400 space-y-1">
+      <li>+ JTBD principal (sommelier) au centre, sans détour</li>
+      <li>+ Indigo signale "moments IA" sans noyer le wine red</li>
+      <li>+ Aurora, typewriter, pulse mic — vivant</li>
+      <li>− KPIs relégués en bas — à valider</li>
+    </ul>
+  </article>
+</main>
+
+<footer class="px-10 py-12 mt-4 border-t border-white/5 text-sm text-stone-400 max-w-3xl">
+  <div class="serif-it text-xl text-stone-200 mb-3">Comment choisir ?</div>
+  <ol class="mt-3 space-y-2 list-decimal list-inside">
+    <li><b class="text-stone-200">Densité</b> — tout voir d'un coup (A) ou laisser respirer (C) ? B est au milieu.</li>
+    <li><b class="text-stone-200">À l'ouverture</b>, tu vas direct au sommelier (C) ou tu scannes ta cave d'abord (A/B) ?</li>
+    <li><b class="text-stone-200">L'IA</b> est <i>une fonction parmi d'autres</i> (A/B) ou <i>la voix principale</i> (C) ?</li>
+  </ol>
+  <p class="mt-4 leading-relaxed">Une fois la direction choisie, on l'étend aux 4 autres écrans (Sommelier, Tasting, Add, Insights) et on pose le design system : palette, type, espacements, et les 9 composants atomiques.</p>
+</footer>
+
+<script>
+  function rescale() {
+    document.querySelectorAll('.preview-frame').forEach(frame => {
+      const iframe = frame.querySelector('iframe');
+      if (!iframe) return;
+      if (!iframe.src && iframe.dataset.src) iframe.src = iframe.dataset.src;
+      const w = frame.offsetWidth;
+      const scale = w / 1480;
+      iframe.style.transform = 'scale(' + scale + ')';
+      iframe.style.width = '1480px';
+      iframe.style.height = (frame.offsetHeight / scale) + 'px';
+    });
+  }
+  rescale();
+  window.addEventListener('resize', rescale);
+  setTimeout(rescale, 300);
+</script>
+</body>
+</html>

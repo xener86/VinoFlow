@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VinoFlow · Ajouter un vin (proto)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans:['Outfit','system-ui'], serif:['"Playfair Display"','Georgia'], mono:['"JetBrains Mono"','monospace'] },
+    colors: {
+      wine:  { 50:'#fdf6f6',100:'#fbe9e9',200:'#f5cfcf',300:'#eba6a6',400:'#dc7575',500:'#c44545',600:'#9b1c1c',700:'#7f1d1d',800:'#5c1414',900:'#3d0d0d' },
+      cream: { 50:'#fcfaf6', 100:'#f5f0e6', 200:'#ebe2cf' },
+    },
+  }}};
+</script>
+<style>
+  body { font-family: Outfit, system-ui; -webkit-font-smoothing:antialiased; background:#fcfaf6; color:#1c1917; }
+  .serif    { font-family:'Playfair Display', serif; }
+  .serif-it { font-family:'Playfair Display', serif; font-style:italic; }
+  .mono     { font-family:'JetBrains Mono', monospace; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/framer-motion@11.11.17/dist/framer-motion.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script src="proto/seed.js"></script>
+<script type="text/babel" src="proto/ui.jsx"></script>
+<script type="text/babel" src="proto/add-wine.jsx"></script>
+<script type="text/babel">
+  function App() {
+    const [device, setDevice] = React.useState('desktop');
+    return (
+      <ToastProvider>
+        <div className="min-h-screen bg-cream-50" data-screen-label={`01 Add wine · ${device}`}>
+          <header className="px-7 py-5 border-b border-stone-200 bg-white flex items-center justify-between">
+            <div>
+              <div className="mono text-[10px] tracking-widest text-stone-500">VINOFLOW · INVENTAIRE</div>
+              <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Ajouter un vin</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center bg-stone-100 p-1 rounded-md">
+                {['desktop','mobile'].map(d => (
+                  <button key={d} onClick={()=>setDevice(d)} className={`px-3 h-8 rounded text-sm capitalize ${device===d?'bg-white shadow-sm text-stone-900':'text-stone-600'}`}>{d}</button>
+                ))}
+              </div>
+              <a href="proto-hub.html" className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700">← HUB</a>
+            </div>
+          </header>
+          {device === 'desktop' ? <AddWineDesktop/> : <div className="py-8"><AddWineMobile/></div>}
+        </div>
+      </ToastProvider>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

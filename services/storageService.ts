@@ -315,6 +315,11 @@ export const getCellarProjection = async (yearsAhead = 5) => {
   return handleResponse(response);
 };
 
+export const getCellarBudget = async (months = 12) => {
+  const response = await fetch(`${API_URL}/cellar/budget?months=${months}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VinoFlow · Cave (proto)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,400;1,500;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { theme: { extend: {
+    fontFamily: { sans:['Outfit','system-ui'], serif:['"Playfair Display"','Georgia'], mono:['"JetBrains Mono"','monospace'] },
+    colors: {
+      wine: { 50:'#fdf6f6',100:'#fbe9e9',200:'#f5cfcf',300:'#eba6a6',400:'#dc7575',500:'#c44545',600:'#9b1c1c',700:'#7f1d1d',800:'#5c1414' },
+      cream:{ 50:'#fcfaf6',100:'#f5f0e6',200:'#ebe2cf' },
+    },
+  }}};
+</script>
+<style>
+  body { font-family: Outfit, system-ui; background:#fcfaf6; color:#1c1917; }
+  .serif{font-family:'Playfair Display',serif} .serif-it{font-family:'Playfair Display',serif;font-style:italic} .mono{font-family:'JetBrains Mono',monospace}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/framer-motion@11.11.17/dist/framer-motion.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script src="proto/seed.js"></script>
+<script type="text/babel" src="proto/ui.jsx"></script>
+<script type="text/babel" src="proto/cave.jsx"></script>
+<script type="text/babel" src="proto/cellar-map.jsx"></script>
+<script type="text/babel" src="proto/plan-search.jsx"></script>
+<script type="text/babel" src="proto/insights.jsx"></script>
+<script type="text/babel">
+  function App() {
+    const [tab, setTab] = React.useState('liste');
+    const [rows, setRows] = React.useState(CELLAR_DATA);
+    const [focusedId, setFocusedId] = React.useState(null);
+
+    const titles = { liste:'Cave · Liste', plan:'Cave · Plan', insights:'Insights' };
+
+    const handleFocus = (id) => {
+      setFocusedId(id);
+      // Auto-clear after 4s so it doesn't stay sticky
+      clearTimeout(handleFocus._t);
+      handleFocus._t = setTimeout(() => setFocusedId(null), 4000);
+    };
+
+    return (
+      <ToastProvider>
+        <div className="min-h-screen bg-cream-50" data-screen-label={`0${{liste:1,plan:2,insights:3}[tab]} ${titles[tab]}`}>
+          <header className="px-7 py-5 border-b border-stone-200 bg-white flex items-center justify-between">
+            <div>
+              <div className="mono text-[10px] tracking-widest text-stone-500">VINOFLOW</div>
+              <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">{titles[tab]}</h1>
+            </div>
+            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md">
+              {['liste','plan','insights'].map(t => (
+                <button key={t} onClick={()=>setTab(t)} className={`px-3 h-8 rounded text-sm capitalize ${tab===t?'bg-white shadow-sm text-stone-900':'text-stone-600 hover:text-stone-900'}`}>{t}</button>
+              ))}
+            </div>
+            <a href="cockpit-proto.html" className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700">← COCKPIT</a>
+          </header>
+
+          {tab==='plan' ? (
+            <div className="p-5 max-w-[1700px] mx-auto space-y-4">
+              <PlanSearch rows={rows} focusedId={focusedId} onFocus={handleFocus}/>
+              <div className="bg-white rounded-lg border border-stone-200 p-6">
+                <div className="mb-4 flex items-end justify-between">
+                  <div>
+                    <div className="mono text-[10px] tracking-widest text-stone-500">▢ PLAN</div>
+                    <h2 className="serif text-xl text-stone-900 mt-1">Vue de dessus</h2>
+                  </div>
+                  <span className="mono text-[10px] tracking-widest text-stone-500">CLIC = SÉLECTIONNER · DRAG = DÉPLACER</span>
+                </div>
+                <CellarMap rows={rows} setRows={setRows} focusedId={focusedId} onFocus={handleFocus}/>
+              </div>
+            </div>
+          ) : tab==='liste' ? (
+            <div className="p-5 grid grid-cols-12 gap-4 max-w-[1500px] mx-auto">
+              <CaveList rows={rows} setRows={setRows} focusedId={focusedId} onFocus={handleFocus}/>
+            </div>
+          ) : (
+            <div className="p-5 grid grid-cols-12 gap-4 max-w-[1500px] mx-auto">
+              <Insights/>
+            </div>
+          )}
+        </div>
+      </ToastProvider>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

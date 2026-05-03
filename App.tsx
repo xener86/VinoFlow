@@ -3,8 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { Layout } from './components/Layout';
+import { CockpitLayout } from './components/cockpit/CockpitLayout';
 import { Login } from './pages/Login';
+import { CockpitDashboard } from './pages/CockpitDashboard';
 import { Dashboard } from './pages/Dashboard';
 import { AddWine } from './pages/AddWine';
 import { WineDetails } from './pages/WineDetails';
@@ -49,9 +50,10 @@ const AppRoutes: React.FC = () => {
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
 
-      {/* Protected Routes with Layout */}
-      <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route path="/" element={<Dashboard />} />
+      {/* Protected Routes with new Cockpit Layout */}
+      <Route element={<ProtectedRoute><CockpitLayout /></ProtectedRoute>}>
+        <Route path="/" element={<CockpitDashboard />} />
+        <Route path="/cave" element={<Dashboard />} />
         <Route path="/add-wine" element={<AddWine />} />
         <Route path="/wine/:id" element={<WineDetails />} />
         <Route path="/wine/:id/edit" element={<EditWine />} />
