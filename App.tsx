@@ -14,6 +14,7 @@ import { CellarMap } from './pages/CellarMap';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { Sommelier } from './pages/Sommelier';
+import { CockpitSommelier } from './pages/CockpitSommelier';
 import { Bar } from './pages/Bar';
 import { SpiritDetails } from './pages/SpiritDetails';
 import { EditSpirit } from './pages/EditSpirit';
@@ -60,7 +61,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/cellar-map" element={<CellarMap />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/sommelier" element={<Sommelier />} />
+        <Route path="/sommelier" element={<CockpitSommelier />} />
+        <Route path="/sommelier-classic" element={<Sommelier />} />
         <Route path="/bar" element={<Bar />} />
         <Route path="/spirit/:id" element={<SpiritDetails />} />
         <Route path="/spirit/:id/edit" element={<EditSpirit />} />

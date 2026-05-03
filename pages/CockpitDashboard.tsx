@@ -304,7 +304,7 @@ export const CockpitDashboard: React.FC = () => {
           </ul>
         ) : (
           <div className="px-5 py-8 text-sm text-stone-500 italic">
-            Note tes premières dégustations à 8/10+ pour les voir ici.
+            Note tes premières dégustations à 4/5+ pour les voir ici.
           </div>
         )}
       </aside>
