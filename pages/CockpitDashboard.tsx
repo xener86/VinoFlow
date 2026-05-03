@@ -196,15 +196,17 @@ export const CockpitDashboard: React.FC = () => {
         <KpiTile
           label="Mois de stock"
           value={
-            monthsOfStock !== null ? (
+            monthsOfStock !== null && monthsOfStock > 0 ? (
               <>{Math.floor(monthsOfStock)}<span className="text-base text-stone-500">.{Math.round((monthsOfStock - Math.floor(monthsOfStock)) * 10)}</span></>
-            ) : '∞'
+            ) : <span className="text-stone-400">—</span>
           }
-          sub="rythme actuel"
+          sub={monthsOfStock !== null && monthsOfStock > 0 ? 'rythme actuel' : 'pas assez de conso enregistrée'}
           chart={
-            <div className="h-1.5 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden">
-              <div className="h-full bg-wine-700 rounded-full" style={{ width: `${Math.min((monthsOfStock || 0) * 5, 100)}%` }} />
-            </div>
+            monthsOfStock !== null && monthsOfStock > 0 ? (
+              <div className="h-1.5 rounded-full bg-stone-200 dark:bg-stone-800 overflow-hidden">
+                <div className="h-full bg-wine-700 rounded-full" style={{ width: `${Math.min(monthsOfStock * 5, 100)}%` }} />
+              </div>
+            ) : null
           }
         />
         <KpiTile

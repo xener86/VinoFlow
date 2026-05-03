@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#7f1d1d"/>
+  <g transform="translate(256, 240)">
+    <!-- Wine glass bowl -->
+    <path d="M -90 -120 L 90 -120 L 80 30 Q 80 110 0 110 Q -80 110 -80 30 Z"
+          fill="#fcfaf6"/>
+    <path d="M -78 -100 L 78 -100 L 68 -5 Q 35 25 0 25 Q -35 25 -68 -5 Z"
+          fill="#5c1414"/>
+    <!-- Stem -->
+    <rect x="-6" y="100" width="12" height="70" fill="#fcfaf6"/>
+    <!-- Base -->
+    <ellipse cx="0" cy="172" rx="55" ry="9" fill="#fcfaf6"/>
+  </g>
+  <text x="256" y="460" font-family="Georgia, serif" font-style="italic" font-size="44" fill="#fcfaf6" text-anchor="middle" font-weight="500">VinoFlow</text>
+</svg>

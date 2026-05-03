@@ -1,0 +1,48 @@
+{
+  "name": "VinoFlow",
+  "short_name": "VinoFlow",
+  "description": "Cave personnelle, sommelier IA et insights pour amateurs passionnés de vin.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fcfaf6",
+  "theme_color": "#7f1d1d",
+  "lang": "fr",
+  "dir": "ltr",
+  "categories": ["lifestyle", "food", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Sommelier",
+      "short_name": "Sommelier",
+      "description": "Que boire ce soir ?",
+      "url": "/sommelier"
+    },
+    {
+      "name": "Ajouter un vin",
+      "short_name": "Ajouter",
+      "description": "Saisie libre + IA",
+      "url": "/add-wine"
+    },
+    {
+      "name": "Insights",
+      "short_name": "Insights",
+      "description": "Tableau de bord proactif",
+      "url": "/insights"
+    }
+  ]
+}
