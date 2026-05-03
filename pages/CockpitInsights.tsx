@@ -68,7 +68,8 @@ const GardeTimeline: React.FC = () => {
   const [hover, setHover] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<'all' | 'RED' | 'WHITE' | 'OTHER'>('all');
   const [filterRegion, setFilterRegion] = useState<string>('all');
-  const [sortMode, setSortMode] = useState<'peak' | 'start' | 'name'>('peak');
+  const [sortMode, setSortMode] = useState<'relevance' | 'peak' | 'start' | 'name'>('relevance');
+  const [hidePast, setHidePast] = useState<boolean>(true);
 
   const inStock = wines.filter(w => (w.inventoryCount || 0) > 0 && w.vintage);
 
@@ -88,6 +89,16 @@ const GardeTimeline: React.FC = () => {
 
   const regions = useMemo(() => ['all', ...Array.from(new Set(inStock.map(w => w.region).filter(Boolean)))].sort() as string[], [inStock]);
 
+  // A wine's "relevance" : in peak now first, then approaching peak,
+  // then aging, then past peak last. Tie-break by years to peak.
+  const relevanceScore = (e: { peak: number; end: number; start: number }) => {
+    if (NOW_YEAR >= e.peak - 1 && NOW_YEAR <= e.peak + 1) return 0;            // in peak now
+    if (NOW_YEAR >= e.start && NOW_YEAR < e.peak) return 1;                    // approaching
+    if (NOW_YEAR > e.peak + 1 && NOW_YEAR <= e.end) return 2;                  // gentle decline
+    if (NOW_YEAR < e.start) return 3;                                          // too young
+    return 4;                                                                  // past peak
+  };
+
   const filtered = useMemo(() => {
     let arr = [...enriched];
     if (filterColor !== 'all') {
@@ -96,11 +107,23 @@ const GardeTimeline: React.FC = () => {
     if (filterRegion !== 'all') {
       arr = arr.filter(e => e.wine.region === filterRegion);
     }
+    if (hidePast) {
+      arr = arr.filter(e => NOW_YEAR <= e.end);
+    }
+    if (sortMode === 'relevance') {
+      arr.sort((a, b) => {
+        const ra = relevanceScore(a);
+        const rb = relevanceScore(b);
+        if (ra !== rb) return ra - rb;
+        // Tie-break by years to peak (closer first)
+        return Math.abs(a.peak - NOW_YEAR) - Math.abs(b.peak - NOW_YEAR);
+      });
+    }
     if (sortMode === 'peak') arr.sort((a, b) => a.peak - b.peak);
     if (sortMode === 'start') arr.sort((a, b) => a.start - b.start);
     if (sortMode === 'name') arr.sort((a, b) => a.wine.name.localeCompare(b.wine.name));
     return arr;
-  }, [enriched, filterColor, filterRegion, sortMode]);
+  }, [enriched, filterColor, filterRegion, sortMode, hidePast]);
 
   const horizonStart = NOW_YEAR;
   // Compute horizon end dynamically based on the data, capped at HORIZON_END
@@ -125,7 +148,7 @@ const GardeTimeline: React.FC = () => {
         <KpiBlock label="EN PIC ACTUEL" value={inPeakNow} unit="vins" tone="warning" />
         <KpiBlock label="DANS LA FENÊTRE" value={inWindow} unit="vins" />
         <KpiBlock label="ENCORE TROP JEUNES" value={tooYoung} unit="vins" />
-        <KpiBlock label="HORIZON LE + LOIN" value={farthestEnd?.end ?? '—'} unit={farthestEnd?.wine.name.toLowerCase().slice(0, 12) || ''} />
+        <KpiBlock label="HORIZON LE + LOIN" value={farthestEnd?.end ?? '—'} unit={farthestEnd ? `dans ${Math.max(0, farthestEnd.end - NOW_YEAR)} ans` : ''} />
       </div>
 
       {/* Filters */}
@@ -141,7 +164,16 @@ const GardeTimeline: React.FC = () => {
             {regions.map(r => <option key={r} value={r}>{r === 'all' ? 'Toutes régions' : r}</option>)}
           </select>
         </div>
-        <FilterPills label="TRI" value={sortMode} onChange={(v: any) => setSortMode(v)} options={[['peak', 'Pic'], ['start', 'Entrée'], ['name', 'Nom']]} />
+        <FilterPills label="TRI" value={sortMode} onChange={(v: any) => setSortMode(v)} options={[['relevance', 'Pertinence'], ['peak', 'Pic'], ['start', 'Entrée'], ['name', 'Nom']]} />
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hidePast}
+            onChange={e => setHidePast(e.target.checked)}
+            className="accent-wine-700"
+          />
+          <span className="mono text-[10px] tracking-widest text-stone-600 dark:text-stone-400">MASQUER PASSÉS</span>
+        </label>
         <div className="flex-1" />
         <span className="mono text-[10px] tracking-widest text-stone-500">{filtered.length} VINS · {filtered.reduce((a, e) => a + (e.wine.inventoryCount || 0), 0)} BTL</span>
       </div>
