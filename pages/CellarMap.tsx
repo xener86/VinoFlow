@@ -106,7 +106,7 @@ export const CellarMap: React.FC = () => {
       if (!searchQuery) return 0;
       let count = 0;
       inventory.forEach(w => {
-          const isMatch = w.name.toLowerCase().includes(searchQuery.toLowerCase()) || w.vintage.toString().includes(searchQuery);
+          const isMatch = (w.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (w.vintage != null && String(w.vintage).includes(searchQuery));
           if (isMatch) {
               w.bottles.forEach(b => {
                   if (typeof b.location !== 'string' && b.location.rackId === rackId && !b.isConsumed) {

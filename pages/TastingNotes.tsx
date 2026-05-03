@@ -21,8 +21,9 @@ const getApiSettings = () => {
     };
 };
 
-const normalizeText = (text: string): string => {
-    return text
+const normalizeText = (text: string | null | undefined): string => {
+    if (!text) return '';
+    return String(text)
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
@@ -296,7 +297,7 @@ export const TastingNotes: React.FC = () => {
             normalizeText(w.name).includes(normalizedQuery) ||
             normalizeText(w.producer).includes(normalizedQuery) ||
             normalizeText(w.region).includes(normalizedQuery) ||
-            w.vintage.toString().includes(normalizedQuery);
+            (w.vintage != null && String(w.vintage).includes(normalizedQuery));
 
         return matchesType && matchesFavorites && matchesSearch;
     });

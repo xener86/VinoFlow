@@ -26,8 +26,9 @@ const wineTypeLabels: Record<string, string> = {
   'FORTIFIED': 'FORTIFIÉ'
 };
 
-const normalizeText = (text: string): string => {
-    return text
+const normalizeText = (text: string | null | undefined): string => {
+    if (!text) return '';
+    return String(text)
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
@@ -216,7 +217,7 @@ export const Dashboard: React.FC = () => {
         normalizeText(w.name).includes(normalizedQuery) ||
         normalizeText(w.producer).includes(normalizedQuery) ||
         normalizeText(w.region).includes(normalizedQuery) ||
-        w.vintage.toString().includes(normalizedQuery);
+        (w.vintage != null && String(w.vintage).includes(normalizedQuery));
     const hasStock = w.inventoryCount > 0;
     const matchesRegion = !regionFilter || w.region === regionFilter;
     const matchesAppellation = !appellationFilter || w.appellation === appellationFilter;
