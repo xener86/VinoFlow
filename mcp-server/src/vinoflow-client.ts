@@ -361,6 +361,13 @@ export async function enrichAromas(useConsensus = false, limit = 50): Promise<an
     });
 }
 
+export async function refreshPeaks(force = false, limit = 50): Promise<any> {
+    return fetchJSON('/wines/refresh-peaks', {
+        method: 'POST',
+        body: JSON.stringify({ onlyMissing: !force, force, limit }),
+    });
+}
+
 // ──────────────────────────────────────────
 // Original stats
 // ──────────────────────────────────────────

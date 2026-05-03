@@ -603,6 +603,23 @@ server.tool(
 );
 
 server.tool(
+    'refresh_peaks',
+    'Compute realistic drinking peak windows for wines via LLM, considering producer prestige, appellation level, vintage quality. Replaces the naive vintage+5 formula with per-wine intelligent windows (e.g., a Margaux Grand Cru 1983 has peak ~1995-2030+, not vintage+5..+10).',
+    {
+        force: z.boolean().optional().describe('Recompute even for wines that already have a peak'),
+        limit: z.number().optional().describe('Max wines to process (default 50)'),
+    },
+    async ({ force, limit }) => {
+        try {
+            const result = await client.refreshPeaks(force || false, limit || 50);
+            return { content: [{ type: 'text' as const, text: `Peak windows: ${result.updated}/${result.processed} vins mis a jour. ${result.failed > 0 ? `${result.failed} echecs.` : ''}` }] };
+        } catch (e: any) {
+            return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
+        }
+    }
+);
+
+server.tool(
     'enrich_wine_aromas',
     'Enrich wines without aroma profile in batch. Useful after import or for wines added manually.',
     {

@@ -17,12 +17,13 @@ export const drinkBeforeAlerts = (inventory, options = {}) => {
   const alerts = inventory
     .filter(w => (w.inventoryCount ?? 0) > 0 && w.vintage && w.type)
     .map(w => {
-      const peak = getPeakWindow(w.vintage, w.type);
+      // Use stored AI/USER peak if available, else fall back to naive
+      const peak = getPeakWindow(w);
       if (!peak) return null;
       const monthsLeft = (peak.peakEnd - currentYear) * 12;
       return { wine: w, peak, monthsLeft };
     })
-    .filter(x => x && x.monthsLeft <= horizonMonths)
+    .filter(x => x && x.monthsLeft <= horizonMonths && x.peak.status !== 'Apogée passée' || (x && x.peak.status === 'Apogée passée'))
     .sort((a, b) => a.monthsLeft - b.monthsLeft);
 
   return alerts;

@@ -26,7 +26,7 @@ export const Layout: React.FC = () => {
   const totalBottles = wines.reduce((sum, w) => sum + w.inventoryCount, 0);
   const drinkNowCount = wines.filter(w => {
     if (w.inventoryCount === 0) return false;
-    const peak = getPeakWindow(w.vintage, w.type);
+    const peak = getPeakWindow(w as any);
     return peak.status === 'À Boire' || peak.status === 'Boire Vite';
   }).length;
 

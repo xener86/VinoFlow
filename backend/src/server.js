@@ -8,6 +8,7 @@ import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from './so
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/tasteProfile.js';
 import { isProviderConfigured, getTaskDefaults, runWithRequestKeys } from './services/aiService.js';
 import { enrichWine, aromasFromTastingNotes } from './sommelier/enrich.js';
+import { computePeak, peakStatus } from './sommelier/peakCalculator.js';
 import { extractFromLabel } from './sommelier/ocr.js';
 import { computeBudget } from './sommelier/budget.js';
 import { fetchCommunityData, fetchMarketValue, fetchPressScores } from './services/externalData.js';
@@ -1085,6 +1086,90 @@ app.get('/api/cellar/projection', async (req, res) => {
   } catch (error) {
     console.error('projection error:', error);
     res.status(500).json({ error: 'Failed to compute projection' });
+  }
+});
+
+// Phase per-wine peak — compute drinking peak windows in batch
+// Body: { onlyMissing: boolean, limit: number, force: boolean }
+app.post('/api/wines/refresh-peaks', async (req, res) => {
+  try {
+    const { onlyMissing = true, limit = 50, force = false } = req.body || {};
+    const userId = req.user?.userId;
+
+    const filter = (onlyMissing && !force) ? `WHERE peak_start IS NULL OR peak_end IS NULL` : '';
+    const result = await pool.query(`SELECT * FROM wines ${filter} ORDER BY created_at DESC LIMIT $1`, [limit]);
+    const wines = convertKeysToCamelCase(result.rows);
+
+    const updated = [];
+    const failed = [];
+
+    for (const wine of wines) {
+      try {
+        const peak = await computePeak(wine);
+        if (!peak) continue;
+        await pool.query(`
+          UPDATE wines SET
+            peak_start = $1,
+            peak_end = $2,
+            peak_source = 'AI',
+            peak_confidence = $3,
+            peak_reasoning = $4,
+            peak_computed_at = now(),
+            updated_at = now()
+          WHERE id = $5
+        `, [peak.peakStart, peak.peakEnd, peak.confidence, peak.reasoning, wine.id]);
+        updated.push({
+          id: wine.id,
+          name: wine.name,
+          vintage: wine.vintage,
+          peak_start: peak.peakStart,
+          peak_end: peak.peakEnd,
+          confidence: peak.confidence,
+        });
+      } catch (err) {
+        console.error(`Peak failed for ${wine.id}:`, err.message);
+        failed.push({ id: wine.id, name: wine.name, error: err.message });
+      }
+    }
+
+    res.json({
+      processed: wines.length,
+      updated: updated.length,
+      failed: failed.length,
+      results: updated,
+      errors: failed,
+    });
+  } catch (error) {
+    console.error('Refresh peaks error:', error);
+    res.status(500).json({ error: 'Failed to refresh peaks', details: error.message });
+  }
+});
+
+// Manual peak override (USER source)
+app.put('/api/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/peak', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { peakStart, peakEnd, reasoning } = req.body || {};
+    if (!Number.isInteger(peakStart) || !Number.isInteger(peakEnd) || peakEnd < peakStart) {
+      return res.status(400).json({ error: 'peakStart and peakEnd must be integers with end >= start' });
+    }
+    const result = await pool.query(`
+      UPDATE wines SET
+        peak_start = $1,
+        peak_end = $2,
+        peak_source = 'USER',
+        peak_confidence = 'HIGH',
+        peak_reasoning = $3,
+        peak_computed_at = now(),
+        updated_at = now()
+      WHERE id = $4
+      RETURNING *
+    `, [peakStart, peakEnd, reasoning || null, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
+    res.json(convertKeysToCamelCase(result.rows[0]));
+  } catch (error) {
+    console.error('Update peak error:', error);
+    res.status(500).json({ error: 'Failed to update peak' });
   }
 });
 

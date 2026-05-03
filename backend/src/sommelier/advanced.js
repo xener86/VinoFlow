@@ -94,9 +94,10 @@ export const agingRecommendations = (inventory) => {
   return inventory
     .filter(w => (w.inventoryCount ?? 0) > 0 && w.vintage)
     .map(w => {
-      const peak = getPeakWindow(w.vintage, w.type);
+      const peak = getPeakWindow(w);
       if (!peak) return null;
       let phase, message;
+      const source = w.peakSource || w.peak_source;
       if (currentYear < peak.peakStart) {
         const yearsToPeak = peak.peakStart - currentYear;
         phase = 'AGING';
@@ -111,7 +112,7 @@ export const agingRecommendations = (inventory) => {
         phase = 'PAST';
         message = `Au-delà de la fenêtre optimale (depuis ${currentYear - peak.peakEnd} an${currentYear - peak.peakEnd > 1 ? 's' : ''}). Prioriser.`;
       }
-      return { wine: w, peak, phase, message };
+      return { wine: w, peak, phase, message, peakSource: source || null };
     })
     .filter(Boolean);
 };

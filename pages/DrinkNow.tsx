@@ -93,7 +93,7 @@ export const DrinkNow: React.FC = () => {
     .filter(w => w.inventoryCount > 0)
     .map(w => ({
       ...w,
-      peak: getPeakWindow(w.vintage, w.type)
+      peak: getPeakWindow(w as any)
     }));
 
   const boireVite = winesWithPeak

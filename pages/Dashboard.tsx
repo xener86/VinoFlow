@@ -75,7 +75,7 @@ const WineCard: React.FC<WineCardProps> = ({ wine, onConsume, onClick, onFavorit
                   FAVORIS
                 </button>
                 {(() => {
-                  const peak = getPeakWindow(wine.vintage, wine.type);
+                  const peak = getPeakWindow(wine as any);
                   const styles = getPeakBadgeStyles(peak.status);
                   return (
                     <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase ${styles.bg} ${styles.text}`}>
@@ -155,7 +155,7 @@ export const Dashboard: React.FC = () => {
   const winesInStock = wines.filter(w => w.inventoryCount > 0);
   const totalBottles = wines.reduce((sum, w) => sum + w.inventoryCount, 0);
   const drinkNowWines = winesInStock.filter(w => {
-    const peak = getPeakWindow(w.vintage, w.type);
+    const peak = getPeakWindow(w as any);
     return peak.status === 'À Boire' || peak.status === 'Boire Vite';
   });
   const totalValue = wines.reduce((sum, w) => {
@@ -232,9 +232,9 @@ export const Dashboard: React.FC = () => {
       case 'stock': return b.inventoryCount - a.inventoryCount;
       case 'region': return (a.region || '').localeCompare(b.region || '', 'fr');
       case 'peak': {
-        const peakA = getPeakWindow(a.vintage, a.type);
-        const peakB = getPeakWindow(b.vintage, b.type);
-        const order: Record<string, number> = { 'Boire Vite': 0, 'À Boire': 1, 'Garde': 2 };
+        const peakA = getPeakWindow(a as any);
+        const peakB = getPeakWindow(b as any);
+        const order: Record<string, number> = { 'Apogée passée': -1, 'Boire Vite': 0, 'À Boire': 1, 'Garde': 2 };
         return (order[peakA.status] ?? 2) - (order[peakB.status] ?? 2);
       }
       case 'recent': return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

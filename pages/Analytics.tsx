@@ -64,7 +64,7 @@ export const Analytics: React.FC = () => {
     }
 
     const maturityDistribution = inventory.reduce((acc: any, w) => {
-      const { status } = getPeakWindow(w.vintage, w.type);
+      const { status } = getPeakWindow(w as any);
       acc[status] = (acc[status] || 0) + w.inventoryCount;
       return acc;
     }, {});
