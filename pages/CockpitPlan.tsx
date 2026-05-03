@@ -26,7 +26,12 @@ const slotLabel = (x: number, y: number): string => `${String.fromCharCode(65 + 
 
 type SlotInfo = { wine: CellarWine; bottle: Bottle } | null;
 
-export const CockpitPlan: React.FC = () => {
+interface CockpitPlanProps {
+  /** When embedded (e.g. inside the Cave tabs), skip the page-level header. */
+  embedded?: boolean;
+}
+
+export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) => {
   const { wines } = useWines();
   const { racks } = useRacks();
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null);
@@ -78,15 +83,24 @@ export const CockpitPlan: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-5">
-        <MonoLabel>VINOFLOW · INVENTAIRE · PLAN</MonoLabel>
-        <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Plan de cave</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">
+      {!embedded && (
+        <div className="mb-5">
+          <MonoLabel>VINOFLOW · INVENTAIRE · PLAN</MonoLabel>
+          <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Plan de cave</h1>
+          <div className="text-[12px] text-stone-500 mt-0.5">
+            {sortedRacks.length} emplacements · {unsortedBottles.length} btl en attente
+            {' · '}
+            <Link to="/cellar-map-classic" className="text-wine-700 hover:underline">Vue éditable (drag &amp; drop) →</Link>
+          </div>
+        </div>
+      )}
+      {embedded && (
+        <div className="text-[12px] text-stone-500 mb-3">
           {sortedRacks.length} emplacements · {unsortedBottles.length} btl en attente
           {' · '}
           <Link to="/cellar-map-classic" className="text-wine-700 hover:underline">Vue éditable (drag &amp; drop) →</Link>
         </div>
-      </div>
+      )}
 
       {sortedRacks.length === 0 ? (
         <Card className="p-8 text-center">

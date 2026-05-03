@@ -16,16 +16,22 @@ const HORIZON_END = NOW_YEAR + 16;
 // ────────────────────────────────────────────
 // Page
 // ────────────────────────────────────────────
-export const CockpitInsights: React.FC = () => {
+interface CockpitInsightsProps {
+  embedded?: boolean;
+}
+
+export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = false }) => {
   const [lens, setLens] = useState<Lens>('GARDE');
 
   return (
     <div>
-      <div className="mb-5">
-        <MonoLabel>VINOFLOW · ANALYSE</MonoLabel>
-        <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Insights</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">Vue temporelle de ta cave — fenêtres, composition, achats.</div>
-      </div>
+      {!embedded && (
+        <div className="mb-5">
+          <MonoLabel>VINOFLOW · ANALYSE</MonoLabel>
+          <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Insights</h1>
+          <div className="text-[12px] text-stone-500 mt-0.5">Vue temporelle de ta cave — fenêtres, composition, achats.</div>
+        </div>
+      )}
 
       {/* Lens switcher */}
       <div className="inline-flex items-center gap-1 p-1 bg-stone-100 dark:bg-stone-800 rounded-md mb-5">
