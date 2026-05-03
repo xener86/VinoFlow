@@ -29,6 +29,7 @@ import { CockpitInsights } from './pages/CockpitInsights';
 import { CockpitCave } from './pages/CockpitCave';
 import { CockpitAddWine } from './pages/CockpitAddWine';
 import { CockpitTasting } from './pages/CockpitTasting';
+import { CockpitWineDetails } from './pages/CockpitWineDetails';
 import { SommelierTools } from './pages/SommelierTools';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -62,7 +63,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/cave-classic" element={<Dashboard />} />
         <Route path="/add-wine" element={<CockpitAddWine />} />
         <Route path="/add-wine-classic" element={<AddWine />} />
-        <Route path="/wine/:id" element={<WineDetails />} />
+        <Route path="/wine/:id" element={<CockpitWineDetails />} />
+        <Route path="/wine/:id/classic" element={<WineDetails />} />
         <Route path="/wine/:id/edit" element={<EditWine />} />
         <Route path="/cellar-map" element={<CellarMap />} />
         <Route path="/analytics" element={<Analytics />} />

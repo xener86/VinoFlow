@@ -1,7 +1,7 @@
 // Cockpit Insights — temporal view of the cellar.
 // 3 lenses: Garde (Gantt timeline), Inventaire (composition), Achats (spend / suggestions).
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWines } from '../hooks/useWines';
 import { getPeakWindow } from '../utils/peakWindow';
@@ -393,17 +393,119 @@ const InventoryView: React.FC = () => {
 };
 
 // ────────────────────────────────────────────
-// Lens 3 — Achats (purchase suggestions + budget)
+// Lens 3 — Achats (purchase suggestions + budget + drink-before)
 // ────────────────────────────────────────────
 const AchatsView: React.FC = () => {
+  const [purchases, setPurchases] = useState<any>(null);
+  const [budget, setBudget] = useState<any>(null);
+  const [drinkBefore, setDrinkBefore] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      import('../services/storageService').then(m => m.getPurchaseSuggestions().catch(() => null)),
+      import('../services/storageService').then(m => m.getCellarBudget(12).catch(() => null)),
+      import('../services/storageService').then(m => m.getDrinkBeforeAlerts(6).catch(() => null)),
+    ]).then(([p, b, d]) => {
+      setPurchases(p);
+      setBudget(b);
+      setDrinkBefore(d?.alerts || []);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return <div className="text-stone-500 italic py-8 text-center">Chargement…</div>;
+  }
+
+  const monthlyAvg = budget?.monthly_avg ?? 0;
+  const totalSpent = budget?.total_spent ?? 0;
+  const totalBottles = budget?.total_bottles ?? 0;
+  const avgPrice = budget?.avg_price ?? 0;
+
   return (
     <div className="grid grid-cols-12 gap-4">
-      <Card className="col-span-12 p-5">
-        <MonoLabel>◌ ACHATS</MonoLabel>
-        <div className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-          Cette vue est en cours d'intégration. Voir <Link to="/insights" className="text-wine-700 hover:text-wine-800 underline">l'ancienne page Insights</Link> pour les suggestions d'achat et le budget en attendant.
-        </div>
+      {/* Budget KPIs */}
+      <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiBlock label="DÉPENSÉ 12M" value={totalSpent ? `${totalSpent.toLocaleString('fr-FR')}€` : '—'} unit="" />
+        <KpiBlock label="MOYENNE / MOIS" value={monthlyAvg ? `${monthlyAvg.toLocaleString('fr-FR')}€` : '—'} unit="" />
+        <KpiBlock label="BTL ACHETÉES" value={totalBottles} unit="bouteilles" />
+        <KpiBlock label="PRIX MOYEN" value={avgPrice ? `${Math.round(avgPrice)}€` : '—'} unit="" />
+      </div>
+
+      {/* Suggestions d'achat */}
+      <Card className="col-span-12 lg:col-span-7 p-5">
+        <MonoLabel>◌ SUGGESTIONS D'ACHAT</MonoLabel>
+        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">À renouveler</h3>
+        {purchases?.count > 0 ? (
+          <ul className="space-y-2">
+            {purchases.suggestions.map((s: any) => (
+              <li key={s.type} className="flex items-center justify-between bg-stone-50 dark:bg-stone-800/40 rounded-md p-3">
+                <div>
+                  <div className="text-sm font-medium text-stone-900 dark:text-white">{s.type}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">
+                    Stock: {s.current_stock} · Conso: {s.monthly_rate}/mois · Reste {s.months_of_stock ?? '∞'} mois
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`mono text-sm font-bold ${s.priority === 'HIGH' ? 'text-wine-700' : s.priority === 'MEDIUM' ? 'text-amber-600' : 'text-stone-600'}`}>
+                    +{s.suggested_purchase}
+                  </div>
+                  <div className="mono text-[10px] uppercase text-stone-400 tracking-widest">{s.priority}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-stone-400 italic text-sm py-4">Pas de manque détecté à court terme.</div>
+        )}
       </Card>
+
+      {/* À boire d'urgence (rappel ici aussi pour la dimension achat) */}
+      <Card className="col-span-12 lg:col-span-5 p-5">
+        <MonoLabel>◌ URGENCES · À BOIRE</MonoLabel>
+        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">À ne pas racheter avant</h3>
+        {drinkBefore.length > 0 ? (
+          <ul className="space-y-1.5 text-sm">
+            {drinkBefore.slice(0, 8).map((a: any) => (
+              <li key={a.wine.id} className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800/50 pb-1 last:border-0">
+                <Link to={`/wine/${a.wine.id}`} className="text-stone-700 dark:text-stone-300 hover:text-wine-700 truncate">
+                  {a.wine.name} {a.wine.vintage}
+                </Link>
+                <span className="mono text-[10px] text-wine-700 dark:text-wine-500">
+                  {a.monthsLeft <= 0 ? 'PASSÉ' : `${a.monthsLeft}m`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-stone-400 italic text-sm py-4">Aucune urgence.</div>
+        )}
+      </Card>
+
+      {/* Répartition par type */}
+      {budget?.by_type && budget.by_type.length > 0 && (
+        <Card className="col-span-12 p-5">
+          <MonoLabel>◌ RÉPARTITION PAR TYPE · 12M</MonoLabel>
+          <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Où va ton budget</h3>
+          <div className="space-y-2">
+            {budget.by_type.sort((a: any, b: any) => b.total - a.total).map((t: any) => {
+              const pct = (t.total / totalSpent) * 100;
+              return (
+                <div key={t.type} className="flex items-center gap-3 text-sm">
+                  <span className="w-24 text-stone-700 dark:text-stone-300 capitalize">{t.type}</span>
+                  <div className="flex-1 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-wine-700" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="mono text-[11px] text-stone-500 w-32 text-right">
+                    {t.total.toLocaleString('fr-FR')}€ · {t.count} btl
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
