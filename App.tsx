@@ -27,6 +27,8 @@ import { RegionMap } from './pages/RegionMap';
 import { Insights } from './pages/Insights';
 import { CockpitInsights } from './pages/CockpitInsights';
 import { CockpitCave } from './pages/CockpitCave';
+import { CockpitAddWine } from './pages/CockpitAddWine';
+import { CockpitTasting } from './pages/CockpitTasting';
 import { SommelierTools } from './pages/SommelierTools';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,7 +60,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<CockpitDashboard />} />
         <Route path="/cave" element={<CockpitCave />} />
         <Route path="/cave-classic" element={<Dashboard />} />
-        <Route path="/add-wine" element={<AddWine />} />
+        <Route path="/add-wine" element={<CockpitAddWine />} />
+        <Route path="/add-wine-classic" element={<AddWine />} />
         <Route path="/wine/:id" element={<WineDetails />} />
         <Route path="/wine/:id/edit" element={<EditWine />} />
         <Route path="/cellar-map" element={<CellarMap />} />
@@ -69,7 +72,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/bar" element={<Bar />} />
         <Route path="/spirit/:id" element={<SpiritDetails />} />
         <Route path="/spirit/:id/edit" element={<EditSpirit />} />
-        <Route path="/tasting" element={<TastingNotes />} />
+        <Route path="/tasting" element={<CockpitTasting />} />
+        <Route path="/tasting/:wineId" element={<CockpitTasting />} />
+        <Route path="/tasting-classic" element={<TastingNotes />} />
         <Route path="/journal" element={<CellarJournal />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/compare" element={<CompareWines />} />
