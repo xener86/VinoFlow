@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle } from 'lucide-react';
 import { sommelierPair, sommelierFeedback } from '../services/storageService';
 import { CellarWine } from '../types';
@@ -26,10 +26,11 @@ interface PairingResult {
 
 interface Props {
   inventory: CellarWine[];
+  initialDish?: string;     // Pre-fill the prompt and auto-run on mount (used by /?q=…)
 }
 
-export const SommelierV2: React.FC<Props> = ({ inventory }) => {
-  const [dish, setDish] = useState('');
+export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) => {
+  const [dish, setDish] = useState(initialDish);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PairingResult | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'UP' | 'DOWN'>>({});
@@ -68,6 +69,18 @@ export const SommelierV2: React.FC<Props> = ({ inventory }) => {
   const wineById = (id: string) => inventory.find(w => w.id === id);
 
   const [progressStep, setProgressStep] = useState<number>(0);
+
+  // Auto-run when arriving from the dashboard with ?q=... in the URL.
+  // We rely on `key={initialDish}` upstream so a new query forces a remount.
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (autoRanRef.current) return;
+    if (!initialDish || !initialDish.trim()) return;
+    autoRanRef.current = true;
+    // Defer one tick so state from `useState(initialDish)` is committed.
+    setTimeout(() => handlePair(false), 0);
+  }, [initialDish]);
+
   const handlePair = async (skipCache = false) => {
     if (!dish.trim()) return;
     setLoading(true);

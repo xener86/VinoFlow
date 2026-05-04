@@ -128,7 +128,7 @@ export const CockpitSommelier: React.FC = () => {
         {/* ───── Main pane: Sommelier V2 ───── */}
         <main className="col-span-12 lg:col-span-9">
           <Card className="p-6">
-            <SommelierV2 inventory={wines} key={initialDish} />
+            <SommelierV2 inventory={wines} initialDish={initialDish} key={initialDish} />
           </Card>
         </main>
       </div>
