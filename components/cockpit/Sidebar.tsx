@@ -5,7 +5,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, List, Sparkles, TrendingUp,
-  Heart, BookOpen, Globe, Wand2, Award, Settings as SettingsIcon, LogOut, Map,
+  Heart, BookOpen, Globe, Wand2, Award, Settings as SettingsIcon, LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -68,7 +68,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ totalWines, insightsCount, wis
       <nav className="space-y-1">
         <NavItem to="/" icon={LayoutDashboard} label="Tableau de bord" active={isActive('/')} />
         <NavItem to="/cave" icon={List} label="Cave" badge={totalWines} active={isActive('/cave')} />
-        <NavItem to="/plan" icon={Map} label="Plan" active={isActive('/plan')} />
         <NavItem to="/sommelier" icon={Sparkles} label="Sommelier" active={isActive('/sommelier')} />
         <NavItem to="/insights" icon={TrendingUp} label="Insights" badge={insightsCount} active={isActive('/insights')} />
       </nav>

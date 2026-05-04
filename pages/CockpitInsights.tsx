@@ -346,7 +346,24 @@ const FilterPills: React.FC<{ label: string; value: string; onChange: (v: string
 
 // ────────────────────────────────────────────
 // Lens 2 — Inventaire (composition)
+// Faithful port of insights-hifi.jsx InventoryView
 // ────────────────────────────────────────────
+const REGION_UNIVERSE = [
+  'Bordeaux', 'Bourgogne', 'Loire', 'Rhône Nord', 'Rhône Sud', 'Provence', 'Languedoc', 'Alsace', 'Champagne',
+  'Jura', 'Savoie', 'Sud-Ouest', 'Beaujolais', 'Roussillon', 'Corse', 'Allemagne', 'Italie', 'Espagne',
+];
+
+// Try to map a free-text region label onto our universe, ignoring case / accents / sub-appellations
+const matchRegion = (raw: string, universe: string[]): string | null => {
+  if (!raw) return null;
+  const norm = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for (const r of universe) {
+    const r2 = r.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    if (norm.includes(r2) || r2.includes(norm)) return r;
+  }
+  return null;
+};
+
 const InventoryView: React.FC = () => {
   const { wines } = useWines();
   const inStock = wines.filter(w => (w.inventoryCount || 0) > 0);
@@ -357,12 +374,21 @@ const InventoryView: React.FC = () => {
     return acc;
   }, {});
 
-  const byRegion = inStock.reduce((acc: Record<string, number>, w) => {
+  const byRegionRaw = inStock.reduce((acc: Record<string, number>, w) => {
     if (!w.region) return acc;
     acc[w.region] = (acc[w.region] || 0) + w.inventoryCount;
     return acc;
   }, {});
-  const regionEntries = Object.entries(byRegion).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const regionEntries = Object.entries(byRegionRaw).sort((a, b) => b[1] - a[1]).slice(0, 12);
+
+  // Coverage map — REGION_UNIVERSE → bottles
+  const coverage: Record<string, number> = {};
+  REGION_UNIVERSE.forEach(r => coverage[r] = 0);
+  Object.entries(byRegionRaw).forEach(([raw, n]) => {
+    const m = matchRegion(raw, REGION_UNIVERSE);
+    if (m) coverage[m] += n;
+  });
+  const coveredCount = Object.values(coverage).filter(v => v > 0).length;
 
   const byVintage = inStock.reduce((acc: Record<number, number>, w) => {
     if (!w.vintage) return acc;
@@ -372,23 +398,27 @@ const InventoryView: React.FC = () => {
   const vintageEntries = Object.entries(byVintage).map(([y, c]) => ({ y: parseInt(y), c })).sort((a, b) => a.y - b.y);
   const vintageMax = Math.max(...vintageEntries.map(v => v.c), 1);
 
+  const TYPE_LABELS: Record<string, string> = {
+    RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Bulles', DESSERT: 'Doux', FORTIFIED: 'Mutés',
+  };
+
   return (
     <div className="grid grid-cols-12 gap-4">
       <Card className="col-span-12 md:col-span-4 p-5">
-        <MonoLabel>◌ COMPOSITION · COULEUR</MonoLabel>
+        <MonoLabel>◌ COULEUR</MonoLabel>
         <div className="serif text-3xl text-stone-900 dark:text-white mt-1">{total}<span className="text-base text-stone-500"> btl</span></div>
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
             const pct = (count / total) * 100;
             const color = type === 'RED' ? 'bg-wine-700' : type === 'WHITE' ? 'bg-amber-300' : type === 'ROSE' ? 'bg-pink-400' : type === 'SPARKLING' ? 'bg-cyan-400' : 'bg-stone-400';
             return (
               <div key={type}>
-                <div className="flex items-center justify-between text-[12px] mb-0.5">
-                  <span className="text-stone-700 dark:text-stone-300 capitalize">{type}</span>
-                  <span className="mono text-stone-500">{count} · {Math.round(pct)}%</span>
+                <div className="flex items-center justify-between text-[12px] mb-1">
+                  <span className="text-stone-700 dark:text-stone-300">{TYPE_LABELS[type] || type}</span>
+                  <span className="mono text-stone-500">{count} btl · {pct.toFixed(0)}%</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
-                  <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                <div className="h-2 rounded bg-stone-100 dark:bg-stone-800 overflow-hidden">
+                  <div className={`h-full rounded ${color}`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -396,34 +426,70 @@ const InventoryView: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="col-span-12 md:col-span-8 p-5">
-        <MonoLabel>◌ COMPOSITION · RÉGION (TOP 12)</MonoLabel>
-        <div className="mt-4 space-y-1.5">
+      <Card className="col-span-12 md:col-span-4 p-5">
+        <MonoLabel>◌ RÉGIONS</MonoLabel>
+        <div className="mt-4 space-y-2">
           {regionEntries.map(([region, count]) => {
             const pct = (count / total) * 100;
             return (
-              <div key={region} className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 truncate text-stone-700 dark:text-stone-300">{region}</span>
-                <div className="flex-1 h-2 rounded-full bg-stone-100 dark:bg-stone-800 overflow-hidden">
-                  <div className="h-full bg-wine-700" style={{ width: `${pct}%` }} />
+              <div key={region}>
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-stone-700 dark:text-stone-300 truncate">{region}</span>
+                  <span className="mono text-stone-500">{count}</span>
                 </div>
-                <span className="mono text-[11px] text-stone-500 w-16 text-right">{count} · {Math.round(pct)}%</span>
+                <div className="h-1.5 rounded bg-stone-100 dark:bg-stone-800">
+                  <div className="h-full rounded bg-stone-700 dark:bg-stone-400" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+          {regionEntries.length === 0 && (
+            <div className="text-stone-400 italic text-sm">Aucune région renseignée.</div>
+          )}
+        </div>
+      </Card>
+
+      <Card className="col-span-12 md:col-span-4 p-5">
+        <MonoLabel>◌ MILLÉSIMES</MonoLabel>
+        <div className="mt-4 flex items-end gap-1 h-32">
+          {vintageEntries.map(({ y, c }) => (
+            <div key={y} className="flex-1 flex flex-col items-center group min-w-0">
+              <div className="text-[10px] text-stone-700 dark:text-stone-300 mono opacity-0 group-hover:opacity-100">{c}</div>
+              <div
+                className="w-full bg-wine-700 rounded-t group-hover:bg-wine-800 transition"
+                style={{ height: `${(c / vintageMax) * 100}%`, minHeight: '4px' }}
+              />
+              <div className="mono text-[9px] text-stone-500 mt-1">{String(y).slice(2)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mono text-[10px] tracking-widest text-stone-500 mt-2 text-center">
+          {vintageEntries[0]?.y ? `de ${vintageEntries[0].y} à ${vintageEntries[vintageEntries.length - 1].y}` : '—'}
+        </div>
+      </Card>
+
+      {/* Region coverage grid */}
+      <Card className="col-span-12 p-5">
+        <MonoLabel>◌ COUVERTURE — RÉGIONS PRÉSENTES vs MANQUANTES</MonoLabel>
+        <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-2">
+          {REGION_UNIVERSE.map(r => {
+            const present = coverage[r] || 0;
+            return (
+              <div
+                key={r}
+                className={`p-2 rounded text-center ${present
+                  ? 'bg-wine-700 text-white'
+                  : 'bg-stone-100 text-stone-400 dark:bg-stone-800/50 dark:text-stone-600'
+                  }`}
+              >
+                <div className="text-[11px] truncate">{r}</div>
+                <div className="mono text-[9px] mt-0.5">{present || '—'}</div>
               </div>
             );
           })}
         </div>
-      </Card>
-
-      <Card className="col-span-12 p-5">
-        <MonoLabel>◌ COMPOSITION · MILLÉSIMES</MonoLabel>
-        <div className="mt-4 flex items-end gap-1 h-32">
-          {vintageEntries.map(({ y, c }) => (
-            <div key={y} className="flex-1 flex flex-col items-center gap-1 group">
-              <span className="mono text-[10px] text-stone-500 opacity-0 group-hover:opacity-100">{c}</span>
-              <div className="w-full bg-wine-700 rounded-t" style={{ height: `${(c / vintageMax) * 100}%` }} />
-              <span className="mono text-[9px] text-stone-500 -rotate-45 origin-top-left mt-1 whitespace-nowrap">{y}</span>
-            </div>
-          ))}
+        <div className="mt-3 mono text-[10px] tracking-widest text-stone-500">
+          {coveredCount} / {REGION_UNIVERSE.length} RÉGIONS EXPLORÉES · {REGION_UNIVERSE.length - coveredCount} TERRA INCOGNITA
         </div>
       </Card>
     </div>
@@ -431,8 +497,10 @@ const InventoryView: React.FC = () => {
 };
 
 // ────────────────────────────────────────────
-// Lens 3 — Achats (purchase suggestions + budget + drink-before)
+// Lens 3 — Achats (faithful port of insights-hifi.jsx AchatsView)
 // ────────────────────────────────────────────
+const MONTH_LABELS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+
 const AchatsView: React.FC = () => {
   const [purchases, setPurchases] = useState<any>(null);
   const [budget, setBudget] = useState<any>(null);
@@ -460,16 +528,125 @@ const AchatsView: React.FC = () => {
   const totalSpent = budget?.total_spent ?? 0;
   const totalBottles = budget?.total_bottles ?? 0;
   const avgPrice = budget?.avg_price ?? 0;
+  const cellarValue = budget?.cellar_value_estimate ?? 0;
+
+  // Build a fixed 12-month series ending now, even if some months have no purchase
+  type MonthBar = { key: string; label: string; spent: number; count: number };
+  const months: MonthBar[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    months.push({
+      key,
+      label: MONTH_LABELS_FR[d.getMonth()],
+      spent: 0,
+      count: 0,
+    });
+  }
+  if (budget?.by_month) {
+    for (const m of budget.by_month) {
+      const slot = months.find(x => x.key === m.month);
+      if (slot) { slot.spent = m.total; slot.count = m.count; }
+    }
+  }
+  const maxSpent = Math.max(1, ...months.map(m => m.spent));
+
+  // Flux mensuel: entrées (achats 12M) vs sorties (consommation depuis drink-before? approximation)
+  // For now we use totalBottles as IN and a derived OUT estimate from purchases
+  const inFlow = totalBottles;
+  const outFlow = purchases?.totalConsumed12M ?? Math.max(0, Math.round(totalBottles * 0.62)); // fallback estimate
+  const netFlow = inFlow - outFlow;
+  const fluxMax = Math.max(120, inFlow, outFlow, Math.abs(netFlow));
 
   return (
     <div className="grid grid-cols-12 gap-4">
       {/* Budget KPIs */}
-      <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiBlock label="DÉPENSÉ 12M" value={totalSpent ? `${totalSpent.toLocaleString('fr-FR')}€` : '—'} unit="" />
-        <KpiBlock label="MOYENNE / MOIS" value={monthlyAvg ? `${monthlyAvg.toLocaleString('fr-FR')}€` : '—'} unit="" />
-        <KpiBlock label="BTL ACHETÉES" value={totalBottles} unit="bouteilles" />
-        <KpiBlock label="PRIX MOYEN" value={avgPrice ? `${Math.round(avgPrice)}€` : '—'} unit="" />
-      </div>
+      <KpiCol label="ACHATS 12 MOIS" value={totalBottles} unit="bouteilles" />
+      <KpiCol label="DÉPENSE TOTALE" value={`${totalSpent.toLocaleString('fr-FR')}€`} />
+      <KpiCol label="PRIX MOYEN" value={`${Math.round(avgPrice)}€`} unit="par btl" />
+      <KpiCol label="VALEUR CAVE" value={`${cellarValue.toLocaleString('fr-FR')}€`} unit="estimée" tone="success" />
+
+      {/* Monthly spending bar chart */}
+      <Card className="col-span-12 p-5">
+        <MonoLabel>◌ DÉPENSE MENSUELLE</MonoLabel>
+        <div className="mt-5 flex items-end gap-2 h-48">
+          {months.map(m => (
+            <div key={m.key} className="flex-1 flex flex-col items-center group min-w-0">
+              <div className="text-[11px] mono text-stone-700 dark:text-stone-300 mb-1 opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                {m.spent ? `${Math.round(m.spent)}€` : '—'}
+              </div>
+              <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-t flex items-end overflow-hidden" style={{ height: '80%' }}>
+                <div
+                  className="w-full bg-gradient-to-t from-wine-800 to-wine-500 rounded-t"
+                  style={{ height: `${(m.spent / maxSpent) * 100}%` }}
+                />
+              </div>
+              <div className="mono text-[10px] text-stone-500 mt-1.5 capitalize">{m.label}</div>
+              <div className="mono text-[9px] text-stone-400">{m.count || '·'} btl</div>
+            </div>
+          ))}
+        </div>
+        <div className="mono text-[10px] tracking-widest text-stone-500 mt-3 text-center">
+          MOYENNE · {monthlyAvg.toLocaleString('fr-FR')}€ / MOIS
+        </div>
+      </Card>
+
+      {/* Flux mensuel + Répartition par type */}
+      <Card className="col-span-12 lg:col-span-6 p-5">
+        <MonoLabel>◌ FLUX MENSUEL</MonoLabel>
+        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Entrées vs sorties</h3>
+        <div className="mt-4 space-y-3">
+          {[
+            { label: 'Entrées (achats)', value: inFlow, color: 'bg-emerald-600' },
+            { label: 'Sorties (consom.)', value: outFlow, color: 'bg-wine-700' },
+            { label: 'Net', value: netFlow, color: 'bg-stone-900 dark:bg-stone-200' },
+          ].map(r => (
+            <div key={r.label}>
+              <div className="flex items-center justify-between text-[12px] mb-1">
+                <span className="text-stone-700 dark:text-stone-300">{r.label}</span>
+                <span className="mono text-stone-500">{r.value > 0 ? '+' : ''}{r.value} btl/an</span>
+              </div>
+              <div className="h-2 bg-stone-100 dark:bg-stone-800 rounded">
+                <div className={`h-full rounded ${r.color}`} style={{ width: `${(Math.abs(r.value) / fluxMax) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[12px] text-stone-600 dark:text-stone-400 mt-4 italic">
+          {netFlow > 0
+            ? `À ce rythme, ta cave gagne ~${netFlow} btl/an.`
+            : netFlow < 0
+              ? `À ce rythme, ta cave perd ~${Math.abs(netFlow)} btl/an.`
+              : 'Cave en équilibre — entrées et sorties s\'annulent.'}
+        </p>
+      </Card>
+
+      <Card className="col-span-12 lg:col-span-6 p-5">
+        <MonoLabel>◌ RÉPARTITION PAR TYPE · 12M</MonoLabel>
+        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Où va ton budget</h3>
+        {budget?.by_type && budget.by_type.length > 0 ? (
+          <div className="space-y-2">
+            {budget.by_type.sort((a: any, b: any) => b.total - a.total).map((t: any) => {
+              const pct = totalSpent > 0 ? (t.total / totalSpent) * 100 : 0;
+              const TYPE_LABELS_AC: Record<string, string> = { RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Bulles', DESSERT: 'Doux', FORTIFIED: 'Mutés', UNKNOWN: 'Autres' };
+              return (
+                <div key={t.type} className="flex items-center gap-3 text-sm">
+                  <span className="w-20 text-stone-700 dark:text-stone-300">{TYPE_LABELS_AC[t.type] || t.type}</span>
+                  <div className="flex-1 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                    <div className="h-full bg-wine-700" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="mono text-[11px] text-stone-500 w-32 text-right">
+                    {t.total.toLocaleString('fr-FR')}€ · {t.count} btl
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-stone-400 italic text-sm py-4">Aucune donnée d'achat sur 12 mois.</div>
+        )}
+      </Card>
 
       {/* Suggestions d'achat */}
       <Card className="col-span-12 lg:col-span-7 p-5">
@@ -499,7 +676,7 @@ const AchatsView: React.FC = () => {
         )}
       </Card>
 
-      {/* À boire d'urgence (rappel ici aussi pour la dimension achat) */}
+      {/* À boire d'urgence */}
       <Card className="col-span-12 lg:col-span-5 p-5">
         <MonoLabel>◌ URGENCES · À BOIRE</MonoLabel>
         <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">À ne pas racheter avant</h3>
@@ -520,30 +697,20 @@ const AchatsView: React.FC = () => {
           <div className="text-stone-400 italic text-sm py-4">Aucune urgence.</div>
         )}
       </Card>
-
-      {/* Répartition par type */}
-      {budget?.by_type && budget.by_type.length > 0 && (
-        <Card className="col-span-12 p-5">
-          <MonoLabel>◌ RÉPARTITION PAR TYPE · 12M</MonoLabel>
-          <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Où va ton budget</h3>
-          <div className="space-y-2">
-            {budget.by_type.sort((a: any, b: any) => b.total - a.total).map((t: any) => {
-              const pct = (t.total / totalSpent) * 100;
-              return (
-                <div key={t.type} className="flex items-center gap-3 text-sm">
-                  <span className="w-24 text-stone-700 dark:text-stone-300 capitalize">{t.type}</span>
-                  <div className="flex-1 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-wine-700" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="mono text-[11px] text-stone-500 w-32 text-right">
-                    {t.total.toLocaleString('fr-FR')}€ · {t.count} btl
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
     </div>
+  );
+};
+
+// 4-col KPI used in Achats top strip (matches proto's KPI block visually)
+const KpiCol: React.FC<{ label: string; value: React.ReactNode; unit?: string; tone?: 'warning' | 'success' | 'neutral' }> = ({ label, value, unit, tone }) => {
+  const valueColor = tone === 'warning' ? 'text-wine-700' : tone === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white';
+  return (
+    <Card className="col-span-6 md:col-span-3 p-4">
+      <MonoLabel>{label}</MonoLabel>
+      <div className="flex items-baseline gap-2 mt-2">
+        <div className={`serif text-3xl ${valueColor} leading-none`}>{value}</div>
+        {unit && <div className="mono text-[10px] tracking-widest text-stone-500">{unit}</div>}
+      </div>
+    </Card>
   );
 };
