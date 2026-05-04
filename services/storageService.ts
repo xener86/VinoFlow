@@ -595,20 +595,28 @@ export const deleteRack = async (id: string): Promise<void> => {
 
 export const reorderRack = async (id: string, direction: 'left' | 'right'): Promise<void> => {
     const allRacks = await getRacks();
-    const currentIndex = allRacks.findIndex(r => r.id === id);
-    if (currentIndex === -1) return;
+    const target = allRacks.find(r => r.id === id);
+    if (!target) return;
 
-    const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= allRacks.length) return;
+    // Only swap with neighbours of the SAME type (shelves stay among shelves,
+    // cases stay among cases) to keep the visual grouping coherent.
+    const sameTypeIds = allRacks.filter(r => r.type === target.type).map(r => r.id);
+    const idx = sameTypeIds.indexOf(id);
+    const swapIdx = direction === 'left' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sameTypeIds.length) return;
 
-    // Swap
-    const reordered = [...allRacks];
-    [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
+    const swappedSameType = [...sameTypeIds];
+    [swappedSameType[idx], swappedSameType[swapIdx]] = [swappedSameType[swapIdx], swappedSameType[idx]];
+
+    // Reinsert the swapped same-type ids at their original positions
+    const swapMap = new Map<string, string>();
+    sameTypeIds.forEach((origId, i) => swapMap.set(origId, swappedSameType[i]));
+    const newOrder = allRacks.map(r => swapMap.has(r.id) ? swapMap.get(r.id)! : r.id);
 
     await fetch(`${API_URL}/racks/reorder`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ rackIds: reordered.map(r => r.id) })
+        body: JSON.stringify({ rackIds: newOrder })
     });
 };
 

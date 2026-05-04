@@ -6,11 +6,11 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, Plus, X, Check } from 'lucide-react';
+import { Settings, Plus, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
 import { Card, MonoLabel } from '../components/cockpit/primitives';
-import { saveRack, updateRack, deleteRack, moveBottle } from '../services/storageService';
+import { saveRack, updateRack, deleteRack, moveBottle, reorderRack } from '../services/storageService';
 import { CellarWine, Bottle, Rack, BottleLocation } from '../types';
 
 interface CockpitPlanProps {
@@ -144,12 +144,15 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
     return list;
   }, [wines, racks]);
 
-  // Sort racks: shelves first, then boxes
+  // Sort racks: shelves first, then boxes; within each group by sortOrder
+  // (server-managed via POST /api/racks/reorder), name as tie-breaker.
   const allRacks = useMemo(
     () => [...(racks || [])].sort((a, b) => {
       const aShelf = a.type !== 'BOX' ? 0 : 1;
       const bShelf = b.type !== 'BOX' ? 0 : 1;
       if (aShelf !== bShelf) return aShelf - bShelf;
+      const so = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+      if (so !== 0) return so;
       return a.name.localeCompare(b.name);
     }),
     [racks]
@@ -184,6 +187,11 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
     if (!confirm(`Supprimer "${rack.name}" ? Les bouteilles partiront en zone d'attente.`)) return;
     await deleteRack(id);
     refreshAll();
+  };
+
+  const handleMove = async (id: string, direction: 'left' | 'right') => {
+    await reorderRack(id, direction);
+    refreshRacks();
   };
 
   const handleAddShelf = async () => {
@@ -290,7 +298,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
           <MonoLabel className="mb-3">▌ ÉTAGÈRES</MonoLabel>
           <div className="overflow-x-auto pb-3 -mx-2 px-2">
             <div className="flex items-start gap-6" style={{ minWidth: 'fit-content' }}>
-              {shelves.map(rack => (
+              {shelves.map((rack, idx) => (
                 <ShelfBlock
                   key={rack.id}
                   rack={rack}
@@ -300,6 +308,10 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
                   editMode={editMode}
                   drag={drag}
                   dropTarget={dropTarget}
+                  canMoveLeft={idx > 0}
+                  canMoveRight={idx < shelves.length - 1}
+                  onMoveLeft={() => handleMove(rack.id, 'left')}
+                  onMoveRight={() => handleMove(rack.id, 'right')}
                   onDragOverSlot={key => setDropTarget(`${rack.id}/${key}`)}
                   onDropSlot={(x, y) => commitDrop({ rackId: rack.id, x, y })}
                   onStartDrag={(b, w, x, y) => startDrag(b, w, { rackId: rack.id, x, y })}
@@ -335,7 +347,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         <div>
           <MonoLabel className="mb-3">▢ CAISSES</MonoLabel>
           <div className="grid grid-cols-12 gap-2.5">
-            {boxes.map(rack => (
+            {boxes.map((rack, idx) => (
               <CaseBlock
                 key={rack.id}
                 rack={rack}
@@ -343,6 +355,10 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
                 editMode={editMode}
                 drag={drag}
                 dropTarget={dropTarget}
+                canMoveLeft={idx > 0}
+                canMoveRight={idx < boxes.length - 1}
+                onMoveLeft={() => handleMove(rack.id, 'left')}
+                onMoveRight={() => handleMove(rack.id, 'right')}
                 onDragOverSlot={key => setDropTarget(`${rack.id}/${key}`)}
                 onDropSlot={(x, y) => commitDrop({ rackId: rack.id, x, y })}
                 onStartDrag={(b, w, x, y) => startDrag(b, w, { rackId: rack.id, x, y })}
@@ -479,6 +495,10 @@ interface ShelfBlockProps {
   editMode: boolean;
   drag: DragState;
   dropTarget: string | null;
+  canMoveLeft: boolean;
+  canMoveRight: boolean;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
   onDragOverSlot: (key: string) => void;
   onDropSlot: (x: number, y: number) => void;
   onStartDrag: (b: Bottle, w: CellarWine, x: number, y: number) => void;
@@ -486,7 +506,7 @@ interface ShelfBlockProps {
   onResize: (key: 'width' | 'height', delta: number) => void;
   onDelete: () => void;
 }
-const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover, editMode, drag, dropTarget, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
+const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
   const filled = Object.values(contents).filter(Boolean).length;
   const total = rack.width * rack.height;
 
@@ -513,19 +533,39 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
 
       {/* Edit controls */}
       {editMode && (
-        <div className="flex items-center gap-1.5 mb-2 mono text-[9px] tracking-widest text-stone-500">
-          <span>COL</span>
-          <Stepper value={rack.width} onMinus={() => onResize('width', -1)} onPlus={() => onResize('width', +1)} min={rack.width <= 1} max={rack.width >= 12} />
-          <span className="ml-1">RNG</span>
-          <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 12} />
-          <button
-            onClick={onDelete}
-            className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
-            title="Supprimer cette étagère"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
+        <>
+          <div className="flex items-center gap-1.5 mb-2 mono text-[9px] tracking-widest text-stone-500">
+            <span>COL</span>
+            <Stepper value={rack.width} onMinus={() => onResize('width', -1)} onPlus={() => onResize('width', +1)} min={rack.width <= 1} max={rack.width >= 12} />
+            <span className="ml-1">RNG</span>
+            <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 12} />
+            <button
+              onClick={onDelete}
+              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
+              title="Supprimer cette étagère"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 mb-2">
+            <button
+              onClick={onMoveLeft}
+              disabled={!canMoveLeft}
+              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
+              title="Déplacer à gauche"
+            >
+              <ChevronLeft className="w-3 h-3" /> GAUCHE
+            </button>
+            <button
+              onClick={onMoveRight}
+              disabled={!canMoveRight}
+              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
+              title="Déplacer à droite"
+            >
+              DROITE <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        </>
       )}
 
       {/* Grid */}
@@ -603,6 +643,10 @@ interface CaseBlockProps {
   editMode: boolean;
   drag: DragState;
   dropTarget: string | null;
+  canMoveLeft: boolean;
+  canMoveRight: boolean;
+  onMoveLeft: () => void;
+  onMoveRight: () => void;
   onDragOverSlot: (key: string) => void;
   onDropSlot: (x: number, y: number) => void;
   onStartDrag: (b: Bottle, w: CellarWine, x: number, y: number) => void;
@@ -610,7 +654,7 @@ interface CaseBlockProps {
   onResize: (key: 'width' | 'height', delta: number) => void;
   onDelete: () => void;
 }
-const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, dropTarget, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
+const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
   const capacity = rack.width * rack.height;
   const isLarge = capacity >= 12;
   const cols = rack.width;
@@ -637,19 +681,39 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
       </div>
 
       {editMode && (
-        <div className="flex items-center gap-1.5 mb-2 mono text-[9px] tracking-widest text-stone-500">
-          <span>COL</span>
-          <Stepper value={rack.width} onMinus={() => onResize('width', -1)} onPlus={() => onResize('width', +1)} min={rack.width <= 1} max={rack.width >= 8} />
-          <span className="ml-1">RNG</span>
-          <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 8} />
-          <button
-            onClick={onDelete}
-            className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
-            title="Supprimer cette caisse"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
+        <>
+          <div className="flex items-center gap-1.5 mb-2 mono text-[9px] tracking-widest text-stone-500">
+            <span>COL</span>
+            <Stepper value={rack.width} onMinus={() => onResize('width', -1)} onPlus={() => onResize('width', +1)} min={rack.width <= 1} max={rack.width >= 8} />
+            <span className="ml-1">RNG</span>
+            <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 8} />
+            <button
+              onClick={onDelete}
+              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
+              title="Supprimer cette caisse"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 mb-2">
+            <button
+              onClick={onMoveLeft}
+              disabled={!canMoveLeft}
+              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
+              title="Déplacer à gauche"
+            >
+              <ChevronLeft className="w-3 h-3" />
+            </button>
+            <button
+              onClick={onMoveRight}
+              disabled={!canMoveRight}
+              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
+              title="Déplacer à droite"
+            >
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        </>
       )}
 
       {/* Mini grid (drag&drop enabled) */}

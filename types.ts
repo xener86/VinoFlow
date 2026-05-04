@@ -76,6 +76,7 @@ export interface Rack {
   width: number;
   height: number;
   type: 'SHELF' | 'BOX';
+  sortOrder?: number;
 }
 
 export interface TimelineEvent {
