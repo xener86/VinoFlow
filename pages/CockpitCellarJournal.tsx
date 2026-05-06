@@ -58,17 +58,25 @@ export const CockpitCellarJournal: React.FC = () => {
   // Filtered list shown in the timeline
   const visible = useMemo(() => liveEntries.filter(e => {
     if (types.length && !types.includes(e.type as EntryType)) return false;
-    if (new Date(e.date) < periodCutoff) return false;
+    const d = new Date(e.date);
+    // Period filter: invalid dates only show in "Tout"
+    if (period !== 'all') {
+      if (!isValidDate(d)) return false;
+      if (d < periodCutoff) return false;
+    }
     if (q) {
       const blob = `${e.wineName || ''} ${e.recipient || ''} ${e.occasion || ''} ${e.description || ''}`.toLowerCase();
       if (!blob.includes(q.toLowerCase())) return false;
     }
     return true;
-  }), [liveEntries, types, periodCutoff, q]);
+  }), [liveEntries, types, periodCutoff, period, q]);
 
   // KPIs — month-to-date counts (always, not affected by filters)
   const monthStart = useMemo(() => { const d = new Date(now); d.setDate(1); d.setHours(0, 0, 0, 0); return d; }, [now]);
-  const mtd = liveEntries.filter(e => new Date(e.date) >= monthStart);
+  const mtd = liveEntries.filter(e => {
+    const d = new Date(e.date);
+    return isValidDate(d) && d >= monthStart;
+  });
   const sumQty = (t: EntryType) => mtd.filter(e => e.type === t).reduce((a, e) => a + (e.quantity || 1), 0);
   const ins   = sumQty('IN');
   const outs  = sumQty('OUT');
@@ -85,6 +93,7 @@ export const CockpitCellarJournal: React.FC = () => {
     }
     for (const e of liveEntries) {
       const d = new Date(e.date);
+      if (!isValidDate(d)) continue;
       const monthsBack = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
       if (monthsBack < 0 || monthsBack > 11) continue;
       const slot = months[11 - monthsBack];
@@ -305,8 +314,14 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
 
 // ────────────────────────────────────────────
 // Day grouping helpers (proto's longDate / relativeWeeks / dayKey)
+// All helpers are defensive against invalid dates: the API has historical
+// entries with malformed/null `date` fields that previously crashed the page
+// with "Invalid time value" (toISOString throws on Invalid Date).
 // ────────────────────────────────────────────
+const isValidDate = (d: Date): boolean => !isNaN(d.getTime());
+
 const longDate = (d: Date): string => {
+  if (!isValidDate(d)) return 'Date inconnue';
   const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   const days   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
@@ -316,17 +331,23 @@ const relativeWeeks = (days: number): string => {
   if (days < 30) return `il y a ${Math.round(days / 7)} sem.`;
   return `il y a ${Math.round(days / 30)} mois`;
 };
+
+const UNKNOWN_DAY = { k: '__unknown__', label: 'Date inconnue', sub: 'évènement sans date' };
+
 const dayKey = (iso: string, now: Date): { k: string; label: string; sub: string } => {
   const d = new Date(iso);
+  if (!isValidDate(d)) return UNKNOWN_DAY;
   const today = new Date(now); today.setHours(0, 0, 0, 0);
   const that  = new Date(d);   that.setHours(0, 0, 0, 0);
   const diff  = Math.round((today.getTime() - that.getTime()) / 86400000);
-  if (diff === 0) return { k: that.toISOString().slice(0, 10), label: "Aujourd'hui", sub: longDate(d) };
-  if (diff === 1) return { k: that.toISOString().slice(0, 10), label: 'Hier',         sub: longDate(d) };
-  return { k: that.toISOString().slice(0, 10), label: longDate(d), sub: relativeWeeks(diff) };
+  const k = that.toISOString().slice(0, 10);
+  if (diff === 0) return { k, label: "Aujourd'hui", sub: longDate(d) };
+  if (diff === 1) return { k, label: 'Hier',         sub: longDate(d) };
+  return { k, label: longDate(d), sub: relativeWeeks(diff) };
 };
 const fmtTime = (iso: string): string => {
   const d = new Date(iso);
+  if (!isValidDate(d)) return '—:—';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
@@ -347,9 +368,21 @@ const Timeline: React.FC<{
       if (!group) { group = { ...k, items: [] }; g.push(group); }
       group.items.push(e);
     }
-    // sort items inside a group by date desc (proto data was already pre-sorted)
-    g.forEach(grp => grp.items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    return g;
+    // sort items inside a group by date desc, NaN at the bottom
+    g.forEach(grp => grp.items.sort((a, b) => {
+      const ta = new Date(a.date).getTime();
+      const tb = new Date(b.date).getTime();
+      if (isNaN(ta) && isNaN(tb)) return 0;
+      if (isNaN(ta)) return 1;
+      if (isNaN(tb)) return -1;
+      return tb - ta;
+    }));
+    // Push the "unknown" bucket to the end
+    return g.sort((a, b) => {
+      if (a.k === '__unknown__') return 1;
+      if (b.k === '__unknown__') return -1;
+      return 0;
+    });
   }, [entries, now]);
 
   if (groups.length === 0) {
