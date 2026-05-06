@@ -20,6 +20,20 @@ interface CockpitPlanProps {
 type SlotInfo = { wine: CellarWine; bottle: Bottle } | null;
 type DragState = { bottleId: string; wineId: string; wineName: string; wineVintage?: number; from: 'LIMBO' | { rackId: string; x: number; y: number } } | null;
 
+// Short alias from a free-form rack name. Used as the big letter on top of
+// each shelf and in slot addresses (e.g. "Étagère A" → "A", "Droite" → "D",
+// "Cave principale" → "CP").
+const rackAlias = (name: string): string => {
+  const parts = name.trim().split(/\s+/);
+  // 1) trailing single uppercase letter (e.g. "Étagère A")
+  const last = parts[parts.length - 1];
+  if (last && last.length === 1) return last.toUpperCase();
+  // 2) first 2 letters of the last word (e.g. "Droite" → "DR")
+  if (parts.length === 1 && last) return last.charAt(0).toUpperCase();
+  // 3) initials of the words (max 3)
+  return parts.map(p => p.charAt(0).toUpperCase()).join('').slice(0, 3);
+};
+
 // Wine type → cell color
 const typeToCellClass: Record<string, string> = {
   RED:       'bg-wine-700 border-wine-800',
@@ -410,7 +424,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
       <div className="mono text-[10px] text-stone-500 italic pt-3 mt-6 border-t border-stone-200 dark:border-stone-800">
         {editMode
           ? <>Édition en direct · clic sur un nom pour renommer · stepper pour redimensionner · drag&amp;drop pour déplacer une bouteille</>
-          : <>Vue lecture · adressage <span className="text-stone-700 dark:text-stone-300">[Étagère][Colonne]-[Rangée]</span> · ouvrir l'édition pour réorganiser</>
+          : <>Vue lecture · adressage <span className="text-stone-700 dark:text-stone-300">[Étagère][Colonne]-[Rangée]</span> (ex: A2-3) · ouvrir l'édition pour réorganiser</>
         }
       </div>
     </div>
@@ -448,6 +462,13 @@ const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDr
         <span className={`mono text-[10px] tracking-widest ${bottles.length ? 'text-amber-800 dark:text-amber-300' : 'text-stone-500'}`}>
           ▼ ZONE DE DÉCHARGEMENT {bottles.length > 0 && `· ${bottles.length} EN ATTENTE`}
         </span>
+        <div className="flex-1" />
+        <Link
+          to="/add-wine"
+          className="mono text-[10px] tracking-widest px-2.5 h-7 inline-flex items-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-600 hover:text-wine-700 transition"
+        >
+          + AJOUTER UNE BOUTEILLE
+        </Link>
       </div>
       {bottles.length === 0 ? (
         <div className="mono text-[10px] tracking-widest text-stone-400 italic py-2">
@@ -515,7 +536,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
       {/* Header */}
       <div className="mb-2 flex items-end justify-between gap-3">
         <div>
-          <div className="serif text-lg text-stone-900 dark:text-white leading-none">{rack.name.split(' ')[0] || rack.name}</div>
+          <div className="serif text-lg text-stone-900 dark:text-white leading-none">{rackAlias(rack.name)}</div>
           {editMode ? (
             <InlineText
               value={rack.name}
@@ -577,13 +598,17 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             <span key={c} className="mono text-[9px] text-stone-400 text-center">{c + 1}</span>
           ))}
         </div>
-        {Array.from({ length: rack.height }).map((_, rIdx) => (
+        {Array.from({ length: rack.height }).map((_, rIdx) => {
+          const rowNum = rIdx + 1;
+          const alias = rackAlias(rack.name);
+          return (
           <div key={rIdx} className="grid mb-1 last:mb-0" style={{ gridTemplateColumns: `16px repeat(${rack.width}, 28px)`, gap: '4px' }}>
-            <span className="mono text-[9px] text-stone-400 self-center text-right pr-1">{String.fromCharCode(65 + rIdx)}</span>
+            <span className="mono text-[9px] text-stone-400 self-center text-right pr-1">{rowNum}</span>
             {Array.from({ length: rack.width }).map((_, cIdx) => {
               const key = `${cIdx}-${rIdx}`;
               const info = contents[key];
               const slotKey = `${rack.id}/${key}`;
+              const slotAddr = `${alias}${cIdx + 1}-${rowNum}`;
               const isHovered = hover === slotKey;
               const isDragSrc = !!drag && info && drag.bottleId === info.bottle.id;
               const isDropTargetCell = !!drag && dropTarget === slotKey && !info; // can't drop on occupied
@@ -605,12 +630,12 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
                     onDragStart={() => onStartDrag(info.bottle, info.wine, cIdx, rIdx)}
                     onClick={() => { window.location.href = `/wine/${info.wine.id}`; }}
                     className={`relative w-7 h-7 rounded-sm transition cursor-grab active:cursor-grabbing ${cellClass}`}
-                    title={`${rack.name} ${String.fromCharCode(65 + rIdx)}${cIdx + 1} · ${info.wine.name} ${info.wine.vintage || ''}`}
+                    title={`${slotAddr} · ${info.wine.name} ${info.wine.vintage || ''}`}
                   >
                     {isHovered && !drag && (
                       <div className="absolute -top-1 left-1/2 -translate-x-1/2 -translate-y-full z-30 bg-stone-900 text-white px-3 py-1.5 rounded text-[11px] whitespace-nowrap shadow-lg pointer-events-none">
                         <div className="serif-it leading-tight">{info.wine.name}</div>
-                        <div className="mono text-[9px] tracking-widest text-stone-400 mt-0.5">{String.fromCharCode(65 + rIdx)}{cIdx + 1} · {info.wine.vintage || '?'}</div>
+                        <div className="mono text-[9px] tracking-widest text-stone-400 mt-0.5">{slotAddr} · {info.wine.vintage || '?'}</div>
                       </div>
                     )}
                   </div>
@@ -622,12 +647,13 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
                   key={cIdx}
                   {...cellProps}
                   className={`w-7 h-7 rounded-sm transition ${cellClass}`}
-                  title={`${rack.name} ${String.fromCharCode(65 + rIdx)}${cIdx + 1} · vide`}
+                  title={`${slotAddr} · vide`}
                 />
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </div>
       <div className="h-1 bg-stone-300 dark:bg-stone-700 mx-2 mt-1 rounded-b" />
     </div>

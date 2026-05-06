@@ -10,6 +10,12 @@ import { CellarWine } from '../types';
 
 type Lens = 'GARDE' | 'INVENTAIRE' | 'ACHATS';
 
+const LENS_META: Record<Lens, { label: string; desc: string }> = {
+  GARDE:      { label: 'Garde',      desc: 'Fenêtres de pic et urgences temporelles' },
+  INVENTAIRE: { label: 'Inventaire', desc: 'Composition par couleur, région, millésime' },
+  ACHATS:     { label: 'Achats',     desc: 'Dépense, rotation, flux entrée/sortie' },
+};
+
 const NOW_YEAR = new Date().getFullYear();
 const HORIZON_END = NOW_YEAR + 16;
 
@@ -33,11 +39,26 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
         </div>
       )}
 
-      {/* Lens switcher */}
-      <div className="inline-flex items-center gap-1 p-1 bg-stone-100 dark:bg-stone-800 rounded-md mb-5">
-        <LensButton active={lens === 'GARDE'} onClick={() => setLens('GARDE')}>Garde</LensButton>
-        <LensButton active={lens === 'INVENTAIRE'} onClick={() => setLens('INVENTAIRE')}>Inventaire</LensButton>
-        <LensButton active={lens === 'ACHATS'} onClick={() => setLens('ACHATS')}>Achats</LensButton>
+      {/* Lens picker (bg-white card style, matches insights-hifi.jsx) */}
+      <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
+        <div className="flex gap-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1">
+          {(['GARDE', 'INVENTAIRE', 'ACHATS'] as Lens[]).map(l => (
+            <button
+              key={l}
+              onClick={() => setLens(l)}
+              className={`px-4 h-9 rounded text-sm transition ${
+                lens === l
+                  ? 'bg-wine-700 text-white'
+                  : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800'
+              }`}
+            >
+              {LENS_META[l].label}
+            </button>
+          ))}
+        </div>
+        <div className="text-[12px] text-stone-500 italic max-w-md text-right">
+          {LENS_META[lens].desc}
+        </div>
       </div>
 
       {lens === 'GARDE' && <GardeTimeline />}
@@ -46,19 +67,6 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
     </div>
   );
 };
-
-const LensButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
-      active
-        ? 'bg-wine-700 text-white shadow-sm'
-        : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
-    }`}
-  >
-    {children}
-  </button>
-);
 
 // ────────────────────────────────────────────
 // Lens 1 — Garde (Gantt timeline)
@@ -310,15 +318,20 @@ const GanttRow: React.FC<{
 // ────────────────────────────────────────────
 // KPI block
 // ────────────────────────────────────────────
-const KpiBlock: React.FC<{ label: string; value: number | string; unit?: string; tone?: 'warning' | 'neutral' }> = ({ label, value, unit, tone }) => (
-  <div className={`rounded-md border ${tone === 'warning' ? 'border-wine-200 dark:border-wine-900/50 bg-wine-50/40 dark:bg-wine-900/10' : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900'} p-4`}>
-    <MonoLabel>{label}</MonoLabel>
-    <div className="flex items-baseline gap-1.5 mt-1">
-      <span className="serif text-3xl text-stone-900 dark:text-white leading-none">{value}</span>
-      {unit && <span className="text-xs text-stone-500">{unit}</span>}
-    </div>
-  </div>
-);
+const KpiBlock: React.FC<{ label: string; value: number | string; unit?: string; tone?: 'warning' | 'neutral' }> = ({ label, value, unit, tone }) => {
+  const valueColor = tone === 'warning'
+    ? 'text-wine-700'
+    : 'text-stone-900 dark:text-white';
+  return (
+    <Card className="p-4">
+      <MonoLabel>{label}</MonoLabel>
+      <div className="flex items-baseline gap-2 mt-2">
+        <div className={`serif text-4xl ${valueColor} leading-none`}>{value}</div>
+        {unit && <div className="mono text-[10px] tracking-widest text-stone-500">{unit}</div>}
+      </div>
+    </Card>
+  );
+};
 
 // ────────────────────────────────────────────
 // Filter pills
