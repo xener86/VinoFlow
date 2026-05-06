@@ -122,7 +122,7 @@ export const CockpitAddWine: React.FC = () => {
     <div className="max-w-[1100px] mx-auto">
       <div className="mb-5">
         <MonoLabel>VINOFLOW · INVENTAIRE</MonoLabel>
-        <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Ajouter un vin</h1>
+        <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Ajouter un vin</h1>
         <div className="text-[12px] text-stone-500 mt-0.5">Tape une étiquette, l'IA fait le reste.</div>
       </div>
 
@@ -131,8 +131,8 @@ export const CockpitAddWine: React.FC = () => {
         <div className="col-span-12 md:col-span-7 space-y-4">
           <Card className="p-6">
             <MonoLabel>◌ Saisie libre</MonoLabel>
-            <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-1.5">Tape ce que tu vois sur l'étiquette</h2>
-            <p className="text-[12.5px] text-stone-600 dark:text-stone-400 mb-4">
+            <h2 className="serif text-xl text-stone-900 mt-1 mb-1.5">Tape ce que tu vois sur l'étiquette</h2>
+            <p className="text-[12.5px] text-stone-600 mb-4">
               L'IA complète région, cépage, fenêtre de garde et profil sensoriel.
             </p>
             <textarea
@@ -141,7 +141,7 @@ export const CockpitAddWine: React.FC = () => {
               placeholder="ex. Pommard 1er Cru Rugiens 2018"
               rows={2}
               autoFocus
-              className="w-full px-4 py-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-base outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600 serif-it text-stone-900 dark:text-white"
+              className="w-full px-4 py-3 rounded-md border border-stone-300 bg-white text-base outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600 serif-it text-stone-900"
             />
             {!text && (
               <div className="mt-3">
@@ -151,7 +151,7 @@ export const CockpitAddWine: React.FC = () => {
                     <button
                       key={e}
                       onClick={() => setText(e)}
-                      className="text-[11.5px] px-2.5 py-1 rounded-full border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 dark:hover:border-stone-500 transition"
+                      className="text-[11.5px] px-2.5 py-1 rounded-full border border-stone-200 text-stone-600 hover:border-stone-400 transition"
                     >
                       {e}
                     </button>
@@ -165,10 +165,10 @@ export const CockpitAddWine: React.FC = () => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <div className="mono text-[10px] tracking-widest uppercase text-stone-500 mb-1.5">Quantité</div>
-                <div className="flex items-center gap-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md p-1 w-fit">
-                  <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-8 h-8 rounded hover:bg-stone-200 dark:hover:bg-stone-700 text-lg">−</button>
-                  <span className="serif text-2xl text-stone-900 dark:text-white w-10 text-center tabular-nums">{qty}</span>
-                  <button onClick={() => setQty(q => q + 1)} className="w-8 h-8 rounded hover:bg-stone-200 dark:hover:bg-stone-700 text-lg">+</button>
+                <div className="flex items-center gap-2 bg-stone-50 border border-stone-200 rounded-md p-1 w-fit">
+                  <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-8 h-8 rounded hover:bg-stone-200 text-lg">−</button>
+                  <span className="serif text-2xl text-stone-900 w-10 text-center tabular-nums">{qty}</span>
+                  <button onClick={() => setQty(q => q + 1)} className="w-8 h-8 rounded hover:bg-stone-200 text-lg">+</button>
                 </div>
               </div>
               <div>
@@ -176,7 +176,7 @@ export const CockpitAddWine: React.FC = () => {
                 <select
                   value={loc}
                   onChange={e => setLoc(e.target.value)}
-                  className="h-10 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm w-full outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 dark:text-stone-300"
+                  className="h-10 px-3 rounded-md border border-stone-300 bg-white text-sm w-full outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700"
                 >
                   <option value="LIMBO">⏳ Zone d'attente (placer plus tard)</option>
                   {racksList.map(r => (
@@ -191,7 +191,7 @@ export const CockpitAddWine: React.FC = () => {
                   value={price}
                   onChange={e => setPrice(e.target.value)}
                   placeholder="—"
-                  className="h-10 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm w-full outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 dark:text-stone-300"
+                  className="h-10 px-3 rounded-md border border-stone-300 bg-white text-sm w-full outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700"
                 />
               </div>
             </div>
@@ -208,7 +208,7 @@ export const CockpitAddWine: React.FC = () => {
           </Button>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 p-3 rounded-md text-sm flex items-center gap-2">
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4" /> {error}
             </div>
           )}
@@ -228,7 +228,7 @@ export const CockpitAddWine: React.FC = () => {
 
             {!analysis && !thinking && (
               <div className="text-[13px] text-stone-500 italic py-8 text-center">
-                <div className="serif-it text-2xl text-stone-300 dark:text-stone-700 mb-2">« en attente »</div>
+                <div className="serif-it text-2xl text-stone-300 mb-2">« en attente »</div>
                 L'analyse apparaît ici dès que tu tapes.
               </div>
             )}
@@ -248,7 +248,7 @@ export const CockpitAddWine: React.FC = () => {
 
             {analysis && !thinking && (
               <div>
-                <div className="serif-it text-2xl text-stone-900 dark:text-white leading-tight">{analysis.name}</div>
+                <div className="serif-it text-2xl text-stone-900 leading-tight">{analysis.name}</div>
                 <div className="mono text-[11px] tracking-widest text-stone-500 mt-1">
                   {analysis.vintage || '????'} · {analysis.appellation || analysis.region || '?'}
                 </div>
@@ -265,7 +265,7 @@ export const CockpitAddWine: React.FC = () => {
                     <div className="mono text-[10px] tracking-widest uppercase text-stone-500 mb-2">Arômes détectés</div>
                     <div className="flex flex-wrap gap-1.5">
                       {analysis.aromaProfile.slice(0, 8).map(a => (
-                        <span key={a} className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">{a}</span>
+                        <span key={a} className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">{a}</span>
                       ))}
                     </div>
                   </div>
@@ -274,7 +274,7 @@ export const CockpitAddWine: React.FC = () => {
                 {analysis.suggestedFoodPairings && analysis.suggestedFoodPairings.length > 0 && (
                   <div className="mt-4">
                     <div className="mono text-[10px] tracking-widest uppercase text-stone-500 mb-1.5">Accords suggérés</div>
-                    <div className="text-[12px] text-stone-700 dark:text-stone-300">
+                    <div className="text-[12px] text-stone-700">
                       {analysis.suggestedFoodPairings.slice(0, 3).join(' · ')}
                     </div>
                   </div>
@@ -289,8 +289,8 @@ export const CockpitAddWine: React.FC = () => {
 };
 
 const Field: React.FC<{ label: string; value?: React.ReactNode }> = ({ label, value }) => (
-  <div className="bg-stone-50 dark:bg-stone-800/40 rounded-md p-2">
+  <div className="bg-stone-50 rounded-md p-2">
     <div className="mono text-[9px] tracking-widest uppercase text-stone-500">{label}</div>
-    <div className="text-stone-900 dark:text-white text-[13px] mt-0.5 truncate">{value || <span className="text-stone-400">—</span>}</div>
+    <div className="text-stone-900 text-[13px] mt-0.5 truncate">{value || <span className="text-stone-400">—</span>}</div>
   </div>
 );

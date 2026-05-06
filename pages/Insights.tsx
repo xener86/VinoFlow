@@ -70,7 +70,7 @@ export const Insights: React.FC = () => {
   return (
     <div className="space-y-6 pb-10 animate-fade-in max-w-6xl mx-auto">
       {/* HERO */}
-      <div className="bg-gradient-to-br from-wine-600 to-wine-800 dark:from-wine-700 dark:to-wine-900 rounded-2xl p-6 text-white shadow-lg">
+      <div className="bg-gradient-to-br from-wine-600 to-wine-800 rounded-2xl p-6 text-white shadow-lg">
         <h2 className="text-2xl md:text-3xl font-serif mb-1">Tableau de bord</h2>
         <p className="text-wine-100 text-sm mb-4">Vue d'ensemble proactive de votre cave.</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
@@ -93,7 +93,7 @@ export const Insights: React.FC = () => {
                     <Link to={`/wine/${a.wine.id}`} className="hover:text-wine-600 truncate flex-1 mr-2">
                       {a.wine.name} {a.wine.vintage}
                     </Link>
-                    <span className="text-xs text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                    <span className="text-xs text-orange-600 whitespace-nowrap">
                       {a.monthsLeft <= 0 ? 'Apogée passée' : `${a.monthsLeft} mois`}
                     </span>
                   </li>
@@ -107,9 +107,9 @@ export const Insights: React.FC = () => {
             {aging?.count > 0 ? (
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 {[
-                  { phase: 'AGING', label: 'En garde', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
-                  { phase: 'PEAK', label: 'Apogée', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
-                  { phase: 'PAST', label: 'Passés', color: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+                  { phase: 'AGING', label: 'En garde', color: 'bg-blue-100 text-blue-700' },
+                  { phase: 'PEAK', label: 'Apogée', color: 'bg-green-100 text-green-700' },
+                  { phase: 'PAST', label: 'Passés', color: 'bg-red-100 text-red-700' },
                 ].map(({ phase, label, color }) => {
                   const count = aging.recommendations.filter((r: any) => r.phase === phase).length;
                   return (
@@ -129,7 +129,7 @@ export const Insights: React.FC = () => {
                 type="date"
                 value={eventDate}
                 onChange={e => setEventDate(e.target.value)}
-                className="bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-1.5 text-sm flex-1"
+                className="bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-sm flex-1"
               />
               <button
                 onClick={handleAnticipation}
@@ -146,7 +146,7 @@ export const Insights: React.FC = () => {
                     <Link to={`/wine/${s.wine.id}`} className="hover:text-wine-600 flex-1 truncate">
                       {s.wine.name} {s.wine.vintage}
                     </Link>
-                    {s.prestige && <span className="text-[10px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 px-2 py-0.5 rounded-full">★</span>}
+                    {s.prestige && <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">★</span>}
                   </li>
                 ))}
               </ul>
@@ -164,7 +164,7 @@ export const Insights: React.FC = () => {
                     <span className="font-medium">{s.type}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-stone-500">{s.months_of_stock !== null ? `${s.months_of_stock} mois restants` : 'rare'}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.priority === 'HIGH' ? 'bg-red-100 dark:bg-red-900/30 text-red-700' : s.priority === 'MEDIUM' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'}`}>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${s.priority === 'HIGH' ? 'bg-red-100 text-red-700' : s.priority === 'MEDIUM' ? 'bg-orange-100 text-orange-700' : 'bg-stone-100 text-stone-600'}`}>
                         +{s.suggested_purchase}
                       </span>
                     </div>
@@ -182,7 +182,7 @@ export const Insights: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-5 gap-1.5">
                   {projection.projection.map((p: any) => (
-                    <div key={p.year_offset} className="bg-stone-50 dark:bg-stone-950 rounded-lg p-2 text-center">
+                    <div key={p.year_offset} className="bg-stone-50 rounded-lg p-2 text-center">
                       <div className="text-[10px] text-stone-500">+{p.year_offset}an</div>
                       <div className="text-sm font-bold">{p.projected_stock}</div>
                     </div>
@@ -226,7 +226,7 @@ const HeroStat: React.FC<{ icon: React.FC<any>; value: number | null; label: str
 const Section: React.FC<{ title: string; subtitle: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
   <div className="space-y-3">
     <div>
-      <h3 className="text-lg font-serif text-stone-900 dark:text-white">{title}</h3>
+      <h3 className="text-lg font-serif text-stone-900">{title}</h3>
       <p className="text-xs text-stone-500">{subtitle}</p>
     </div>
     <div className="space-y-3">{children}</div>
@@ -234,14 +234,14 @@ const Section: React.FC<{ title: string; subtitle: string; children: React.React
 );
 
 const Card: React.FC<{ icon: React.ReactNode; title: string; linkTo?: string; children: React.ReactNode }> = ({ icon, title, linkTo, children }) => (
-  <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-xl p-4">
+  <div className="bg-white border border-stone-200 rounded-xl p-4">
     <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-stone-900 dark:text-white">
+      <div className="flex items-center gap-2 text-sm font-medium text-stone-900">
         {icon}
         {title}
       </div>
       {linkTo && (
-        <Link to={linkTo} className="text-stone-400 hover:text-stone-700 dark:hover:text-white">
+        <Link to={linkTo} className="text-stone-400 hover:text-stone-700">
           <ChevronRight size={16} />
         </Link>
       )}

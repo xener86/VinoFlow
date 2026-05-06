@@ -79,7 +79,7 @@ export const CockpitSommelier: React.FC = () => {
       {/* ───── Page header ───── */}
       <div className="mb-5">
         <MonoLabel>VINOFLOW · CONSEIL</MonoLabel>
-        <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Sommelier</h1>
+        <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Sommelier</h1>
         <div className="text-[12px] text-stone-500 mt-0.5">3 perspectives · Safe · Personnel · Audacieux</div>
       </div>
 
@@ -103,12 +103,12 @@ export const CockpitSommelier: React.FC = () => {
                 <a
                   key={i}
                   href={`?mode=PAIRING&q=${encodeURIComponent(p.q)}`}
-                  className="block w-full text-left p-2 rounded hover:bg-stone-50 dark:hover:bg-stone-800/50 transition group"
+                  className="block w-full text-left p-2 rounded hover:bg-stone-50 transition group"
                 >
                   <div className="mono text-[9px] tracking-widest text-stone-500 group-hover:text-wine-700 mb-0.5 uppercase">
                     {p.ctx}
                   </div>
-                  <div className="text-[12.5px] text-stone-800 dark:text-stone-200 leading-snug">{p.q}</div>
+                  <div className="text-[12.5px] text-stone-800 leading-snug">{p.q}</div>
                 </a>
               ))}
             </div>
@@ -116,7 +116,7 @@ export const CockpitSommelier: React.FC = () => {
 
           <Card className="p-4">
             <MonoLabel>◌ Modes avancés</MonoLabel>
-            <div className="mt-3 text-[12.5px] text-stone-700 dark:text-stone-300">
+            <div className="mt-3 text-[12.5px] text-stone-700">
               Verticale, mode aveugle, decision assistant, OCR étiquette…
             </div>
             <a href="/sommelier-tools" className="mt-3 inline-flex items-center gap-1 mono text-[10px] tracking-widest text-wine-700 hover:text-wine-800">
@@ -139,7 +139,7 @@ export const CockpitSommelier: React.FC = () => {
 const ContextRow: React.FC<{ label: string; value: React.ReactNode; accent?: boolean }> = ({ label, value, accent }) => (
   <div className="flex justify-between items-baseline gap-2">
     <span className="text-stone-500">{label}</span>
-    <span className={accent ? 'text-wine-700 dark:text-wine-500 font-medium' : 'text-stone-800 dark:text-stone-200'}>
+    <span className={accent ? 'text-wine-700 font-medium' : 'text-stone-800'}>
       {value}
     </span>
   </div>

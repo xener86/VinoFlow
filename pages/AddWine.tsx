@@ -342,28 +342,28 @@ export const AddWine: React.FC = () => {
       {/* Scan Choice Modal */}
       {showScanChoice && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-              <div className="absolute inset-0 bg-stone-900/30 dark:bg-black/70 backdrop-blur-sm" onClick={() => setShowScanChoice(false)} />
-              <div className="bg-white dark:bg-stone-900 border-t sm:border border-stone-200 dark:border-stone-700 w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl p-6 pb-10 sm:pb-6 relative z-10 shadow-2xl animate-slide-up">
-                  <div className="w-10 h-1 bg-stone-300 dark:bg-stone-600 rounded-full mx-auto mb-4 sm:hidden" />
-                  <h3 className="text-lg font-serif text-stone-900 dark:text-white mb-4 text-center">Scanner une étiquette</h3>
+              <div className="absolute inset-0 bg-stone-900/30 backdrop-blur-sm" onClick={() => setShowScanChoice(false)} />
+              <div className="bg-white border-t sm:border border-stone-200 w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl p-6 pb-10 sm:pb-6 relative z-10 shadow-2xl animate-slide-up">
+                  <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto mb-4 sm:hidden" />
+                  <h3 className="text-lg font-serif text-stone-900 mb-4 text-center">Scanner une étiquette</h3>
                   <div className="grid grid-cols-2 gap-3">
                       <button
                           onClick={handleScanFromFile}
-                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors"
                       >
                           <Upload size={28} className="text-wine-600" />
                           <div className="text-center">
-                              <div className="text-sm font-medium text-stone-800 dark:text-white">Photo / Fichier</div>
+                              <div className="text-sm font-medium text-stone-800">Photo / Fichier</div>
                               <div className="text-[10px] text-stone-500 mt-0.5">Galerie ou appareil photo</div>
                           </div>
                       </button>
                       <button
                           onClick={startWebcam}
-                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                          className="flex flex-col items-center gap-3 p-5 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 transition-colors"
                       >
                           <Video size={28} className="text-indigo-600" />
                           <div className="text-center">
-                              <div className="text-sm font-medium text-stone-800 dark:text-white">Webcam</div>
+                              <div className="text-sm font-medium text-stone-800">Webcam</div>
                               <div className="text-[10px] text-stone-500 mt-0.5">Capture en direct</div>
                           </div>
                       </button>
@@ -413,25 +413,25 @@ export const AddWine: React.FC = () => {
 
       {/* Rack location banner */}
       {rackLocation && (
-        <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 mb-4">
-          <MapPin size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-          <span className="text-sm text-emerald-800 dark:text-emerald-300">
+        <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-4">
+          <MapPin size={16} className="text-emerald-600 flex-shrink-0" />
+          <span className="text-sm text-emerald-800">
             Emplacement : <strong>{rackName || 'Rack'}</strong> • {String.fromCharCode(65 + rackLocation.y)}{rackLocation.x + 1}
           </span>
         </div>
       )}
 
       {/* HEADER TABS */}
-      <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800 mb-8">
+      <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 mb-8">
           <button 
             onClick={() => setActiveTab('NEW')}
-            className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'NEW' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+            className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'NEW' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
           >
             Nouveau Vin
           </button>
           <button 
             onClick={() => setActiveTab('EXISTING')}
-            className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'EXISTING' ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-200 shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+            className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${activeTab === 'EXISTING' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
           >
             <PackagePlus size={16} /> Stock Rapide
           </button>
@@ -447,8 +447,8 @@ export const AddWine: React.FC = () => {
                 onClick={handleScanClick}
                 className={`flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border transition-all ${
                     mode === 'SCAN' 
-                    ? 'bg-wine-50 dark:bg-wine-900/20 border-wine-200 dark:border-wine-500 text-wine-700 dark:text-wine-400 shadow-sm' 
-                    : 'bg-white dark:bg-stone-900/50 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'
+                    ? 'bg-wine-50 border-wine-200 text-wine-700 shadow-sm' 
+                    : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
                 }`}
               >
                 <Camera size={20} />
@@ -459,8 +459,8 @@ export const AddWine: React.FC = () => {
                 onClick={() => setMode('MANUAL')}
                 className={`flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border transition-all ${
                     mode === 'MANUAL' 
-                    ? 'bg-wine-50 dark:bg-wine-900/20 border-wine-200 dark:border-wine-500 text-wine-700 dark:text-wine-400 shadow-sm' 
-                    : 'bg-white dark:bg-stone-900/50 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'
+                    ? 'bg-wine-50 border-wine-200 text-wine-700 shadow-sm' 
+                    : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
                 }`}
               >
                 <Keyboard size={20} />
@@ -471,8 +471,8 @@ export const AddWine: React.FC = () => {
                 onClick={() => setMode('CSV')}
                 className={`flex flex-col items-center justify-center gap-2 px-2 py-4 rounded-xl border transition-all ${
                     mode === 'CSV' 
-                    ? 'bg-wine-50 dark:bg-wine-900/20 border-wine-200 dark:border-wine-500 text-wine-700 dark:text-wine-400 shadow-sm' 
-                    : 'bg-white dark:bg-stone-900/50 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'
+                    ? 'bg-wine-50 border-wine-200 text-wine-700 shadow-sm' 
+                    : 'bg-white border-stone-200 text-stone-500 hover:bg-stone-50'
                 }`}
               >
                 <FileSpreadsheet size={20} />
@@ -483,11 +483,11 @@ export const AddWine: React.FC = () => {
 
           {/* CSV PLACEHOLDER */}
           {step === 1 && mode === 'CSV' && (
-            <div className="text-center bg-white dark:bg-stone-900/50 border-2 border-dashed border-stone-300 dark:border-stone-800 rounded-2xl p-10 animate-fade-in">
-              <FileSpreadsheet className="mx-auto text-stone-400 dark:text-stone-600 mb-4" size={48} />
-              <p className="text-stone-600 dark:text-stone-400 mb-2">Glissez-déposez votre fichier Excel ou CSV ici.</p>
-              <p className="text-stone-500 dark:text-stone-600 text-xs mb-6">Colonnes supportées: Nom, Millésime, Producteur, Quantité</p>
-              <button className="bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-6 py-2 rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors border border-stone-300 dark:border-stone-700">
+            <div className="text-center bg-white border-2 border-dashed border-stone-300 rounded-2xl p-10 animate-fade-in">
+              <FileSpreadsheet className="mx-auto text-stone-400 mb-4" size={48} />
+              <p className="text-stone-600 mb-2">Glissez-déposez votre fichier Excel ou CSV ici.</p>
+              <p className="text-stone-500 text-xs mb-6">Colonnes supportées: Nom, Millésime, Producteur, Quantité</p>
+              <button className="bg-stone-100 text-stone-700 px-6 py-2 rounded-lg hover:bg-stone-200 transition-colors border border-stone-300">
                 Sélectionner un fichier
               </button>
             </div>
@@ -495,52 +495,52 @@ export const AddWine: React.FC = () => {
 
           {/* STEP 1: INPUT */}
           {step === 1 && mode === 'MANUAL' && (
-            <form onSubmit={handleEnrich} className="space-y-6 bg-white dark:bg-stone-900/50 p-8 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm animate-fade-in">
+            <form onSubmit={handleEnrich} className="space-y-6 bg-white p-8 rounded-2xl border border-stone-200 shadow-sm animate-fade-in">
               <div>
-                <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Nom du vin</label>
+                <label className="block text-sm font-medium text-stone-500 mb-2">Nom du vin</label>
                 <input
                   required
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="ex: Tignanello"
-                  className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400 dark:placeholder-stone-700"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-900 focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Millésime</label>
+                  <label className="block text-sm font-medium text-stone-500 mb-2">Millésime</label>
                   <input
                     required
                     type="number"
                     value={vintage}
                     onChange={(e) => setVintage(Number(e.target.value))}
-                    className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-900 focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Producteur (Optionnel)</label>
+                  <label className="block text-sm font-medium text-stone-500 mb-2">Producteur (Optionnel)</label>
                   <input
                     type="text"
                     value={hint}
                     onChange={(e) => setHint(e.target.value)}
                     placeholder="ex: Antinori"
-                    className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400 dark:placeholder-stone-700"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-900 focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400"
                   />
                 </div>
               </div>
 
               {/* Type / Couleur (optionnel, aide l'IA) */}
               <div>
-                <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Couleur / Type <span className="text-stone-400 dark:text-stone-600 font-normal">(optionnel)</span></label>
+                <label className="block text-sm font-medium text-stone-500 mb-2">Couleur / Type <span className="text-stone-400 font-normal">(optionnel)</span></label>
                 <div className="grid grid-cols-3 gap-1.5">
                     {([
                         { value: 'RED', label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
-                        { value: 'WHITE', label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
-                        { value: 'ROSE', label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
-                        { value: 'SPARKLING', label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
-                        { value: 'DESSERT', label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                        { value: 'WHITE', label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
+                        { value: 'ROSE', label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800' },
+                        { value: 'SPARKLING', label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800' },
+                        { value: 'DESSERT', label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800' },
                         { value: 'FORTIFIED', label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
                     ]).map(t => (
                         <button
@@ -550,7 +550,7 @@ export const AddWine: React.FC = () => {
                             className={`py-2 px-2 rounded-lg border text-xs font-medium transition-all ${
                                 selectedType === t.value
                                 ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
-                                : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                                : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-stone-400'
                             }`}
                         >
                             {t.label}
@@ -560,19 +560,19 @@ export const AddWine: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-stone-500 dark:text-stone-400 mb-2">Appellation <span className="text-stone-400 dark:text-stone-600 font-normal">(optionnel)</span></label>
+                <label className="block text-sm font-medium text-stone-500 mb-2">Appellation <span className="text-stone-400 font-normal">(optionnel)</span></label>
                 <input
                   type="text"
                   value={appellation}
                   onChange={(e) => setAppellation(e.target.value)}
                   placeholder="ex: Chablis Premier Cru, Saint-Émilion..."
-                  className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400 dark:placeholder-stone-700"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3 text-stone-900 focus:ring-2 focus:ring-wine-500 focus:border-transparent outline-none transition-all placeholder-stone-400"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-wine-600 hover:bg-wine-700 text-white font-medium py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-wine-500/20 dark:shadow-wine-900/20"
+                className="w-full bg-wine-600 hover:bg-wine-700 text-white font-medium py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-wine-500/20"
               >
                 <Search size={20} /> Identifier & Enrichir
               </button>
@@ -582,12 +582,12 @@ export const AddWine: React.FC = () => {
           {/* STEP 2: PREVIEW + LOADING */}
           {step === 2 && mode === 'SCAN' && !isLoading && scanImage && (
             <div className="space-y-6 animate-fade-in">
-              <h3 className="text-xl font-serif text-stone-900 dark:text-white text-center">Aperçu de l'étiquette</h3>
+              <h3 className="text-xl font-serif text-stone-900 text-center">Aperçu de l'étiquette</h3>
 
               <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                       <p className="text-xs text-stone-500 uppercase font-bold text-center">Face</p>
-                      <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 aspect-[3/4]">
+                      <div className="relative rounded-xl overflow-hidden border border-stone-200 aspect-[3/4]">
                           <img src={scanImage} alt="Étiquette face" className="w-full h-full object-cover" />
                       </div>
                       <button onClick={() => { setScanImage(null); fileInputRef.current?.click(); }} className="w-full text-xs text-stone-500 hover:text-wine-600 py-1">Reprendre</button>
@@ -596,7 +596,7 @@ export const AddWine: React.FC = () => {
                       <p className="text-xs text-stone-500 uppercase font-bold text-center">Dos (optionnel)</p>
                       {scanImageBack ? (
                           <>
-                              <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 aspect-[3/4]">
+                              <div className="relative rounded-xl overflow-hidden border border-stone-200 aspect-[3/4]">
                                   <img src={scanImageBack} alt="Étiquette dos" className="w-full h-full object-cover" />
                               </div>
                               <button onClick={() => setScanImageBack(null)} className="w-full text-xs text-stone-500 hover:text-wine-600 py-1">Supprimer</button>
@@ -604,7 +604,7 @@ export const AddWine: React.FC = () => {
                       ) : (
                           <button
                               onClick={() => backFileInputRef.current?.click()}
-                              className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 dark:border-stone-700 flex flex-col items-center justify-center gap-2 text-stone-400 hover:text-stone-600 hover:border-stone-500 transition-colors"
+                              className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-stone-300 flex flex-col items-center justify-center gap-2 text-stone-400 hover:text-stone-600 hover:border-stone-500 transition-colors"
                           >
                               <Camera size={24} />
                               <span className="text-xs">Ajouter le dos</span>
@@ -615,7 +615,7 @@ export const AddWine: React.FC = () => {
               <input type="file" accept="image/*" capture="environment" ref={backFileInputRef} onChange={handleBackFileChange} className="hidden" />
 
               <div className="flex gap-3">
-                  <button onClick={() => { setStep(1); setScanImage(null); setScanImageBack(null); }} className="flex-1 py-3 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-500 hover:text-stone-800 dark:hover:text-white transition-colors">
+                  <button onClick={() => { setStep(1); setScanImage(null); setScanImageBack(null); }} className="flex-1 py-3 rounded-xl border border-stone-300 text-stone-500 hover:text-stone-800 transition-colors">
                       Annuler
                   </button>
                   <button onClick={handleStartScan} className="flex-1 bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-wine-900/30 transition-all">
@@ -628,7 +628,7 @@ export const AddWine: React.FC = () => {
           {step === 2 && isLoading && (
             <div className="space-y-6 animate-fade-in">
               {mode === 'SCAN' && scanImage && (
-                  <div className="relative rounded-xl overflow-hidden border border-stone-200 dark:border-stone-700 max-w-xs mx-auto aspect-[3/4]">
+                  <div className="relative rounded-xl overflow-hidden border border-stone-200 max-w-xs mx-auto aspect-[3/4]">
                       <img src={scanImage} alt="Scanning..." className="w-full h-full object-cover opacity-70" />
                       <div className="absolute inset-0 bg-gradient-to-b from-wine-500/10 to-transparent" />
                       <div className="absolute left-0 right-0 h-0.5 bg-wine-500 shadow-[0_0_8px_rgba(224,36,36,0.8)] animate-scan-line" />
@@ -636,10 +636,10 @@ export const AddWine: React.FC = () => {
               )}
               <div className="flex flex-col items-center justify-center py-8 text-stone-400 space-y-4">
                   <Loader2 size={48} className="animate-spin text-wine-500" />
-                  <h3 className="text-xl font-serif text-stone-900 dark:text-white">
+                  <h3 className="text-xl font-serif text-stone-900">
                       {mode === 'SCAN' ? "Analyse de l'étiquette..." : "Le Sommelier consulte ses archives"}
                   </h3>
-                  <div className="text-sm text-stone-500 dark:text-stone-500 text-center max-w-xs">
+                  <div className="text-sm text-stone-500 text-center max-w-xs">
                     {mode === 'SCAN'
                      ? "Extraction de la Cuvée, de la Parcelle et des détails techniques..."
                      : "Analyse des conditions du millésime, récupération de l'histoire du terroir et accord des saveurs..."}
@@ -656,9 +656,9 @@ export const AddWine: React.FC = () => {
               {(() => {
                   const confidence = enrichedWine.aiConfidence || 'MEDIUM';
                   const styles = {
-                      HIGH: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', text: 'text-green-700 dark:text-green-300', label: 'Confiance élevée', icon: '✓' },
-                      MEDIUM: { bg: 'bg-yellow-50 dark:bg-yellow-900/20', border: 'border-yellow-200 dark:border-yellow-700/50', text: 'text-yellow-700 dark:text-yellow-200', label: 'Confiance moyenne — vérifiez la Cuvée et la Parcelle', icon: '⚠' },
-                      LOW: { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700/50', text: 'text-red-700 dark:text-red-200', label: 'Confiance faible — vérification manuelle recommandée', icon: '✗' },
+                      HIGH: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', label: 'Confiance élevée', icon: '✓' },
+                      MEDIUM: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', label: 'Confiance moyenne — vérifiez la Cuvée et la Parcelle', icon: '⚠' },
+                      LOW: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', label: 'Confiance faible — vérification manuelle recommandée', icon: '✗' },
                   };
                   const s = styles[confidence as keyof typeof styles] || styles.MEDIUM;
                   return (
@@ -667,20 +667,20 @@ export const AddWine: React.FC = () => {
                           <div className="text-sm flex-1">
                               <strong>{confidence === 'HIGH' ? 'Données fiables' : 'Vérification requise'} :</strong> {s.label}
                           </div>
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${confidence === 'HIGH' ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' : confidence === 'LOW' ? 'bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200' : 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200'}`}>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${confidence === 'HIGH' ? 'bg-green-200 text-green-800' : confidence === 'LOW' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800'}`}>
                               {confidence}
                           </span>
                       </div>
                   );
               })()}
 
-              <div className="bg-white dark:bg-stone-900 border border-wine-200 dark:border-wine-900/30 rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl">
+              <div className="bg-white border border-wine-200 rounded-2xl overflow-hidden shadow-lg">
                 
                 {/* Header Editable */}
-                <div className="bg-gradient-to-r from-wine-50 to-white dark:from-wine-900/40 dark:to-stone-900 p-6 border-b border-stone-200 dark:border-stone-800">
+                <div className="bg-gradient-to-r from-wine-50 to-white p-6 border-b border-stone-200">
                     <div className="space-y-4">
                       <div className="flex items-start gap-2">
-                          <Edit3 size={16} className="text-stone-400 dark:text-stone-500 mt-2" />
+                          <Edit3 size={16} className="text-stone-400 mt-2" />
                           <div className="flex-1 space-y-3">
                               <div className="grid grid-cols-2 gap-4">
                                   <div className="col-span-2">
@@ -689,7 +689,7 @@ export const AddWine: React.FC = () => {
                                           type="text" 
                                           value={editFormData.name} 
                                           onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
-                                          className="bg-transparent text-2xl font-serif text-stone-900 dark:text-white w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none pb-1"
+                                          className="bg-transparent text-2xl font-serif text-stone-900 w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none pb-1"
                                       />
                                   </div>
                                   <div>
@@ -699,7 +699,7 @@ export const AddWine: React.FC = () => {
                                           value={editFormData.cuvee || ''} 
                                           onChange={(e) => setEditFormData({...editFormData, cuvee: e.target.value})}
                                           placeholder="Cuvée..."
-                                          className="bg-transparent text-wine-700 dark:text-wine-300 text-lg font-serif w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
+                                          className="bg-transparent text-wine-700 text-lg font-serif w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none"
                                       />
                                   </div>
                                   <div>
@@ -709,7 +709,7 @@ export const AddWine: React.FC = () => {
                                           value={editFormData.parcel || ''} 
                                           onChange={(e) => setEditFormData({...editFormData, parcel: e.target.value})}
                                           placeholder="Lieu-dit..."
-                                          className="bg-transparent text-stone-600 dark:text-stone-300 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none mt-1"
+                                          className="bg-transparent text-stone-600 text-sm w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none mt-1"
                                       />
                                   </div>
                               </div>
@@ -721,7 +721,7 @@ export const AddWine: React.FC = () => {
                                           type="text"
                                           value={editFormData.producer}
                                           onChange={(e) => setEditFormData({...editFormData, producer: e.target.value})}
-                                          className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
+                                          className="bg-transparent text-stone-500 text-sm w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none"
                                       />
                                   </div>
                                   <div className="w-20">
@@ -730,7 +730,7 @@ export const AddWine: React.FC = () => {
                                           type="number"
                                           value={editFormData.vintage}
                                           onChange={(e) => setEditFormData({...editFormData, vintage: Number(e.target.value)})}
-                                          className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
+                                          className="bg-transparent text-stone-500 text-sm w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none"
                                       />
                                   </div>
                               </div>
@@ -741,10 +741,10 @@ export const AddWine: React.FC = () => {
                                   <div className="grid grid-cols-3 gap-1.5">
                                       {([
                                           { value: 'RED' as const, label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
-                                          { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
-                                          { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
-                                          { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
-                                          { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                                          { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
+                                          { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800' },
+                                          { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800' },
+                                          { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800' },
                                           { value: 'FORTIFIED' as const, label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
                                       ]).map(t => (
                                           <button
@@ -754,7 +754,7 @@ export const AddWine: React.FC = () => {
                                               className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium transition-all ${
                                                   editFormData.type === t.value
                                                   ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
-                                                  : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                                                  : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-stone-400'
                                               }`}
                                           >
                                               {t.label}
@@ -771,7 +771,7 @@ export const AddWine: React.FC = () => {
                                       value={editFormData.appellation || ''}
                                       onChange={(e) => setEditFormData({...editFormData, appellation: e.target.value})}
                                       placeholder="ex: Chablis Premier Cru"
-                                      className="bg-transparent text-stone-500 dark:text-stone-400 text-sm w-full border-b border-dashed border-stone-300 dark:border-stone-600 focus:border-wine-500 outline-none"
+                                      className="bg-transparent text-stone-500 text-sm w-full border-b border-dashed border-stone-300 focus:border-wine-500 outline-none"
                                   />
                               </div>
                           </div>
@@ -786,7 +786,7 @@ export const AddWine: React.FC = () => {
                         <textarea
                             value={editFormData.sensoryDescription}
                             onChange={(e) => setEditFormData({...editFormData, sensoryDescription: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950/50 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-600 dark:text-stone-300 text-sm italic h-24 resize-none focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-600 text-sm italic h-24 resize-none focus:border-wine-500 outline-none"
                         />
                       </div>
                       
@@ -795,13 +795,13 @@ export const AddWine: React.FC = () => {
                         <input
                             value={editFormData.grapeVarieties?.join(', ')}
                             onChange={(e) => setEditFormData({...editFormData, grapeVarieties: e.target.value.split(',').map(s => s.trim())})}
-                            className="w-full bg-stone-50 dark:bg-stone-950/50 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-600 dark:text-stone-300 text-sm focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-600 text-sm focus:border-wine-500 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-stone-50 dark:bg-stone-950/50 rounded-xl p-4 border border-stone-100 dark:border-stone-800/50">
+                        <div className="bg-stone-50 rounded-xl p-4 border border-stone-100">
                             <h4 className="text-xs font-bold uppercase text-stone-500 tracking-wider mb-2 text-center">Structure (Estimée)</h4>
                             {enrichedWine.sensoryProfile && (
                                 <FlavorRadar data={enrichedWine.sensoryProfile as any} />
@@ -811,26 +811,26 @@ export const AddWine: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-stone-200 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
                 <div className="flex items-center gap-4 flex-wrap">
                     {rackLocation ? (
-                      <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+                      <div className="flex items-center gap-2 text-sm text-emerald-700">
                         <MapPin size={14} />
                         <span>1 bouteille → {rackName || 'Rack'} {String.fromCharCode(65 + rackLocation.y)}{rackLocation.x + 1}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <label className="text-stone-500 dark:text-stone-400 text-sm">Quantité :</label>
-                        <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
-                          <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
-                          <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{count}</span>
-                          <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                        <label className="text-stone-500 text-sm">Quantité :</label>
+                        <div className="flex items-center bg-stone-100 rounded-lg border border-stone-200">
+                          <button onClick={() => setCount(Math.max(1, count - 1))} className="px-4 py-2 hover:bg-stone-200 text-stone-600">-</button>
+                          <span className="px-4 font-bold text-stone-900 w-12 text-center">{count}</span>
+                          <button onClick={() => setCount(count + 1)} className="px-4 py-2 hover:bg-stone-200 text-stone-600">+</button>
                         </div>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
-                      <label className="text-stone-500 dark:text-stone-400 text-sm">Prix/btl :</label>
-                      <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                      <label className="text-stone-500 text-sm">Prix/btl :</label>
+                      <div className="flex items-center bg-stone-100 rounded-lg border border-stone-200">
                         <input
                           type="number"
                           step="0.5"
@@ -838,7 +838,7 @@ export const AddWine: React.FC = () => {
                           value={purchasePrice ?? ''}
                           onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : undefined)}
                           placeholder="--"
-                          className="w-16 px-3 py-2 bg-transparent text-stone-900 dark:text-white text-center outline-none text-sm"
+                          className="w-16 px-3 py-2 bg-transparent text-stone-900 text-center outline-none text-sm"
                         />
                         <span className="pr-3 text-stone-400 text-sm">{'\u20AC'}</span>
                       </div>
@@ -847,7 +847,7 @@ export const AddWine: React.FC = () => {
                 <div className="flex gap-3 w-full md:w-auto">
                   <button 
                     onClick={() => setStep(1)}
-                    className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-white hover:border-stone-400 dark:hover:border-stone-500 transition-colors"
+                    className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-stone-300 text-stone-500 hover:text-stone-800 hover:border-stone-400 transition-colors"
                   >
                     Annuler
                   </button>
@@ -868,7 +868,7 @@ export const AddWine: React.FC = () => {
       {activeTab === 'EXISTING' && (
         <div className="animate-fade-in space-y-6">
             <div className="text-center mb-6">
-                <h2 className="text-3xl font-serif text-stone-900 dark:text-stone-100 mb-1">Stock Rapide</h2>
+                <h2 className="text-3xl font-serif text-stone-900 mb-1">Stock Rapide</h2>
                 <p className="text-stone-500">Ajoutez des bouteilles existantes en un clic.</p>
             </div>
 
@@ -883,7 +883,7 @@ export const AddWine: React.FC = () => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             autoFocus
-                            className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                            className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-stone-900 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
                         />
                     </div>
                     <div className="space-y-2">
@@ -891,14 +891,14 @@ export const AddWine: React.FC = () => {
                             <button 
                                 key={wine.id}
                                 onClick={() => setSelectedExisting(wine)}
-                                className="w-full text-left p-4 rounded-xl bg-white dark:bg-stone-900/50 hover:bg-stone-50 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800 flex justify-between items-center group transition-all shadow-sm"
+                                className="w-full text-left p-4 rounded-xl bg-white hover:bg-stone-50 border border-stone-200 flex justify-between items-center group transition-all shadow-sm"
                             >
                                 <div>
-                                    <h4 className="text-stone-900 dark:text-white font-medium">{wine.name} {wine.cuvee ? `- ${wine.cuvee}` : ''}</h4>
+                                    <h4 className="text-stone-900 font-medium">{wine.name} {wine.cuvee ? `- ${wine.cuvee}` : ''}</h4>
                                     <p className="text-xs text-stone-500">{wine.producer} • {wine.vintage}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className="text-xs bg-stone-100 dark:bg-stone-950 px-2 py-1 rounded text-stone-500 dark:text-stone-400">{wine.inventoryCount} en stock</span>
+                                    <span className="text-xs bg-stone-100 px-2 py-1 rounded text-stone-500">{wine.inventoryCount} en stock</span>
                                     <Plus className="text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                             </button>
@@ -909,29 +909,29 @@ export const AddWine: React.FC = () => {
 
             {/* Confirmation Phase */}
             {selectedExisting && (
-                <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-xl dark:shadow-2xl animate-fade-in-up">
-                    <div className="flex justify-between items-start mb-6 border-b border-stone-200 dark:border-stone-800 pb-4">
+                <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xl animate-fade-in-up">
+                    <div className="flex justify-between items-start mb-6 border-b border-stone-200 pb-4">
                         <div>
-                             <h3 className="text-xl font-serif text-stone-900 dark:text-white">{selectedExisting.name}</h3>
-                             {selectedExisting.cuvee && <p className="text-wine-600 dark:text-wine-400 text-sm italic">Cuvée {selectedExisting.cuvee}</p>}
-                             <p className="text-stone-500 dark:text-stone-400 text-sm">{selectedExisting.vintage} • {selectedExisting.producer}</p>
+                             <h3 className="text-xl font-serif text-stone-900">{selectedExisting.name}</h3>
+                             {selectedExisting.cuvee && <p className="text-wine-600 text-sm italic">Cuvée {selectedExisting.cuvee}</p>}
+                             <p className="text-stone-500 text-sm">{selectedExisting.vintage} • {selectedExisting.producer}</p>
                         </div>
-                        <button onClick={() => setSelectedExisting(null)} className="text-stone-400 hover:text-stone-600 dark:hover:text-white text-sm">Changer</button>
+                        <button onClick={() => setSelectedExisting(null)} className="text-stone-400 hover:text-stone-600 text-sm">Changer</button>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <label className="text-stone-600 dark:text-stone-300">Quantité à ajouter</label>
-                            <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
-                                <button onClick={() => setQuickAddCount(Math.max(1, quickAddCount - 1))} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">-</button>
-                                <span className="px-4 font-bold text-stone-900 dark:text-white w-12 text-center">{quickAddCount}</span>
-                                <button onClick={() => setQuickAddCount(quickAddCount + 1)} className="px-4 py-2 hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300">+</button>
+                            <label className="text-stone-600">Quantité à ajouter</label>
+                            <div className="flex items-center bg-stone-100 rounded-lg border border-stone-200">
+                                <button onClick={() => setQuickAddCount(Math.max(1, quickAddCount - 1))} className="px-4 py-2 hover:bg-stone-200 text-stone-600">-</button>
+                                <span className="px-4 font-bold text-stone-900 w-12 text-center">{quickAddCount}</span>
+                                <button onClick={() => setQuickAddCount(quickAddCount + 1)} className="px-4 py-2 hover:bg-stone-200 text-stone-600">+</button>
                             </div>
                         </div>
 
                         <div className="flex items-center justify-between">
-                            <label className="text-stone-600 dark:text-stone-300">Prix par bouteille</label>
-                            <div className="flex items-center bg-stone-100 dark:bg-stone-950 rounded-lg border border-stone-200 dark:border-stone-800">
+                            <label className="text-stone-600">Prix par bouteille</label>
+                            <div className="flex items-center bg-stone-100 rounded-lg border border-stone-200">
                                 <input
                                   type="number"
                                   step="0.5"
@@ -939,30 +939,30 @@ export const AddWine: React.FC = () => {
                                   value={purchasePrice ?? ''}
                                   onChange={(e) => setPurchasePrice(e.target.value ? Number(e.target.value) : undefined)}
                                   placeholder="--"
-                                  className="w-20 px-3 py-2 bg-transparent text-stone-900 dark:text-white text-center outline-none text-sm"
+                                  className="w-20 px-3 py-2 bg-transparent text-stone-900 text-center outline-none text-sm"
                                 />
                                 <span className="pr-3 text-stone-400 text-sm">{'\u20AC'}</span>
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between bg-stone-50 dark:bg-stone-950/50 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
+                        <div className="flex items-center justify-between bg-stone-50 p-3 rounded-lg border border-stone-200">
                              <div className="flex items-center gap-3">
                                  <MapPin className={autoPlace ? "text-green-500" : "text-stone-400"} size={20} />
                                  <div>
-                                     <p className="text-sm text-stone-700 dark:text-stone-200">Rangement Automatique</p>
+                                     <p className="text-sm text-stone-700">Rangement Automatique</p>
                                      <p className="text-xs text-stone-500">Suggérer l'étagère la plus vide</p>
                                  </div>
                              </div>
                              <button 
                                 onClick={() => setAutoPlace(!autoPlace)}
-                                className={`w-12 h-6 rounded-full transition-colors relative ${autoPlace ? 'bg-green-600' : 'bg-stone-300 dark:bg-stone-700'}`}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${autoPlace ? 'bg-green-600' : 'bg-stone-300'}`}
                              >
                                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${autoPlace ? 'left-7' : 'left-1'}`} />
                              </button>
                         </div>
                         
                         {autoPlace && suggestedLocations.length > 0 && (
-                            <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/30 p-3 rounded-lg flex items-center gap-3 text-sm text-green-700 dark:text-green-300">
+                            <div className="bg-green-50 border border-green-200 p-3 rounded-lg flex items-center gap-3 text-sm text-green-700">
                                 <ArrowRight size={16} />
                                 <span>Destination : <span className="font-bold">{suggestedLocations[0]}</span> {quickAddCount > 1 ? ` et suivants...` : ''}</span>
                             </div>

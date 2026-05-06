@@ -19,9 +19,9 @@ const BTN_BASE = 'inline-flex items-center justify-center gap-1.5 font-medium ro
 
 const BTN_VARIANTS: Record<ButtonVariant, string> = {
   default: 'bg-wine-700 hover:bg-wine-800 text-white',
-  outline: 'border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800 dark:text-stone-200',
-  ghost:   'hover:bg-stone-100 text-stone-700 dark:hover:bg-stone-800 dark:text-stone-300',
-  subtle:  'bg-stone-100 hover:bg-stone-200 text-stone-800 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-200',
+  outline: 'border border-stone-300 bg-white hover:bg-stone-50 text-stone-700',
+  ghost:   'hover:bg-stone-100 text-stone-700',
+  subtle:  'bg-stone-100 hover:bg-stone-200 text-stone-800',
   danger:  'bg-wine-700 hover:bg-wine-800 text-white',
 };
 
@@ -51,10 +51,10 @@ interface BadgeProps {
 
 const BADGE_TONES: Record<BadgeTone, string> = {
   urgent:  'bg-wine-700 text-white',
-  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  neutral: 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-400',
-  success: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-900/50',
-  rare:    'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:ring-amber-900/50',
+  warning: 'bg-amber-100 text-amber-800',
+  neutral: 'bg-stone-100 text-stone-600',
+  success: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+  rare:    'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
 };
 
 export const Badge: React.FC<BadgeProps> = ({ tone = 'neutral', className = '', children }) => (
@@ -70,7 +70,7 @@ interface CardProps extends React.HTMLAttributes<HTMLElement> {}
 
 export const Card: React.FC<CardProps> = ({ className = '', children, ...rest }) => (
   <section
-    className={`rounded-md border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 ${className}`}
+    className={`rounded-md border border-stone-200 bg-white ${className}`}
     {...rest}
   >
     {children}
@@ -85,7 +85,7 @@ export const SectionLabel: React.FC<{ children: React.ReactNode; className?: str
 );
 
 export const SectionTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <h3 className={`text-[15px] font-medium text-stone-900 dark:text-white mt-0.5 ${className}`}>{children}</h3>
+  <h3 className={`text-[15px] font-medium text-stone-900 mt-0.5 ${className}`}>{children}</h3>
 );
 
 // ────────────────────────────────────────────
@@ -108,13 +108,13 @@ interface KpiProps {
 }
 
 export const Kpi: React.FC<KpiProps> = ({ label, value, unit, hint, trend, className = '' }) => (
-  <div className={`rounded-md border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900 px-5 py-4 ${className}`}>
+  <div className={`rounded-md border border-stone-200 bg-white px-5 py-4 ${className}`}>
     <MonoLabel className="mb-1.5">{label}</MonoLabel>
     <div className="flex items-baseline gap-1 mt-1">
-      <span className="serif text-4xl text-stone-900 dark:text-white leading-none">{value}</span>
+      <span className="serif text-4xl text-stone-900 leading-none">{value}</span>
       {unit && <span className="serif text-xl text-stone-400 leading-none">.{unit}</span>}
     </div>
-    {hint && <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">{hint}</div>}
+    {hint && <div className="mt-2 text-xs text-stone-500">{hint}</div>}
     {trend && <div className="mt-2">{trend}</div>}
   </div>
 );
@@ -134,8 +134,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ breadcrumb, title, subti
   <div className={`flex items-end justify-between gap-4 ${className}`}>
     <div>
       <MonoLabel>{breadcrumb.join(' · ')}</MonoLabel>
-      <h1 className="serif text-3xl md:text-4xl text-stone-900 dark:text-white mt-1 leading-tight">{title}</h1>
-      {subtitle && <p className="mt-1.5 text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>}
+      <h1 className="serif text-3xl md:text-4xl text-stone-900 mt-1 leading-tight">{title}</h1>
+      {subtitle && <p className="mt-1.5 text-sm text-stone-500">{subtitle}</p>}
     </div>
     {rightSlot && <div className="flex items-center gap-2">{rightSlot}</div>}
   </div>
@@ -145,7 +145,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ breadcrumb, title, subti
 // Skeleton — loading shimmer
 // ────────────────────────────────────────────
 export const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`animate-pulse bg-stone-100 dark:bg-stone-800 rounded ${className}`} />
+  <div className={`animate-pulse bg-stone-100 rounded ${className}`} />
 );
 
 // ────────────────────────────────────────────
@@ -160,7 +160,7 @@ export const Chip: React.FC<ChipProps> = ({ active = false, className = '', chil
     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs transition-colors border ${
       active
         ? 'bg-wine-700 text-white border-wine-700'
-        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50 dark:bg-stone-900 dark:text-stone-300 dark:border-stone-700 dark:hover:bg-stone-800'
+        : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
     } ${className}`}
     {...rest}
   >

@@ -20,8 +20,8 @@ const Tab: React.FC<TabProps> = ({ to, icon: Icon, label, active, highlight }) =
       highlight
         ? 'text-white'
         : active
-          ? 'text-wine-700 dark:text-wine-500'
-          : 'text-stone-500 dark:text-stone-400'
+          ? 'text-wine-700'
+          : 'text-stone-500'
     }`}
   >
     <span
@@ -44,7 +44,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 px-2 flex items-center pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 px-2 flex items-center pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >
       <Tab to="/" icon={LayoutDashboard} label="ACCUEIL" active={isActive('/')} />

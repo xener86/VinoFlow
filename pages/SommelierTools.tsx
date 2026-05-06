@@ -44,12 +44,12 @@ const TOOLS: ToolCard[] = [
 ];
 
 const COLORS: Record<string, string> = {
-  wine:   'bg-wine-50 dark:bg-wine-900/20 text-wine-700 dark:text-wine-400 border-wine-100 dark:border-wine-900/40',
-  amber:  'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/40',
-  indigo: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40',
-  stone:  'bg-stone-100 dark:bg-stone-900/40 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-800',
-  green:  'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900/40',
-  cyan:   'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/40',
+  wine:   'bg-wine-50 text-wine-700 border-wine-100',
+  amber:  'bg-amber-50 text-amber-700 border-amber-100',
+  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  stone:  'bg-stone-100 text-stone-700 border-stone-200',
+  green:  'bg-green-50 text-green-700 border-green-100',
+  cyan:   'bg-cyan-50 text-cyan-700 border-cyan-100',
 };
 
 export const SommelierTools: React.FC = () => {
@@ -61,7 +61,7 @@ export const SommelierTools: React.FC = () => {
     <div className="max-w-4xl mx-auto pb-10 animate-fade-in">
       <div className="flex items-center gap-3 mb-2">
         <Sparkles className="text-indigo-500" size={20} />
-        <h2 className="text-3xl font-serif text-stone-900 dark:text-white">Boîte à outils du sommelier</h2>
+        <h2 className="text-3xl font-serif text-stone-900">Boîte à outils du sommelier</h2>
       </div>
       <p className="text-stone-500 text-sm mb-8">7 modes d'accord et d'analyse, au-delà du pairing classique.</p>
 
@@ -76,7 +76,7 @@ export const SommelierTools: React.FC = () => {
               <div className="flex items-start justify-between mb-3">
                 <tool.icon size={22} />
               </div>
-              <h3 className="font-serif text-lg text-stone-900 dark:text-white mb-1">{tool.title}</h3>
+              <h3 className="font-serif text-lg text-stone-900 mb-1">{tool.title}</h3>
               <p className="text-sm opacity-80">{tool.subtitle}</p>
             </button>
           ))}
@@ -85,10 +85,10 @@ export const SommelierTools: React.FC = () => {
 
       {active && (
         <div>
-          <button onClick={() => setActive(null)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 dark:hover:text-white mb-4">
+          <button onClick={() => setActive(null)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 mb-4">
             <ArrowLeft size={14} /> Retour
           </button>
-          <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-6">
+          <div className="bg-white border border-stone-200 rounded-2xl p-6">
             {active === 'REVERSE'  && <ReverseTool wines={wines} />}
             {active === 'MENU'     && <MenuTool />}
             {active === 'VERTICAL' && <VerticalTool wines={wines} />}
@@ -129,7 +129,7 @@ const ReverseTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       {result?.suggestions && (
         <ul className="space-y-3 mt-4">
           {result.suggestions.map((s: any, i: number) => (
-            <li key={i} className="bg-stone-50 dark:bg-stone-950 rounded-lg p-4">
+            <li key={i} className="bg-stone-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs uppercase font-bold text-wine-600">{s.type}</span>
               </div>
@@ -173,7 +173,7 @@ const MenuTool: React.FC = () => {
           value={d}
           onChange={e => setDishes(ds => ds.map((x, j) => j === i ? e.target.value : x))}
           placeholder={['Entrée (ex: foie gras)', 'Plat (ex: agneau de pré-salé)', 'Dessert (ex: tarte aux figues)'][i]}
-          className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3"
+          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
         />
       ))}
       <button onClick={run} disabled={loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
@@ -187,7 +187,7 @@ const MenuTool: React.FC = () => {
               <div className="text-xs uppercase text-stone-500 font-bold">Service {i + 1}</div>
               <div className="font-medium mb-2">{c.dish}</div>
               {c.picks?.safe ? (
-                <div className="text-sm text-stone-700 dark:text-stone-300">→ {c.picks.safe.reason}</div>
+                <div className="text-sm text-stone-700">→ {c.picks.safe.reason}</div>
               ) : <div className="text-sm text-stone-400 italic">Pas d'accord trouvé</div>}
             </div>
           ))}
@@ -219,7 +219,7 @@ const VerticalTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       <select
         value={producer}
         onChange={e => setProducer(e.target.value)}
-        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3"
+        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
       >
         <option value="">Choisissez un producteur...</option>
         {producers.map(p => <option key={p} value={p}>{p}</option>)}
@@ -231,7 +231,7 @@ const VerticalTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       {result?.wines && result.wines.length > 0 && (
         <ol className="space-y-2 mt-4">
           {result.wines.map((w: any, i: number) => (
-            <li key={w.id} className="flex items-center gap-3 p-3 bg-stone-50 dark:bg-stone-950 rounded-lg">
+            <li key={w.id} className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg">
               <span className="w-7 h-7 rounded-full bg-wine-600 text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
               <div className="flex-1">
                 <div className="font-medium">{w.cuvee || w.name} <span className="text-stone-500">{w.vintage}</span></div>
@@ -270,7 +270,7 @@ const BlindTool: React.FC = () => {
       </button>
       {tasting && (
         <div className="space-y-4 mt-4">
-          <div className="bg-stone-50 dark:bg-stone-950 rounded-lg p-4 space-y-2">
+          <div className="bg-stone-50 rounded-lg p-4 space-y-2">
             <div className="text-xs uppercase text-stone-500 font-bold">Indices</div>
             <div className="text-sm">Type: <strong>{tasting.blind_clues.type}</strong></div>
             {tasting.blind_clues.country && <div className="text-sm">Pays: <strong>{tasting.blind_clues.country}</strong></div>}
@@ -284,11 +284,11 @@ const BlindTool: React.FC = () => {
             )}
           </div>
           {!revealed ? (
-            <button onClick={() => setRevealed(true)} className="bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 px-5 py-2 rounded-lg flex items-center gap-2">
+            <button onClick={() => setRevealed(true)} className="bg-stone-200 hover:bg-stone-300 px-5 py-2 rounded-lg flex items-center gap-2">
               <Eye size={16} /> Révéler
             </button>
           ) : (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-xs uppercase font-bold text-green-700 mb-1">C'était</div>
               <div className="text-lg font-serif">{tasting.reveal.producer} - {tasting.reveal.cuvee || tasting.reveal.name} {tasting.reveal.vintage}</div>
               <div className="text-sm text-stone-500">{tasting.reveal.appellation || tasting.reveal.region}</div>
@@ -323,7 +323,7 @@ const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       <input
         type="text" value={dish} onChange={e => setDish(e.target.value)}
         placeholder="Plat (ex: gigot d'agneau aux herbes)"
-        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3"
+        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
       />
       <div className="grid grid-cols-2 gap-3">
         <WineSelect wines={wines} value={a} onChange={setA} placeholder="Vin A" />
@@ -335,7 +335,7 @@ const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       </button>
       {result && (
         <div className="space-y-3 mt-4">
-          <div className={`p-4 rounded-xl ${result.winner === 'A' ? 'bg-green-50 dark:bg-green-900/20 border border-green-300' : result.winner === 'B' ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-300' : 'bg-stone-50 dark:bg-stone-950'}`}>
+          <div className={`p-4 rounded-xl ${result.winner === 'A' ? 'bg-green-50 border border-green-300' : result.winner === 'B' ? 'bg-blue-50 border border-blue-300' : 'bg-stone-50'}`}>
             <div className="text-xs uppercase font-bold mb-2">
               Gagnant : {result.winner === 'tie' ? 'Match nul' : `Vin ${result.winner}`}
             </div>
@@ -344,15 +344,15 @@ const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <div className="font-bold mb-1 text-green-600">A — Forces</div>
-              <p className="text-stone-700 dark:text-stone-300">{result.wine_a_strengths}</p>
+              <p className="text-stone-700">{result.wine_a_strengths}</p>
               <div className="font-bold mt-2 mb-1 text-orange-600">A — Faiblesses</div>
-              <p className="text-stone-700 dark:text-stone-300">{result.wine_a_weaknesses}</p>
+              <p className="text-stone-700">{result.wine_a_weaknesses}</p>
             </div>
             <div>
               <div className="font-bold mb-1 text-green-600">B — Forces</div>
-              <p className="text-stone-700 dark:text-stone-300">{result.wine_b_strengths}</p>
+              <p className="text-stone-700">{result.wine_b_strengths}</p>
               <div className="font-bold mt-2 mb-1 text-orange-600">B — Faiblesses</div>
-              <p className="text-stone-700 dark:text-stone-300">{result.wine_b_weaknesses}</p>
+              <p className="text-stone-700">{result.wine_b_weaknesses}</p>
             </div>
           </div>
           {result.advice && <div className="text-sm text-stone-500 italic">💡 {result.advice}</div>}
@@ -384,14 +384,14 @@ const ExplainTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
     <div className="space-y-4">
       <h3 className="font-serif text-xl">Explique-moi cet accord</h3>
       <p className="text-sm text-stone-500">Le sommelier détaille en 4 paragraphes le mécanisme et les axes d'accord.</p>
-      <input type="text" value={dish} onChange={e => setDish(e.target.value)} placeholder="Plat" className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3" />
+      <input type="text" value={dish} onChange={e => setDish(e.target.value)} placeholder="Plat" className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3" />
       <WineSelect wines={wines} value={wineId} onChange={setWineId} />
       <button onClick={run} disabled={!dish || !wineId || loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
         {loading ? <Loader2 className="animate-spin" size={16} /> : <BookOpen size={16} />}
         Expliquer
       </button>
       {result && (
-        <div className="bg-stone-50 dark:bg-stone-950 rounded-xl p-4 mt-4 prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+        <div className="bg-stone-50 rounded-xl p-4 mt-4 prose prose-sm max-w-none whitespace-pre-wrap">
           {result}
         </div>
       )}
@@ -428,14 +428,14 @@ const OcrTool: React.FC<{ onAdded: (id: string) => void }> = ({ onAdded }) => {
     <div className="space-y-4">
       <h3 className="font-serif text-xl">Scanner une étiquette</h3>
       <p className="text-sm text-stone-500">Prenez une photo de l'étiquette, l'IA en extrait les infos.</p>
-      <label className="block bg-stone-50 dark:bg-stone-950 border-2 border-dashed border-stone-200 dark:border-stone-800 rounded-xl p-8 text-center cursor-pointer hover:bg-stone-100 dark:hover:bg-stone-900">
+      <label className="block bg-stone-50 border-2 border-dashed border-stone-200 rounded-xl p-8 text-center cursor-pointer hover:bg-stone-100">
         <input type="file" accept="image/*" capture="environment" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} className="hidden" />
         <Camera className="mx-auto mb-2 text-stone-500" size={32} />
         <div className="text-sm text-stone-500">Cliquez pour choisir une photo</div>
       </label>
       {loading && <div className="flex items-center gap-2 text-sm text-stone-500"><Loader2 className="animate-spin" size={16} /> Analyse de l'étiquette...</div>}
       {extracted && (
-        <div className="bg-stone-50 dark:bg-stone-950 rounded-xl p-4 space-y-2">
+        <div className="bg-stone-50 rounded-xl p-4 space-y-2">
           <div className="font-medium">Détecté :</div>
           <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(extracted, null, 2)}</pre>
           <p className="text-xs text-stone-500 italic">Copiez ces infos dans le formulaire d'ajout pour créer le vin.</p>
@@ -452,7 +452,7 @@ const WineSelect: React.FC<{ wines: CellarWine[]; value: string; onChange: (id: 
   <select
     value={value}
     onChange={e => onChange(e.target.value)}
-    className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-4 py-3"
+    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
   >
     <option value="">{placeholder}</option>
     {wines.filter(w => w.inventoryCount > 0).map(w => (

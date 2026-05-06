@@ -42,7 +42,7 @@ export const EditSpirit: React.FC = () => {
   // Loader pendant le chargement des données
   if (loading || !spirit) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
+          <div className="min-h-screen flex items-center justify-center bg-stone-50">
               <Loader2 className="animate-spin text-amber-600" size={32} />
           </div>
       );
@@ -54,18 +54,18 @@ export const EditSpirit: React.FC = () => {
         <div className="flex items-center gap-4 mb-8">
             <button 
                 onClick={() => navigate(-1)} 
-                className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm"
+                className="p-2 bg-white rounded-full text-stone-400 hover:text-stone-800 border border-stone-200 shadow-sm"
             >
                 <ArrowLeft size={20} />
             </button>
-            <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Éditer le Spiritueux</h2>
+            <h2 className="text-2xl font-serif text-stone-900">Éditer le Spiritueux</h2>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
             
             {/* Identity */}
-            <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800 dark:text-stone-200">Identité</h3>
+            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+                <h3 className="text-lg font-serif text-stone-800">Identité</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
                         <label className="text-xs text-stone-500 uppercase">Nom</label>
@@ -73,7 +73,7 @@ export const EditSpirit: React.FC = () => {
                             type="text" 
                             value={spirit.name}
                             onChange={e => setSpirit({...spirit, name: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                     <div>
@@ -82,7 +82,7 @@ export const EditSpirit: React.FC = () => {
                             type="text" 
                             value={spirit.distillery}
                             onChange={e => setSpirit({...spirit, distillery: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                     <div>
@@ -90,7 +90,7 @@ export const EditSpirit: React.FC = () => {
                         <select 
                             value={spirit.category}
                             onChange={e => setSpirit({...spirit, category: e.target.value as SpiritType})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         >
                             {Object.values(SpiritType).map(type => (
                                 <option key={type} value={type}>{type}</option>
@@ -103,7 +103,7 @@ export const EditSpirit: React.FC = () => {
                             type="text" 
                             value={spirit.region || ''}
                             onChange={e => setSpirit({...spirit, region: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                     <div>
@@ -112,7 +112,7 @@ export const EditSpirit: React.FC = () => {
                             type="text" 
                             value={spirit.country || ''}
                             onChange={e => setSpirit({...spirit, country: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                     <div>
@@ -122,7 +122,7 @@ export const EditSpirit: React.FC = () => {
                             value={spirit.age || ''}
                             onChange={e => setSpirit({...spirit, age: e.target.value})}
                             placeholder="ex: 16 Year"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                     <div>
@@ -132,15 +132,15 @@ export const EditSpirit: React.FC = () => {
                             step="0.1"
                             value={spirit.abv}
                             onChange={e => setSpirit({...spirit, abv: Number(e.target.value)})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                         />
                     </div>
                 </div>
             </div>
 
             {/* Details */}
-            <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800 dark:text-stone-200">Détails</h3>
+            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+                <h3 className="text-lg font-serif text-stone-800">Détails</h3>
                 
                 <div>
                     <label className="text-xs text-stone-500 uppercase">Description</label>
@@ -148,7 +148,7 @@ export const EditSpirit: React.FC = () => {
                         value={spirit.description}
                         onChange={e => setSpirit({...spirit, description: e.target.value})}
                         rows={3}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none resize-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none resize-none"
                     />
                 </div>
 
@@ -158,7 +158,7 @@ export const EditSpirit: React.FC = () => {
                         value={spirit.tastingNotes}
                         onChange={e => setSpirit({...spirit, tastingNotes: e.target.value})}
                         rows={3}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none resize-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none resize-none"
                     />
                 </div>
 
@@ -168,7 +168,7 @@ export const EditSpirit: React.FC = () => {
                         type="text" 
                         value={spirit.aromaProfile.join(', ')}
                         onChange={e => setSpirit({...spirit, aromaProfile: e.target.value.split(',').map(s => s.trim())})}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-amber-500 outline-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
                     />
                 </div>
             </div>

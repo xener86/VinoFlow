@@ -8,14 +8,14 @@ interface Props {
 }
 
 const labelMap: Record<string, { label: string; Icon: React.FC<any>; bg: string; text: string }> = {
-  USER:      { label: 'Verifié',     Icon: ShieldCheck, bg: 'bg-green-100 dark:bg-green-900/30',  text: 'text-green-700 dark:text-green-400' },
-  TASTING:   { label: 'Dégusté',     Icon: Wine,        bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400' },
-  CONSENSUS: { label: 'Consensus',   Icon: Users,       bg: 'bg-blue-100 dark:bg-blue-900/30',     text: 'text-blue-700 dark:text-blue-400' },
-  COMMUNITY: { label: 'Communauté',  Icon: Users,       bg: 'bg-blue-100 dark:bg-blue-900/30',     text: 'text-blue-700 dark:text-blue-400' },
-  AI_HIGH:   { label: 'IA - sûre',   Icon: Sparkles,    bg: 'bg-stone-100 dark:bg-stone-800',      text: 'text-stone-700 dark:text-stone-300' },
-  AI_MEDIUM: { label: 'IA - moyenne', Icon: Sparkles,   bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400' },
-  AI_LOW:    { label: 'IA - faible', Icon: Sparkles,    bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400' },
-  NONE:      { label: 'À vérifier',  Icon: User,        bg: 'bg-stone-100 dark:bg-stone-800',      text: 'text-stone-500 dark:text-stone-400' },
+  USER:      { label: 'Verifié',     Icon: ShieldCheck, bg: 'bg-green-100',  text: 'text-green-700' },
+  TASTING:   { label: 'Dégusté',     Icon: Wine,        bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  CONSENSUS: { label: 'Consensus',   Icon: Users,       bg: 'bg-blue-100',     text: 'text-blue-700' },
+  COMMUNITY: { label: 'Communauté',  Icon: Users,       bg: 'bg-blue-100',     text: 'text-blue-700' },
+  AI_HIGH:   { label: 'IA - sûre',   Icon: Sparkles,    bg: 'bg-stone-100',      text: 'text-stone-700' },
+  AI_MEDIUM: { label: 'IA - moyenne', Icon: Sparkles,   bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  AI_LOW:    { label: 'IA - faible', Icon: Sparkles,    bg: 'bg-orange-100', text: 'text-orange-700' },
+  NONE:      { label: 'À vérifier',  Icon: User,        bg: 'bg-stone-100',      text: 'text-stone-500' },
 };
 
 const resolveKey = (source?: string | null, confidence?: string | null) => {

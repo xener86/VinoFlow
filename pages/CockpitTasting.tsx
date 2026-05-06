@@ -117,19 +117,19 @@ export const CockpitTasting: React.FC = () => {
       <div className="max-w-2xl mx-auto">
         <div className="mb-5">
           <MonoLabel>VINOFLOW · DÉGUSTATION</MonoLabel>
-          <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Tasting express</h1>
+          <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Tasting express</h1>
           <div className="text-[12px] text-stone-500 mt-0.5">Note ce que tu bois en moins d'une minute.</div>
         </div>
         <Card className="p-6">
           <MonoLabel>◌ Choisis le vin</MonoLabel>
-          <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-4">Tu bois quoi ?</h2>
+          <h2 className="serif text-xl text-stone-900 mt-1 mb-4">Tu bois quoi ?</h2>
           {loading ? (
             <div className="flex items-center gap-2 text-stone-500"><Loader2 className="animate-spin w-4 h-4" /> Chargement…</div>
           ) : (
             <select
               value={wineId}
               onChange={e => setWineId(e.target.value)}
-              className="w-full h-11 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 dark:text-stone-300"
+              className="w-full h-11 px-3 rounded-md border border-stone-300 bg-white text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700"
             >
               <option value="">Sélectionne un vin de ta cave…</option>
               {wines
@@ -156,18 +156,18 @@ export const CockpitTasting: React.FC = () => {
 
       <div className="mb-5">
         <MonoLabel>VINOFLOW · DÉGUSTATION</MonoLabel>
-        <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Tasting express</h1>
-        <div className="serif-it text-stone-700 dark:text-stone-300 text-lg mt-2">{wine.name} · {wine.vintage}</div>
+        <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Tasting express</h1>
+        <div className="serif-it text-stone-700 text-lg mt-2">{wine.name} · {wine.vintage}</div>
       </div>
 
       {/* ───── Bloc 1 : Verdict ───── */}
       <Card className="p-6 mb-4">
         <MonoLabel>◌ Verdict — 5s</MonoLabel>
-        <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-4">Tu as aimé ?</h2>
+        <h2 className="serif text-xl text-stone-900 mt-1 mb-4">Tu as aimé ?</h2>
 
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-stone-600 dark:text-stone-400">Note globale</span>
+            <span className="text-sm text-stone-600">Note globale</span>
             <span className="serif text-3xl text-wine-700 font-medium">{rating}<span className="text-base text-stone-500"> / 10</span></span>
           </div>
           <input
@@ -185,7 +185,7 @@ export const CockpitTasting: React.FC = () => {
         </div>
 
         <div>
-          <div className="text-sm text-stone-600 dark:text-stone-400 mb-2">C'était une claque ?</div>
+          <div className="text-sm text-stone-600 mb-2">C'était une claque ?</div>
           <div className="flex gap-2">
             {(['YES', 'MEH', 'NO'] as const).map(v => (
               <Chip
@@ -203,7 +203,7 @@ export const CockpitTasting: React.FC = () => {
       {/* ───── Bloc 2 : Pourquoi ───── */}
       <Card className="p-6 mb-4">
         <MonoLabel>◌ Pourquoi — 15s</MonoLabel>
-        <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-4">Qu'est-ce qui a sublimé ce vin ?</h2>
+        <h2 className="serif text-xl text-stone-900 mt-1 mb-4">Qu'est-ce qui a sublimé ce vin ?</h2>
 
         <div className="flex flex-wrap gap-2 mb-5">
           {SUBLIMATING_FACTORS.map(f => (
@@ -225,7 +225,7 @@ export const CockpitTasting: React.FC = () => {
               value={dish}
               onChange={e => setDish(e.target.value)}
               placeholder="ex: agneau aux herbes"
-              className="w-full h-10 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 dark:text-stone-300"
+              className="w-full h-10 px-3 rounded-md border border-stone-300 bg-white text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700"
             />
           </div>
           <div>
@@ -244,11 +244,11 @@ export const CockpitTasting: React.FC = () => {
       {/* ───── Bloc 3 : Pour la suite ───── */}
       <Card className="p-6 mb-4">
         <MonoLabel>◌ Pour la suite — 5s</MonoLabel>
-        <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-4">Et après ?</h2>
+        <h2 className="serif text-xl text-stone-900 mt-1 mb-4">Et après ?</h2>
 
         <div className="space-y-4">
           <div>
-            <div className="text-sm text-stone-600 dark:text-stone-400 mb-2">Tu rachètes le même ?</div>
+            <div className="text-sm text-stone-600 mb-2">Tu rachètes le même ?</div>
             <div className="flex gap-2">
               {REPURCHASE.map(r => (
                 <Chip key={r.id} active={repurchase === r.id} onClick={() => setRepurchase(repurchase === r.id ? '' : r.id)}>
@@ -259,7 +259,7 @@ export const CockpitTasting: React.FC = () => {
           </div>
 
           <div>
-            <div className="text-sm text-stone-600 dark:text-stone-400 mb-2">Tu cherches des vins similaires ?</div>
+            <div className="text-sm text-stone-600 mb-2">Tu cherches des vins similaires ?</div>
             <div className="flex gap-2">
               <Chip active={similar === true} onClick={() => setSimilar(similar === true ? null : true)}>Oui</Chip>
               <Chip active={similar === false} onClick={() => setSimilar(similar === false ? null : false)}>Non</Chip>
@@ -267,7 +267,7 @@ export const CockpitTasting: React.FC = () => {
           </div>
 
           <div>
-            <div className="text-sm text-stone-600 dark:text-stone-400 mb-2">À retenir pour grande occasion ?</div>
+            <div className="text-sm text-stone-600 mb-2">À retenir pour grande occasion ?</div>
             <Chip active={keep} onClick={() => setKeep(!keep)}>
               <Star className="w-3 h-3" />
               {keep ? 'Oui — favori contextuel' : 'Marquer'}
@@ -279,18 +279,18 @@ export const CockpitTasting: React.FC = () => {
       {/* ───── Bloc 4 : Phrase libre ───── */}
       <Card className="p-6 mb-4">
         <MonoLabel>◌ Optionnel — 15s</MonoLabel>
-        <h2 className="serif text-xl text-stone-900 dark:text-white mt-1 mb-4">Une phrase qui résume ?</h2>
+        <h2 className="serif text-xl text-stone-900 mt-1 mb-4">Une phrase qui résume ?</h2>
         <textarea
           value={phrase}
           onChange={e => setPhrase(e.target.value)}
           placeholder="Une émotion, un détail marquant — pour ton futur toi qui relit dans 6 mois…"
           rows={3}
-          className="w-full px-4 py-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 dark:text-stone-300 serif-it"
+          className="w-full px-4 py-3 rounded-md border border-stone-300 bg-white text-sm outline-none focus:ring-2 focus:ring-wine-600/40 text-stone-700 serif-it"
         />
       </Card>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 p-3 rounded-md text-sm mb-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md text-sm mb-4">
           {error}
         </div>
       )}

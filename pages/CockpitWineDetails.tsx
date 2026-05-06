@@ -87,7 +87,7 @@ export const CockpitWineDetails: React.FC = () => {
   if (!wine) {
     return (
       <div className="max-w-2xl mx-auto py-12">
-        <h1 className="serif text-2xl text-stone-900 dark:text-white mb-2">Vin introuvable</h1>
+        <h1 className="serif text-2xl text-stone-900 mb-2">Vin introuvable</h1>
         <p className="text-stone-500 mb-4">Ce vin n'existe plus dans la cave.</p>
         <Button onClick={() => navigate('/cave')}>Retour à la cave</Button>
       </div>
@@ -130,7 +130,7 @@ export const CockpitWineDetails: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={handleToggleFavorite}
-              className={`p-2 rounded-md border border-stone-200 dark:border-stone-700 transition-colors ${wine.isFavorite ? 'bg-wine-50 dark:bg-wine-900/20 text-wine-700' : 'text-stone-400 hover:text-wine-700'}`}
+              className={`p-2 rounded-md border border-stone-200 transition-colors ${wine.isFavorite ? 'bg-wine-50 text-wine-700' : 'text-stone-400 hover:text-wine-700'}`}
               title={wine.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
               aria-label="Favori"
             >
@@ -142,30 +142,30 @@ export const CockpitWineDetails: React.FC = () => {
           </div>
         </div>
 
-        <h1 className="serif text-3xl md:text-4xl text-stone-900 dark:text-white leading-tight">
+        <h1 className="serif text-3xl md:text-4xl text-stone-900 leading-tight">
           {wine.name}
         </h1>
-        {wine.cuvee && <div className="serif-it text-xl text-wine-700 dark:text-wine-500 mt-1">{wine.cuvee}</div>}
-        <div className="text-stone-600 dark:text-stone-400 mt-2 text-sm">
+        {wine.cuvee && <div className="serif-it text-xl text-wine-700 mt-1">{wine.cuvee}</div>}
+        <div className="text-stone-600 mt-2 text-sm">
           {wine.producer && <span>{wine.producer} · </span>}
           <span className="mono">{wine.vintage}</span>
           {wine.region && <span> · {wine.region}</span>}
         </div>
 
         <div className="grid grid-cols-3 gap-3 mt-6">
-          <div className="bg-stone-50 dark:bg-stone-800/40 rounded-md p-3">
+          <div className="bg-stone-50 rounded-md p-3">
             <MonoLabel>EN STOCK</MonoLabel>
-            <div className="serif text-2xl text-stone-900 dark:text-white mt-1">{wine.inventoryCount} <span className="text-base text-stone-500">btl</span></div>
+            <div className="serif text-2xl text-stone-900 mt-1">{wine.inventoryCount} <span className="text-base text-stone-500">btl</span></div>
           </div>
-          <div className="bg-stone-50 dark:bg-stone-800/40 rounded-md p-3">
+          <div className="bg-stone-50 rounded-md p-3">
             <MonoLabel>NOTE MOYENNE</MonoLabel>
-            <div className="serif text-2xl text-stone-900 dark:text-white mt-1">
+            <div className="serif text-2xl text-stone-900 mt-1">
               {avgRating !== null ? <>{avgRating.toFixed(1)} <span className="text-base text-stone-500">/ 5</span></> : <span className="text-stone-400">—</span>}
             </div>
           </div>
-          <div className="bg-stone-50 dark:bg-stone-800/40 rounded-md p-3">
+          <div className="bg-stone-50 rounded-md p-3">
             <MonoLabel>DÉGUSTATIONS</MonoLabel>
-            <div className="serif text-2xl text-stone-900 dark:text-white mt-1">{wineNotes.length}</div>
+            <div className="serif text-2xl text-stone-900 mt-1">{wineNotes.length}</div>
           </div>
         </div>
 
@@ -183,7 +183,7 @@ export const CockpitWineDetails: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <MonoLabel>◌ Profil sensoriel</MonoLabel>
-              <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5">Caractère</h3>
+              <h3 className="serif-it text-xl text-stone-900 mt-0.5">Caractère</h3>
             </div>
             <AromaConfidenceBadge
               source={(wine as any).aromaSource}
@@ -192,18 +192,18 @@ export const CockpitWineDetails: React.FC = () => {
           </div>
 
           {wine.sensoryDescription && (
-            <p className="text-stone-700 dark:text-stone-300 italic leading-relaxed mb-4 text-sm">
+            <p className="text-stone-700 italic leading-relaxed mb-4 text-sm">
               « {wine.sensoryDescription} »
             </p>
           )}
 
           <div className="grid grid-cols-2 gap-6 items-center">
-            <div className="bg-stone-50 dark:bg-stone-800/30 rounded-md p-4">
+            <div className="bg-stone-50 rounded-md p-4">
               {wine.sensoryProfile ? <FlavorRadar data={wine.sensoryProfile} /> : <div className="text-stone-400 text-sm italic">Pas de profil</div>}
             </div>
             <div className="flex flex-wrap gap-1.5 content-start">
               {(wine.aromaProfile || []).map((aroma, i) => (
-                <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
+                <span key={i} className="text-[11px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
                   {aroma}
                 </span>
               ))}
@@ -217,14 +217,14 @@ export const CockpitWineDetails: React.FC = () => {
         {/* ───── Accords & cépages ───── */}
         <Card className="col-span-12 lg:col-span-5 p-6">
           <MonoLabel>◌ Cépages & accords</MonoLabel>
-          <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Sur la table</h3>
+          <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Sur la table</h3>
 
           {wine.grapeVarieties && wine.grapeVarieties.length > 0 && (
             <div className="mb-4">
               <div className="text-[11px] mono tracking-widest text-stone-500 uppercase mb-1.5">Cépages</div>
               <div className="flex flex-wrap gap-1.5">
                 {wine.grapeVarieties.map((g, i) => (
-                  <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-wine-50 dark:bg-wine-900/20 text-wine-800 dark:text-wine-300">
+                  <span key={i} className="text-[11px] px-2 py-0.5 rounded bg-wine-50 text-wine-800">
                     {g}
                   </span>
                 ))}
@@ -237,7 +237,7 @@ export const CockpitWineDetails: React.FC = () => {
               <div className="text-[11px] mono tracking-widest text-stone-500 uppercase mb-1.5 flex items-center gap-1">
                 <ChefHat className="w-3 h-3" /> Accords suggérés
               </div>
-              <ul className="space-y-1 text-sm text-stone-700 dark:text-stone-300">
+              <ul className="space-y-1 text-sm text-stone-700">
                 {wine.suggestedFoodPairings.map((p, i) => (
                   <li key={i} className="flex items-start gap-2">
                     <span className="mt-1.5 w-1 h-1 rounded-full bg-wine-500 flex-shrink-0" />
@@ -252,7 +252,7 @@ export const CockpitWineDetails: React.FC = () => {
         {/* ───── Bouteilles & emplacements ───── */}
         <Card className="col-span-12 lg:col-span-7 p-6">
           <MonoLabel>◌ Bouteilles · {activeBottles.length}</MonoLabel>
-          <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Emplacements</h3>
+          <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Emplacements</h3>
 
           {activeBottles.length > 0 ? (
             <ul className="space-y-1.5">
@@ -266,10 +266,10 @@ export const CockpitWineDetails: React.FC = () => {
                   locText = `${rack?.name || '?'} [${String.fromCharCode(65 + loc.y)}${loc.x + 1}]`;
                 }
                 return (
-                  <li key={b.id} className="flex items-center justify-between py-2 px-3 rounded bg-stone-50 dark:bg-stone-800/30 text-sm">
+                  <li key={b.id} className="flex items-center justify-between py-2 px-3 rounded bg-stone-50 text-sm">
                     <div className="flex items-center gap-3">
                       <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                      <span className="font-medium text-stone-700 dark:text-stone-300">{locText}</span>
+                      <span className="font-medium text-stone-700">{locText}</span>
                       {b.purchaseDate && (
                         <span className="mono text-[10px] text-stone-500">
                           Acheté le {new Date(b.purchaseDate).toLocaleDateString('fr-FR')}
@@ -278,7 +278,7 @@ export const CockpitWineDetails: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleConsume(b)}
-                      className="text-xs text-stone-500 hover:text-wine-700 px-2 py-1 rounded hover:bg-wine-50 dark:hover:bg-wine-900/20"
+                      className="text-xs text-stone-500 hover:text-wine-700 px-2 py-1 rounded hover:bg-wine-50"
                     >
                       J'ai bu →
                     </button>
@@ -294,21 +294,21 @@ export const CockpitWineDetails: React.FC = () => {
         {/* ───── Dégustations & journal ───── */}
         <Card className="col-span-12 lg:col-span-5 p-6">
           <MonoLabel>◌ Dégustations · {wineNotes.length}</MonoLabel>
-          <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Souvenirs</h3>
+          <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Souvenirs</h3>
 
           {wineNotes.length > 0 ? (
             <ul className="space-y-3">
               {wineNotes.slice(0, 5).map(n => (
-                <li key={n.id} className="border-b border-stone-100 dark:border-stone-800 pb-2 last:border-b-0">
+                <li key={n.id} className="border-b border-stone-100 pb-2 last:border-b-0">
                   <div className="flex items-center justify-between text-xs">
                     <span className="mono text-stone-500">{new Date(n.date).toLocaleDateString('fr-FR')}</span>
-                    <span className="serif text-base text-wine-700 dark:text-wine-500 font-medium">{n.rating}/5</span>
+                    <span className="serif text-base text-wine-700 font-medium">{n.rating}/5</span>
                   </div>
                   {(n as any).pairedWith && (
-                    <div className="text-[12px] text-stone-700 dark:text-stone-300 mt-1">{(n as any).pairedWith}</div>
+                    <div className="text-[12px] text-stone-700 mt-1">{(n as any).pairedWith}</div>
                   )}
                   {n.notes && (
-                    <div className="text-[12px] text-stone-600 dark:text-stone-400 italic mt-1 line-clamp-2">« {n.notes} »</div>
+                    <div className="text-[12px] text-stone-600 italic mt-1 line-clamp-2">« {n.notes} »</div>
                   )}
                 </li>
               ))}
@@ -325,8 +325,8 @@ export const CockpitWineDetails: React.FC = () => {
         {wine.producerHistory && (
           <Card className="col-span-12 p-6">
             <MonoLabel>◌ Récit producteur</MonoLabel>
-            <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Le domaine</h3>
-            <p className="text-stone-700 dark:text-stone-300 text-[13.5px] leading-relaxed whitespace-pre-line">
+            <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Le domaine</h3>
+            <p className="text-stone-700 text-[13.5px] leading-relaxed whitespace-pre-line">
               {wine.producerHistory}
             </p>
           </Card>
@@ -336,15 +336,15 @@ export const CockpitWineDetails: React.FC = () => {
         {history.length > 0 && (
           <Card className="col-span-12 p-6">
             <MonoLabel>◌ Activité · {history.length} entrées</MonoLabel>
-            <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Journal</h3>
+            <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Journal</h3>
             <ul className="space-y-1 text-sm">
               {history.slice(0, 10).map((e, i) => (
-                <li key={e.id || i} className="grid grid-cols-12 gap-2 items-baseline border-b border-stone-100 dark:border-stone-800/50 py-1.5">
+                <li key={e.id || i} className="grid grid-cols-12 gap-2 items-baseline border-b border-stone-100 py-1.5">
                   <span className="col-span-2 mono text-[10px] text-stone-500">
                     {new Date(e.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                   </span>
                   <span className="col-span-1 mono text-[10px] tracking-widest text-stone-500">[{e.type}]</span>
-                  <span className="col-span-9 text-stone-700 dark:text-stone-300 truncate">
+                  <span className="col-span-9 text-stone-700 truncate">
                     {e.description || `${e.wineName}`}
                   </span>
                 </li>

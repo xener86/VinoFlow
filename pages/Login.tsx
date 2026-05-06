@@ -43,21 +43,21 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 relative overflow-hidden">
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-wine-100 dark:bg-wine-900/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-indigo-100 dark:bg-indigo-900/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-wine-100 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-[-10%] left-[-10%] w-96 h-96 bg-indigo-100 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="bg-white dark:bg-stone-900 p-8 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up">
+      <div className="bg-white p-8 rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md relative z-10 animate-fade-in-up">
         <div className="text-center mb-8">
-           <div className="w-16 h-16 bg-wine-50 dark:bg-wine-900/20 rounded-full flex items-center justify-center text-wine-600 dark:text-wine-500 mx-auto mb-4 border border-wine-100 dark:border-wine-500/20">
+           <div className="w-16 h-16 bg-wine-50 rounded-full flex items-center justify-center text-wine-600 mx-auto mb-4 border border-wine-100">
               <Wine size={32} />
            </div>
-           <h1 className="text-3xl font-serif text-stone-900 dark:text-white mb-2">VinoFlow</h1>
-           <p className="text-stone-500 dark:text-stone-400">Votre sommelier personnel intelligent.</p>
+           <h1 className="text-3xl font-serif text-stone-900 mb-2">VinoFlow</h1>
+           <p className="text-stone-500">Votre sommelier personnel intelligent.</p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
@@ -70,7 +70,7 @@ export const Login: React.FC = () => {
                      onChange={e => setEmail(e.target.value)}
                      placeholder="Email"
                      required
-                     className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none transition-all"
+                     className="w-full bg-stone-50 border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-stone-900 focus:ring-2 focus:ring-wine-500 outline-none transition-all"
                    />
                </div>
            </div>
@@ -84,13 +84,13 @@ export const Login: React.FC = () => {
                      placeholder="Mot de passe"
                      required
                      minLength={6}
-                     className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none transition-all"
+                     className="w-full bg-stone-50 border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-stone-900 focus:ring-2 focus:ring-wine-500 outline-none transition-all"
                    />
                </div>
            </div>
 
            {error && (
-               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-300 p-3 rounded-lg text-sm flex items-center gap-2 animate-pulse">
+               <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 animate-pulse">
                    <AlertCircle size={16} />
                    {error}
                </div>
@@ -99,7 +99,7 @@ export const Login: React.FC = () => {
            <button 
              type="submit" 
              disabled={loading}
-             className="w-full bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-wine-500/30 dark:shadow-wine-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+             className="w-full bg-wine-600 hover:bg-wine-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-wine-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
            >
              {loading ? (
                <>
@@ -118,7 +118,7 @@ export const Login: React.FC = () => {
                 setIsLogin(!isLogin);
                 setError('');
               }}
-              className="text-stone-500 hover:text-stone-800 dark:hover:text-white text-sm transition-colors"
+              className="text-stone-500 hover:text-stone-800 text-sm transition-colors"
             >
                 {isLogin ? "Pas encore de compte ? Créer un compte" : "Déjà un compte ? Se connecter"}
             </button>

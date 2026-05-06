@@ -25,14 +25,14 @@ export const TopStrip: React.FC = () => {
   }, []);
 
   return (
-    <div className="border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-7 h-9 flex items-center justify-between mono text-[10px] text-stone-500 dark:text-stone-400">
+    <div className="border-b border-stone-200 bg-white px-7 h-9 flex items-center justify-between mono text-[10px] text-stone-500">
       <div className="flex items-center gap-4">
-        <span className="text-wine-700 dark:text-wine-500 font-medium tracking-widest">VINOFLOW</span>
+        <span className="text-wine-700 font-medium tracking-widest">VINOFLOW</span>
         <span className="flex items-center"><PulseDot />LOCAL</span>
       </div>
       <div className="hidden md:block">{now}</div>
       <div className="flex items-center gap-3">
-        <span className="text-emerald-700 dark:text-emerald-400">SYNC ✓</span>
+        <span className="text-emerald-700">SYNC ✓</span>
         <span>v2.0.0</span>
       </div>
     </div>

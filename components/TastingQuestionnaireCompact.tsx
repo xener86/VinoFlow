@@ -89,19 +89,19 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
   return (
     <div className="space-y-4">
       {/* Wine Header compact */}
-      <div className="bg-gradient-to-r from-wine-50 to-white dark:from-wine-900/20 dark:to-stone-900 p-3 rounded-lg border border-wine-100 dark:border-wine-900/30">
+      <div className="bg-gradient-to-r from-wine-50 to-white p-3 rounded-lg border border-wine-100">
         <div className="flex justify-between items-start">
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h4 className="font-serif text-base text-stone-900 dark:text-white">{wine.name}</h4>
+              <h4 className="font-serif text-base text-stone-900">{wine.name}</h4>
               {isLoadingQuestionnaire && (
                 <Loader2 size={12} className="animate-spin text-wine-600" />
               )}
             </div>
-            {wine.cuvee && <p className="text-wine-600 dark:text-wine-400 text-xs italic">{wine.cuvee}</p>}
+            {wine.cuvee && <p className="text-wine-600 text-xs italic">{wine.cuvee}</p>}
             <p className="text-[10px] text-stone-500">{wine.producer} • {wine.vintage}</p>
             {aiQuestionnaire?.tastingTips && (
-              <p className="text-[10px] text-stone-600 dark:text-stone-400 mt-1 flex items-center gap-1">
+              <p className="text-[10px] text-stone-600 mt-1 flex items-center gap-1">
                 <Sparkles size={10} className="text-wine-600" />
                 {aiQuestionnaire.tastingTips}
               </p>
@@ -111,8 +111,8 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
             onClick={() => onToggleFavorite(wine.id)}
             className={`p-1.5 rounded-full transition-colors ${
               wine.isFavorite 
-                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                : 'bg-stone-100 dark:bg-stone-800 text-stone-400 hover:text-red-600'
+                ? 'bg-red-100 text-red-600'
+                : 'bg-stone-100 text-stone-400 hover:text-red-600'
             }`}
           >
             <Heart size={14} className={wine.isFavorite ? 'fill-current' : ''} />
@@ -124,7 +124,7 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
       <div className="grid grid-cols-2 gap-3">
         {/* Visuel */}
         <div className="col-span-2">
-          <label className="text-xs font-bold text-stone-700 dark:text-stone-300 mb-1 block flex items-center gap-1">
+          <label className="text-xs font-bold text-stone-700 mb-1 block flex items-center gap-1">
             🎨 <span>{formData.visualNotes}</span>
           </label>
           <input
@@ -192,8 +192,8 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
       </div>
 
       {/* Note Globale - Compacte */}
-      <div className="bg-stone-50 dark:bg-stone-950 rounded-lg p-3">
-        <label className="text-xs font-bold text-stone-700 dark:text-stone-300 mb-2 block text-center">
+      <div className="bg-stone-50 rounded-lg p-3">
+        <label className="text-xs font-bold text-stone-700 mb-2 block text-center">
           ⭐ Note
         </label>
         <div className="flex gap-1 justify-center">
@@ -212,13 +212,13 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
             >
               <Star 
                 size={28} 
-                className={i < formData.rating ? 'fill-amber-500 text-amber-500' : 'text-stone-300 dark:text-stone-700'} 
+                className={i < formData.rating ? 'fill-amber-500 text-amber-500' : 'text-stone-300'} 
               />
             </button>
           ))}
         </div>
         {formData.rating === 5 && (
-          <p className="text-center text-[10px] text-wine-600 dark:text-wine-400 mt-1.5 flex items-center justify-center gap-1">
+          <p className="text-center text-[10px] text-wine-600 mt-1.5 flex items-center justify-center gap-1">
             <Heart size={10} className="fill-current" />
             Favori !
           </p>
@@ -227,13 +227,13 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
 
       {/* Impressions - Textarea compact */}
       <div>
-        <label className="text-xs font-bold text-stone-700 dark:text-stone-300 mb-1 block">😊 Impressions</label>
+        <label className="text-xs font-bold text-stone-700 mb-1 block">😊 Impressions</label>
         <textarea
           value={formData.nose.join('\n')}
           onChange={(e) => setFormData({...formData, nose: e.target.value.split('\n').filter(l => l.trim())})}
           placeholder="Vos ressentis, émotions..."
           rows={2}
-          className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-2 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-wine-500 outline-none resize-none"
+          className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-stone-900 text-xs focus:ring-2 focus:ring-wine-500 outline-none resize-none"
         />
       </div>
 
@@ -246,7 +246,7 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
             value={formData.pairedWith}
             onChange={(e) => setFormData({...formData, pairedWith: e.target.value})}
             placeholder="Ex: Magret"
-            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-2 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-wine-500 outline-none"
+            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-stone-900 text-xs focus:ring-2 focus:ring-wine-500 outline-none"
           />
         </div>
         <div>
@@ -256,7 +256,7 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
             value={formData.pairingSuggestion}
             onChange={(e) => setFormData({...formData, pairingSuggestion: e.target.value})}
             placeholder="Ex: Fromage affiné"
-            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-2 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-wine-500 outline-none"
+            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-stone-900 text-xs focus:ring-2 focus:ring-wine-500 outline-none"
           />
         </div>
       </div>
@@ -269,7 +269,7 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
           onChange={(e) => setFormData({...formData, notes: e.target.value})}
           placeholder="Contexte, personnes présentes..."
           rows={2}
-          className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-2 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-wine-500 outline-none resize-none"
+          className="w-full bg-stone-50 border border-stone-200 rounded-lg p-2 text-stone-900 text-xs focus:ring-2 focus:ring-wine-500 outline-none resize-none"
         />
       </div>
 
@@ -277,7 +277,7 @@ export const TastingQuestionnaireCompact: React.FC<TastingQuestionnaireCompactPr
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="flex-1 py-2.5 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-sm"
+          className="flex-1 py-2.5 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors text-sm"
         >
           Annuler
         </button>

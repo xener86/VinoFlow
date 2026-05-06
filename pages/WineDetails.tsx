@@ -203,15 +203,15 @@ export const WineDetails: React.FC = () => {
   // Loading State
   if (loadingWines || !wine) {
       return (
-          <div className="flex justify-center items-center h-screen bg-stone-50 dark:bg-stone-950">
+          <div className="flex justify-center items-center h-screen bg-stone-50">
               <Loader2 className="animate-spin text-wine-600" size={32} />
           </div>
       );
   }
 
-  const typeColor = wine.type === 'RED' ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50' : 
-                    wine.type === 'WHITE' ? 'text-yellow-600 dark:text-yellow-200 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-100 dark:border-yellow-900/50' : 
-                    'text-pink-600 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/30 border border-pink-100 dark:border-pink-900/50';
+  const typeColor = wine.type === 'RED' ? 'text-red-600 bg-red-50 border border-red-100' : 
+                    wine.type === 'WHITE' ? 'text-yellow-600 bg-yellow-50 border border-yellow-100' : 
+                    'text-pink-600 bg-pink-50 border border-pink-100';
 
   return (
     <div className="pb-32 animate-fade-in">
@@ -220,13 +220,13 @@ export const WineDetails: React.FC = () => {
         <div className="absolute top-0 left-0 right-0 flex justify-between z-10">
             <button 
               onClick={() => navigate(-1)} 
-              className="p-2 text-stone-400 hover:text-stone-800 dark:hover:text-white bg-white/80 dark:bg-stone-900/50 rounded-full backdrop-blur-sm shadow-sm border border-stone-200 dark:border-stone-800"
+              className="p-2 text-stone-400 hover:text-stone-800 bg-white/80 rounded-full backdrop-blur-sm shadow-sm border border-stone-200"
             >
               <ArrowLeft size={24} />
             </button>
             <button 
               onClick={() => navigate(`/wine/${wine.id}/edit`)}
-              className="p-2 text-stone-400 hover:text-stone-800 dark:hover:text-white bg-white/80 dark:bg-stone-900/50 rounded-full backdrop-blur-sm shadow-sm border border-stone-200 dark:border-stone-800"
+              className="p-2 text-stone-400 hover:text-stone-800 bg-white/80 rounded-full backdrop-blur-sm shadow-sm border border-stone-200"
             >
               <Edit size={20} />
             </button>
@@ -236,9 +236,9 @@ export const WineDetails: React.FC = () => {
             <div className={`px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 ${typeColor}`}>
                 {wine.type === 'RED' ? 'ROUGE' : wine.type === 'WHITE' ? 'BLANC' : wine.type === 'ROSE' ? 'ROSÉ' : wine.type === 'SPARKLING' ? 'PÉTILLANT' : wine.type}
             </div>
-            <h1 className="text-4xl font-serif text-stone-900 dark:text-white mb-2 leading-tight">{wine.name}</h1>
-            {wine.cuvee && <p className="text-2xl font-serif text-wine-600 dark:text-wine-400 mb-2 italic">{wine.cuvee}</p>}
-            <p className="text-stone-600 dark:text-stone-400 text-lg">{wine.producer} • {wine.vintage}</p>
+            <h1 className="text-4xl font-serif text-stone-900 mb-2 leading-tight">{wine.name}</h1>
+            {wine.cuvee && <p className="text-2xl font-serif text-wine-600 mb-2 italic">{wine.cuvee}</p>}
+            <p className="text-stone-600 text-lg">{wine.producer} • {wine.vintage}</p>
             <p className="text-stone-500 text-sm">
                 {wine.region}, {wine.country} {wine.parcel ? `• ${wine.parcel}` : ''}
             </p>
@@ -246,22 +246,22 @@ export const WineDetails: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1 bg-stone-100 dark:bg-stone-900 rounded-xl mb-6 border border-stone-200 dark:border-stone-800">
+      <div className="flex p-1 bg-stone-100 rounded-xl mb-6 border border-stone-200">
         <button 
           onClick={() => setActiveTab('TASTING')}
-          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'TASTING' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'TASTING' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
         >
           Dégustation
         </button>
         <button 
           onClick={() => setActiveTab('STORY')}
-          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'STORY' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'STORY' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
         >
           Récit
         </button>
         <button 
           onClick={() => setActiveTab('CELLAR')}
-          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'CELLAR' ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'CELLAR' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'}`}
         >
           Cave & Vie
         </button>
@@ -273,16 +273,16 @@ export const WineDetails: React.FC = () => {
         {/* TAB: TASTING */}
         {activeTab === 'TASTING' && (
           <div className="space-y-6 animate-fade-in">
-             <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-wine-600 dark:text-wine-400">
+             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-wine-600">
                     <Sparkles size={18} />
-                    <h3 className="font-serif text-lg text-stone-900 dark:text-white">Profil Sensoriel</h3>
+                    <h3 className="font-serif text-lg text-stone-900">Profil Sensoriel</h3>
                 </div>
-                <p className="text-stone-600 dark:text-stone-300 italic text-lg leading-relaxed mb-6">
+                <p className="text-stone-600 italic text-lg leading-relaxed mb-6">
                   "{wine.sensoryDescription}"
                 </p>
                 <div className="flex flex-col md:flex-row gap-8 items-center">
-                    <div className="w-full md:w-1/2 bg-stone-50 dark:bg-stone-950/50 rounded-xl p-4 border border-stone-100 dark:border-stone-800">
+                    <div className="w-full md:w-1/2 bg-stone-50 rounded-xl p-4 border border-stone-100">
                        <FlavorRadar data={wine.sensoryProfile} />
                     </div>
                     <div className="w-full md:w-1/2 space-y-3">
@@ -294,7 +294,7 @@ export const WineDetails: React.FC = () => {
                             {!(wine as any).aromaVerifiedAt && wine.aromaProfile && wine.aromaProfile.length > 0 && (
                                 <button
                                     onClick={() => setShowAromaEditor(s => !s)}
-                                    className="text-xs text-wine-600 dark:text-wine-400 underline hover:text-wine-700"
+                                    className="text-xs text-wine-600 underline hover:text-wine-700"
                                 >
                                     {showAromaEditor ? 'Fermer' : 'Vérifier'}
                                 </button>
@@ -320,7 +320,7 @@ export const WineDetails: React.FC = () => {
                         ) : (
                             <div className="flex flex-wrap gap-2">
                                 {wine.aromaProfile?.map((aroma, i) => (
-                                  <span key={i} className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-sm border border-stone-200 dark:border-stone-700">
+                                  <span key={i} className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-lg text-sm border border-stone-200">
                                     {aroma}
                                   </span>
                                 ))}
@@ -330,14 +330,14 @@ export const WineDetails: React.FC = () => {
                 </div>
              </div>
 
-             <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-orange-500 dark:text-orange-400">
+             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-orange-500">
                     <ChefHat size={18} />
-                    <h3 className="font-serif text-lg text-stone-900 dark:text-white">Accords Mets-Vins</h3>
+                    <h3 className="font-serif text-lg text-stone-900">Accords Mets-Vins</h3>
                 </div>
                 <ul className="space-y-3">
                    {wine.suggestedFoodPairings?.map((pair, i) => (
-                     <li key={i} className="flex items-start gap-3 text-stone-700 dark:text-stone-300">
+                     <li key={i} className="flex items-start gap-3 text-stone-700">
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-orange-500/50"></span>
                         {pair}
                      </li>
@@ -346,11 +346,11 @@ export const WineDetails: React.FC = () => {
              </div>
 
              {/* Fiches de Dégustation */}
-             <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
                <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2 text-wine-600 dark:text-wine-400">
+                 <div className="flex items-center gap-2 text-wine-600">
                    <Sparkles size={18} />
-                   <h3 className="font-serif text-lg text-stone-900 dark:text-white">
+                   <h3 className="font-serif text-lg text-stone-900">
                      Mes Dégustations ({wineNotes.length})
                    </h3>
                  </div>
@@ -369,7 +369,7 @@ export const WineDetails: React.FC = () => {
                {showTastingForm && (
                  <div className="mb-6 animate-fade-in">
                    <div className="flex items-center justify-between mb-4">
-                     <h4 className="font-semibold text-stone-900 dark:text-white">
+                     <h4 className="font-semibold text-stone-900">
                        {editingNote ? 'Modifier la dégustation' : 'Nouvelle dégustation'}
                      </h4>
                      <button
@@ -378,7 +378,7 @@ export const WineDetails: React.FC = () => {
                          setEditingNote(null);
                          setInitialFormData(undefined);
                        }}
-                       className="p-1 hover:bg-stone-200 dark:hover:bg-stone-800 rounded transition-colors"
+                       className="p-1 hover:bg-stone-200 rounded transition-colors"
                      >
                        <X size={20} className="text-stone-500" />
                      </button>
@@ -428,14 +428,14 @@ export const WineDetails: React.FC = () => {
         {/* TAB: STORY */}
         {activeTab === 'STORY' && (
            <div className="space-y-6 animate-fade-in">
-              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 relative overflow-hidden shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-stone-200 relative overflow-hidden shadow-sm">
                  <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
                     <BookOpen size={120} />
                  </div>
                  <div className="relative z-10">
-                    <h3 className="font-serif text-xl text-stone-900 dark:text-white mb-4">L'Histoire du Domaine</h3>
+                    <h3 className="font-serif text-xl text-stone-900 mb-4">L'Histoire du Domaine</h3>
                     <div className="prose prose-invert prose-stone max-w-none">
-                       <p className="text-stone-700 dark:text-stone-300 leading-relaxed">
+                       <p className="text-stone-700 leading-relaxed">
                          {wine.producerHistory}
                        </p>
                     </div>
@@ -443,13 +443,13 @@ export const WineDetails: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                 <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <span className="text-xs text-stone-500 uppercase font-bold">Cépages</span>
-                    <p className="text-stone-800 dark:text-stone-200 mt-1">{wine.grapeVarieties.join(', ')}</p>
+                    <p className="text-stone-800 mt-1">{wine.grapeVarieties.join(', ')}</p>
                  </div>
-                 <div className="bg-white dark:bg-stone-900/50 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                 <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <span className="text-xs text-stone-500 uppercase font-bold">Format</span>
-                    <p className="text-stone-800 dark:text-stone-200 mt-1">{wine.format}</p>
+                    <p className="text-stone-800 mt-1">{wine.format}</p>
                  </div>
               </div>
            </div>
@@ -460,36 +460,36 @@ export const WineDetails: React.FC = () => {
            <div className="space-y-6 animate-fade-in">
               {/* Stats Bar */}
               <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center justify-between shadow-sm">
+                  <div className="bg-white p-4 rounded-xl border border-stone-200 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-wine-600 dark:text-wine-500">
+                          <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-wine-600">
                               <WineIcon size={20} />
                           </div>
                           <div>
-                              <p className="text-2xl font-bold text-stone-900 dark:text-white">{wine.inventoryCount}</p>
+                              <p className="text-2xl font-bold text-stone-900">{wine.inventoryCount}</p>
                               <p className="text-xs text-stone-500">En Stock</p>
                           </div>
                       </div>
-                      <button onClick={handleAddStock} className="p-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-full transition-colors border border-stone-200 dark:border-stone-700">
-                          <Plus size={16} className="text-stone-600 dark:text-stone-300" />
+                      <button onClick={handleAddStock} className="p-2 bg-stone-100 hover:bg-stone-200 rounded-full transition-colors border border-stone-200">
+                          <Plus size={16} className="text-stone-600" />
                       </button>
                   </div>
-                  <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 flex items-center gap-4 shadow-sm">
-                      <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-green-600 dark:text-green-500">
+                  <div className="bg-white p-4 rounded-xl border border-stone-200 flex items-center gap-4 shadow-sm">
+                      <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-green-600">
                           <Calendar size={20} />
                       </div>
                       <div>
-                          <p className="text-lg font-bold text-stone-900 dark:text-white">2025-2030</p>
+                          <p className="text-lg font-bold text-stone-900">2025-2030</p>
                           <p className="text-xs text-stone-500">Apogée</p>
                       </div>
                   </div>
               </div>
 
               {/* Location */}
-              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
                   <div className="flex items-center gap-2 mb-4 text-stone-400">
                       <MapPin size={18} />
-                      <h3 className="font-serif text-lg text-stone-900 dark:text-white">Emplacement</h3>
+                      <h3 className="font-serif text-lg text-stone-900">Emplacement</h3>
                   </div>
                   {!loadingRacks && wine.bottles.filter(b => !b.isConsumed).length > 0 ? (
                       <div className="space-y-2">
@@ -503,9 +503,9 @@ export const WineDetails: React.FC = () => {
                               }
                               
                               return (
-                                  <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 dark:bg-stone-950 p-3 rounded-lg border border-stone-200 dark:border-stone-800">
-                                      <span className="text-stone-700 dark:text-stone-300">Bouteille #{i + 1}</span>
-                                      <span className="text-wine-600 dark:text-wine-400 font-mono text-xs">
+                                  <div key={b.id} className="flex justify-between items-center text-sm bg-stone-50 p-3 rounded-lg border border-stone-200">
+                                      <span className="text-stone-700">Bouteille #{i + 1}</span>
+                                      <span className="text-wine-600 font-mono text-xs">
                                           {locationLabel}
                                       </span>
                                   </div>
@@ -518,18 +518,18 @@ export const WineDetails: React.FC = () => {
               </div>
 
               {/* Timeline */}
-              <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
                   <div className="flex items-center gap-2 mb-6 text-stone-400">
                       <Clock size={18} />
-                      <h3 className="font-serif text-lg text-stone-900 dark:text-white">Historique</h3>
+                      <h3 className="font-serif text-lg text-stone-900">Historique</h3>
                   </div>
                   {loadingHistory ? (
                       <div className="flex justify-center py-4"><Loader2 className="animate-spin text-stone-400" /></div>
                   ) : history.length > 0 ? (
-                      <div className="relative border-l border-stone-200 dark:border-stone-800 ml-3 space-y-6">
+                      <div className="relative border-l border-stone-200 ml-3 space-y-6">
                           {history.map((event, i) => (
                               <div key={i} className="relative pl-6">
-                                  <div className={`absolute -left-1.5 top-1.5 w-3 h-3 rounded-full border border-white dark:border-stone-900 ${
+                                  <div className={`absolute -left-1.5 top-1.5 w-3 h-3 rounded-full border border-white ${
                                       event.type === 'IN' ? 'bg-green-500' : 
                                       event.type === 'OUT' ? 'bg-red-500' : 
                                       event.type === 'GIFT' ? 'bg-purple-500' :
@@ -537,7 +537,7 @@ export const WineDetails: React.FC = () => {
                                   }`} />
                                   <div className="flex justify-between items-start">
                                       <div>
-                                          <p className="text-stone-800 dark:text-stone-200 text-sm font-medium">{event.description}</p>
+                                          <p className="text-stone-800 text-sm font-medium">{event.description}</p>
                                           <p className="text-stone-500 text-xs">par {event.user}</p>
                                       </div>
                                       <span className="text-xs text-stone-600 font-mono">
@@ -554,12 +554,12 @@ export const WineDetails: React.FC = () => {
 
               {/* Gift Section */}
               {wine.inventoryCount > 0 && (
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border border-purple-200 dark:border-purple-900/50 shadow-sm">
-                      <div className="flex items-center gap-2 mb-4 text-purple-600 dark:text-purple-400">
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200 shadow-sm">
+                      <div className="flex items-center gap-2 mb-4 text-purple-600">
                           <Gift size={18} />
-                          <h3 className="font-serif text-lg text-stone-900 dark:text-white">Offrir une Bouteille</h3>
+                          <h3 className="font-serif text-lg text-stone-900">Offrir une Bouteille</h3>
                       </div>
-                      <p className="text-stone-600 dark:text-stone-400 text-sm mb-4">
+                      <p className="text-stone-600 text-sm mb-4">
                           Gardez une trace des bouteilles offertes à vos proches.
                       </p>
                       <button 
@@ -578,30 +578,30 @@ export const WineDetails: React.FC = () => {
       {/* Gift Modal */}
       {showGiftModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                  <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
+              <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <h3 className="text-xl font-serif text-stone-900 mb-4">Offrir une Bouteille</h3>
                   <p className="text-sm text-stone-500 mb-4">{wine.name} {wine.vintage}</p>
                   
                   <div className="space-y-4">
                       <div>
-                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">À qui ?</label>
+                          <label className="text-sm text-stone-600 block mb-2">À qui ?</label>
                           <input 
                             type="text"
                             value={giftRecipient}
                             onChange={(e) => setGiftRecipient(e.target.value)}
                             placeholder="ex: Marie Dupont"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-purple-500"
                           />
                       </div>
                       <div>
-                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">Pour quelle occasion ?</label>
+                          <label className="text-sm text-stone-600 block mb-2">Pour quelle occasion ?</label>
                           <input 
                             type="text"
                             value={giftOccasion}
                             onChange={(e) => setGiftOccasion(e.target.value)}
                             placeholder="ex: Anniversaire, Mariage..."
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-purple-500"
                           />
                       </div>
                   </div>
@@ -609,7 +609,7 @@ export const WineDetails: React.FC = () => {
                   <div className="flex gap-3 mt-6">
                       <button 
                         onClick={() => setShowGiftModal(false)}
-                        className="flex-1 py-3 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        className="flex-1 py-3 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors"
                       >
                           Annuler
                       </button>

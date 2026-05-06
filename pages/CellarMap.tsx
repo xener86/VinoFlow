@@ -336,12 +336,12 @@ export const CellarMap: React.FC = () => {
       
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
-            <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Plan de Cave</h2>
+            <h2 className="text-3xl font-serif text-stone-800">Plan de Cave</h2>
             
             <div className="flex gap-2">
                  <button 
                     onClick={() => setIsArchitectMode(!isArchitectMode)}
-                    className={`p-2 rounded-full border transition-all ${isArchitectMode ? 'bg-indigo-100 text-indigo-700 border-indigo-300 dark:bg-indigo-900 dark:border-indigo-500 dark:text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white text-stone-500 border-stone-200 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}
+                    className={`p-2 rounded-full border transition-all ${isArchitectMode ? 'bg-indigo-100 text-indigo-700 border-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-white text-stone-500 border-stone-200'}`}
                     title="Mode Architecte"
                 >
                     <PencilRuler size={20} />
@@ -349,7 +349,7 @@ export const CellarMap: React.FC = () => {
                 <button 
                     onClick={handleOptimize}
                     disabled={optimizing}
-                    className={`p-2 rounded-full border transition-all ${suggestions.length > 0 ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900 dark:border-purple-500 dark:text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white text-stone-500 border-stone-200 dark:bg-stone-900 dark:border-stone-700 dark:text-stone-400'}`}
+                    className={`p-2 rounded-full border transition-all ${suggestions.length > 0 ? 'bg-purple-100 text-purple-700 border-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white text-stone-500 border-stone-200'}`}
                     title="Optimisation IA"
                 >
                     <Wand2 size={20} className={optimizing ? "animate-spin" : ""} />
@@ -364,7 +364,7 @@ export const CellarMap: React.FC = () => {
                 placeholder="Chercher dans toute la cave..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-stone-800 dark:text-white focus:ring-2 focus:ring-wine-600 outline-none"
+                className="w-full bg-white border border-stone-200 rounded-xl py-2.5 pl-10 pr-4 text-stone-800 focus:ring-2 focus:ring-wine-600 outline-none"
             />
         </div>
 
@@ -380,8 +380,8 @@ export const CellarMap: React.FC = () => {
                             onContextMenu={(e) => openRackMenu(e, rack.id)}
                             className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                                 isSelected
-                                ? 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white z-10 shadow-sm'
-                                : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
+                                ? 'bg-white border-stone-200 text-stone-900 z-10 shadow-sm'
+                                : 'bg-stone-100 border-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-200'
                             }`}
                             style={{marginBottom: -1}}
                         >
@@ -394,7 +394,7 @@ export const CellarMap: React.FC = () => {
                             {isArchitectMode && isSelected && (
                                 <button
                                     onClick={(e) => openRackMenu(e, rack.id)}
-                                    className="ml-1 p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
+                                    className="ml-1 p-0.5 rounded hover:bg-stone-200"
                                 >
                                     <MoreVertical size={12} />
                                 </button>
@@ -409,8 +409,8 @@ export const CellarMap: React.FC = () => {
                     onClick={() => { setSelectedTabId('VIEW_ALL_BOXES'); setRackMenu(null); }}
                     className={`relative px-4 py-2 text-xs font-medium rounded-t-lg border-t border-x whitespace-nowrap flex items-center gap-2 transition-all ${
                         selectedTabId === 'VIEW_ALL_BOXES'
-                        ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-100 dark:border-amber-800 text-amber-800 dark:text-amber-100 z-10 shadow-sm'
-                        : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-900/80'
+                        ? 'bg-amber-50 border-amber-100 text-amber-800 z-10 shadow-sm'
+                        : 'bg-stone-100 border-stone-200 text-stone-500 hover:text-stone-700 hover:bg-stone-200'
                     }`}
                     style={{marginBottom: -1}}
                 >
@@ -427,7 +427,7 @@ export const CellarMap: React.FC = () => {
             {isArchitectMode && (
                 <button
                   onClick={() => setShowAddRackModal(true)}
-                  className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 dark:border-stone-600 text-stone-500 hover:text-stone-800 dark:hover:text-white hover:border-stone-500 dark:hover:border-stone-400"
+                  className="px-3 py-1.5 text-xs rounded-full border border-dashed border-stone-400 text-stone-500 hover:text-stone-800 hover:border-stone-500"
                 >
                     <Plus size={14} />
                 </button>
@@ -438,17 +438,17 @@ export const CellarMap: React.FC = () => {
       {/* Unsorted Dock */}
       {unsortedBottles.length > 0 && (
         <div className={`fixed bottom-24 right-4 z-40 transition-transform duration-300 ${showUnsortedDock ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
+           <div className="bg-white border border-stone-200 rounded-xl shadow-2xl p-4 w-64 max-h-[40vh] overflow-y-auto flex flex-col gap-2 relative">
                <button 
                 onClick={() => setShowUnsortedDock(false)}
-                className="absolute -left-8 top-0 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 p-2 rounded-l-lg text-stone-400 hover:text-stone-800 dark:hover:text-white"
+                className="absolute -left-8 top-0 bg-white border border-stone-200 p-2 rounded-l-lg text-stone-400 hover:text-stone-800"
                >
                    <ChevronRight size={16} />
                </button>
-               <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 mb-2 border-b border-stone-200 dark:border-stone-800 pb-2">
-                   <Inbox size={16} className="text-wine-600 dark:text-wine-400" />
+               <div className="flex items-center gap-2 text-stone-700 mb-2 border-b border-stone-200 pb-2">
+                   <Inbox size={16} className="text-wine-600" />
                    <span className="text-sm font-bold">Quai de Réception</span>
-                   <span className="text-xs bg-stone-100 dark:bg-stone-800 px-2 rounded-full ml-auto">{unsortedBottles.length}</span>
+                   <span className="text-xs bg-stone-100 px-2 rounded-full ml-auto">{unsortedBottles.length}</span>
                </div>
                <p className="text-[10px] text-stone-500 italic">Glissez ces bouteilles vers les étagères pour les ranger.</p>
                {unsortedBottles.map((b, i) => (
@@ -457,9 +457,9 @@ export const CellarMap: React.FC = () => {
                     draggable
                     onDragStart={(e) => handleDragStart(e, b.id)}
                     title={`${b.wineName} ${b.wineCuvee ? `- ${b.wineCuvee}` : ''} (${b.wineVintage})`}
-                    className="bg-stone-50 dark:bg-stone-950 p-2 rounded border border-stone-200 dark:border-stone-800 cursor-grab hover:border-stone-400 dark:hover:border-stone-600 active:cursor-grabbing"
+                    className="bg-stone-50 p-2 rounded border border-stone-200 cursor-grab hover:border-stone-400 active:cursor-grabbing"
                    >
-                       <div className="text-xs text-stone-800 dark:text-white truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
+                       <div className="text-xs text-stone-800 truncate">{b.wineName} {b.wineCuvee ? `- ${b.wineCuvee}` : ''}</div>
                        <div className="text-[10px] text-stone-500">{b.wineVintage} • {wineTypeLabels[b.wineType] || b.wineType}</div>
                    </div>
                ))}
@@ -480,25 +480,25 @@ export const CellarMap: React.FC = () => {
           {(() => {
               if (selectedTabId === 'VIEW_ALL_BOXES') {
                   return boxes.map(box => (
-                      <div key={box.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-sm">
-                          <div className="flex items-center justify-between px-4 py-2 border-b border-stone-100 dark:border-stone-800">
+                      <div key={box.id} className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+                          <div className="flex items-center justify-between px-4 py-2 border-b border-stone-100">
                               <div className="flex items-center gap-2">
                                   <Box size={14} className="text-amber-500" />
-                                  <span className="text-sm font-medium text-stone-800 dark:text-white">{box.name}</span>
+                                  <span className="text-sm font-medium text-stone-800">{box.name}</span>
                                   <span className="text-xs text-stone-400">{box.width * box.height} empl.</span>
                               </div>
                               {isArchitectMode && (
                                   <div className="flex gap-1">
                                       <button
                                           onClick={() => handleEditRack(box)}
-                                          className="p-1.5 rounded text-stone-400 hover:text-stone-700 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                                          className="p-1.5 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
                                           title="Renommer"
                                       >
                                           <Pencil size={13} />
                                       </button>
                                       <button
                                           onClick={() => handleDeleteRack(box.id)}
-                                          className="p-1.5 rounded text-stone-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                          className="p-1.5 rounded text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                           title="Supprimer"
                                       >
                                           <Trash2 size={13} />
@@ -547,32 +547,32 @@ export const CellarMap: React.FC = () => {
       {/* ... [Code des modales identique au fichier d'origine mais utilisant les handlers async] ... */}
       {selectedBottle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/20 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                  <button onClick={() => setSelectedBottle(null)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 dark:hover:text-white"><X size={20} /></button>
+              <div className="absolute inset-0 bg-stone-900/20 backdrop-blur-sm" onClick={() => setSelectedBottle(null)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <button onClick={() => setSelectedBottle(null)} className="absolute top-4 right-4 text-stone-400 hover:text-stone-600"><X size={20} /></button>
                   
                   <div className="text-center mb-6">
-                      <h3 className="text-2xl font-serif text-stone-900 dark:text-white mb-1">{selectedBottle.wine.name}</h3>
-                      <p className="text-stone-500 dark:text-stone-400">{selectedBottle.wine.producer} • {selectedBottle.wine.vintage}</p>
-                      <p className="text-xs text-stone-400 dark:text-stone-500 mt-1">
+                      <h3 className="text-2xl font-serif text-stone-900 mb-1">{selectedBottle.wine.name}</h3>
+                      <p className="text-stone-500">{selectedBottle.wine.producer} • {selectedBottle.wine.vintage}</p>
+                      <p className="text-xs text-stone-400 mt-1">
                           {racks.find(r => r.id === selectedBottle.location.rackId)?.name} • {getRowLabel(selectedBottle.location.y)}{selectedBottle.location.x+1}
                       </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleConsume} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Droplet size={24} className="text-wine-600 dark:text-wine-500" /> <span className="text-sm">Boire</span>
+                      <button onClick={handleConsume} className="bg-stone-100 hover:bg-stone-200 text-stone-800 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
+                          <Droplet size={24} className="text-wine-600" /> <span className="text-sm">Boire</span>
                       </button>
-                      <button onClick={handleStartMove} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Move size={24} className="text-blue-600 dark:text-blue-500" /> <span className="text-sm">Déplacer</span>
+                      <button onClick={handleStartMove} className="bg-stone-100 hover:bg-stone-200 text-stone-800 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
+                          <Move size={24} className="text-blue-600" /> <span className="text-sm">Déplacer</span>
                       </button>
-                      <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Eye size={24} className="text-emerald-600 dark:text-emerald-500" /> <span className="text-sm">Fiche</span>
+                      <button onClick={() => navigate(`/wine/${selectedBottle.wine.id}`)} className="bg-stone-100 hover:bg-stone-200 text-stone-800 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
+                          <Eye size={24} className="text-emerald-600" /> <span className="text-sm">Fiche</span>
                       </button>
-                      <button onClick={handleStartGift} className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
-                          <Gift size={24} className="text-purple-600 dark:text-purple-500" /> <span className="text-sm">Offrir</span>
+                      <button onClick={handleStartGift} className="bg-stone-100 hover:bg-stone-200 text-stone-800 p-4 rounded-xl flex flex-col items-center gap-2 transition-colors">
+                          <Gift size={24} className="text-purple-600" /> <span className="text-sm">Offrir</span>
                       </button>
-                      <button onClick={handleDeleteBottle} className="col-span-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 p-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-200 dark:border-red-900/50">
+                      <button onClick={handleDeleteBottle} className="col-span-2 bg-red-50 hover:bg-red-100 text-red-700 p-3 rounded-xl flex items-center justify-center gap-2 transition-colors border border-red-200">
                           <Trash2 size={18} /> <span className="text-sm">Supprimer la bouteille</span>
                       </button>
                   </div>
@@ -582,30 +582,30 @@ export const CellarMap: React.FC = () => {
 
       {showGiftModal && selectedBottle && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-                  <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-4">Offrir une Bouteille</h3>
+              <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-sm" onClick={() => setShowGiftModal(false)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
+                  <h3 className="text-xl font-serif text-stone-900 mb-4">Offrir une Bouteille</h3>
                   <p className="text-sm text-stone-500 mb-4">{selectedBottle.wine.name} {selectedBottle.wine.vintage}</p>
                   
                   <div className="space-y-4">
                       <div>
-                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">À qui ?</label>
+                          <label className="text-sm text-stone-600 block mb-2">À qui ?</label>
                           <input 
                             type="text"
                             value={giftRecipient}
                             onChange={(e) => setGiftRecipient(e.target.value)}
                             placeholder="ex: Marie Dupont"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-purple-500"
                           />
                       </div>
                       <div>
-                          <label className="text-sm text-stone-600 dark:text-stone-400 block mb-2">Pour quelle occasion ?</label>
+                          <label className="text-sm text-stone-600 block mb-2">Pour quelle occasion ?</label>
                           <input 
                             type="text"
                             value={giftOccasion}
                             onChange={(e) => setGiftOccasion(e.target.value)}
                             placeholder="ex: Anniversaire, Mariage..."
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-purple-500"
                           />
                       </div>
                   </div>
@@ -613,7 +613,7 @@ export const CellarMap: React.FC = () => {
                   <div className="flex gap-3 mt-6">
                       <button 
                         onClick={() => setShowGiftModal(false)}
-                        className="flex-1 py-3 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
+                        className="flex-1 py-3 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors"
                       >
                           Annuler
                       </button>
@@ -631,16 +631,16 @@ export const CellarMap: React.FC = () => {
 
       {fillTargetRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setFillTargetRack(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-amber-200 dark:border-amber-900/50 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4 flex items-center gap-2">
+              <div className="absolute inset-0 bg-stone-900/50" onClick={() => setFillTargetRack(null)} />
+              <div className="bg-white border border-amber-200 w-full max-w-sm rounded-2xl p-6 relative z-10">
+                  <h3 className="text-xl font-serif text-stone-800 mb-4 flex items-center gap-2">
                       <PackagePlus className="text-amber-500" /> Remplir {fillTargetRack.name}
                   </h3>
                   <div className="space-y-2 max-h-60 overflow-y-auto mb-4">
                       {inventory.map(w => (
-                          <button key={w.id} onClick={() => confirmQuickFill(w)} className="w-full text-left p-3 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800">
+                          <button key={w.id} onClick={() => confirmQuickFill(w)} className="w-full text-left p-3 rounded-lg bg-stone-50 hover:bg-stone-100 flex justify-between items-center border border-stone-200">
                               <div>
-                                  <div className="text-stone-800 dark:text-white text-sm">{w.name}</div>
+                                  <div className="text-stone-800 text-sm">{w.name}</div>
                                   <div className="text-stone-500 text-xs">{w.vintage}</div>
                               </div>
                               <Plus size={16} className="text-amber-500"/>
@@ -654,9 +654,9 @@ export const CellarMap: React.FC = () => {
 
       {emptySlotTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setEmptySlotTarget(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-2">Ajouter une bouteille</h3>
+              <div className="absolute inset-0 bg-stone-900/50" onClick={() => setEmptySlotTarget(null)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10">
+                  <h3 className="text-xl font-serif text-stone-800 mb-2">Ajouter une bouteille</h3>
                   <p className="text-stone-500 text-xs mb-4">
                       {emptySlotTarget.rackName} • {getRowLabel(emptySlotTarget.y)}{emptySlotTarget.x+1}
                   </p>
@@ -673,17 +673,17 @@ export const CellarMap: React.FC = () => {
                           </div>
                       </button>
                       
-                      <div className="border-t border-stone-200 dark:border-stone-800 my-1 pt-2">
+                      <div className="border-t border-stone-200 my-1 pt-2">
                           <p className="text-xs text-stone-500 mb-2 uppercase font-bold">Ou placer un vin existant</p>
                           <div className="space-y-2 max-h-48 overflow-y-auto">
                               {inventory.map(w => (
                                   <button 
                                     key={w.id} 
                                     onClick={() => handleAddExistingToSlot(w)}
-                                    className="w-full text-left p-2 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 flex justify-between items-center border border-stone-200 dark:border-stone-800"
+                                    className="w-full text-left p-2 rounded-lg bg-stone-50 hover:bg-stone-100 flex justify-between items-center border border-stone-200"
                                   >
                                       <div>
-                                          <div className="text-stone-800 dark:text-white text-xs">{w.name}</div>
+                                          <div className="text-stone-800 text-xs">{w.name}</div>
                                           <div className="text-stone-500 text-[10px]">{w.vintage}</div>
                                       </div>
                                       <Plus size={14} className="text-stone-400"/>
@@ -699,41 +699,41 @@ export const CellarMap: React.FC = () => {
 
       {showAddRackModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setShowAddRackModal(false)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4">Architecture</h3>
+              <div className="absolute inset-0 bg-stone-900/50" onClick={() => setShowAddRackModal(false)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10">
+                  <h3 className="text-xl font-serif text-stone-800 mb-4">Architecture</h3>
                   <div className="space-y-4">
                       <div>
                           <label className="text-xs text-stone-500 uppercase">Type de Rangement</label>
                           <div className="flex gap-2 mt-1 mb-4">
-                              <button onClick={() => setNewRackType('SHELF')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'SHELF' ? 'bg-stone-800 border-stone-500 text-white' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Étagère</button>
-                              <button onClick={() => setNewRackType('BOX')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'BOX' ? 'bg-amber-100 dark:bg-amber-900/30 border-amber-500 text-amber-800 dark:text-amber-200' : 'bg-white dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500'}`}>Caisse</button>
+                              <button onClick={() => setNewRackType('SHELF')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'SHELF' ? 'bg-stone-800 border-stone-500 text-white' : 'bg-white border-stone-200 text-stone-500'}`}>Étagère</button>
+                              <button onClick={() => setNewRackType('BOX')} className={`flex-1 py-2 text-sm rounded border transition-all ${newRackType === 'BOX' ? 'bg-amber-100 border-amber-500 text-amber-800' : 'bg-white border-stone-200 text-stone-500'}`}>Caisse</button>
                           </div>
                       </div>
 
                       {newRackType === 'BOX' && (
                           <div className="flex gap-2 mb-2">
-                              <button onClick={() => handleBoxPreset(3, 2, "Caisse de 6")} className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 py-2 text-xs text-stone-500 rounded hover:bg-stone-100 dark:hover:text-white">6 Bouteilles</button>
-                              <button onClick={() => handleBoxPreset(4, 3, "Caisse de 12")} className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 py-2 text-xs text-stone-500 rounded hover:bg-stone-100 dark:hover:text-white">12 Bouteilles</button>
+                              <button onClick={() => handleBoxPreset(3, 2, "Caisse de 6")} className="flex-1 bg-stone-50 border border-stone-200 py-2 text-xs text-stone-500 rounded hover:bg-stone-100">6 Bouteilles</button>
+                              <button onClick={() => handleBoxPreset(4, 3, "Caisse de 12")} className="flex-1 bg-stone-50 border border-stone-200 py-2 text-xs text-stone-500 rounded hover:bg-stone-100">12 Bouteilles</button>
                           </div>
                       )}
 
                       <div>
                           <label className="text-xs text-stone-500 uppercase">Nom</label>
-                          <input type="text" value={createRackName} onChange={e => setCreateRackName(e.target.value)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" placeholder="ex: Étagère Salon" />
+                          <input type="text" value={createRackName} onChange={e => setCreateRackName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-800" placeholder="ex: Étagère Salon" />
                       </div>
                       <div className="flex gap-4">
                           <div className="flex-1">
                               <label className="text-xs text-stone-500 uppercase">Largeur (Col)</label>
-                              <input type="number" value={newRackW} onChange={e => setNewRackW(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
+                              <input type="number" value={newRackW} onChange={e => setNewRackW(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-800" />
                           </div>
                           <div className="flex-1">
                               <label className="text-xs text-stone-500 uppercase">Hauteur (Lig)</label>
-                              <input type="number" value={newRackH} onChange={e => setNewRackH(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
+                              <input type="number" value={newRackH} onChange={e => setNewRackH(parseInt(e.target.value) || 0)} className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-800" />
                           </div>
                       </div>
                       
-                      <button onClick={handleCreateRack} className="w-full bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold py-3 rounded-lg mt-2 hover:bg-stone-800 dark:hover:bg-stone-200">Créer</button>
+                      <button onClick={handleCreateRack} className="w-full bg-stone-900 text-white font-bold py-3 rounded-lg mt-2 hover:bg-stone-800">Créer</button>
                   </div>
               </div>
           </div>
@@ -747,23 +747,23 @@ export const CellarMap: React.FC = () => {
               <>
                   <div className="fixed inset-0 z-40" onClick={() => setRackMenu(null)} />
                   <div
-                      className="fixed z-50 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl shadow-2xl py-1 w-48"
+                      className="fixed z-50 bg-white border border-stone-200 rounded-xl shadow-2xl py-1 w-48"
                       style={{ top: rackMenu.y, left: rackMenu.x }}
                   >
-                      <button onClick={() => { handleEditRack(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                      <button onClick={() => { handleEditRack(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">
                           <Pencil size={14} className="text-stone-400" /> Renommer
                       </button>
-                      <button onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                      <button onClick={() => { handleReorderRack(rack.id, 'left'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">
                           <ChevronLeft size={14} className="text-stone-400" /> Déplacer à gauche
                       </button>
-                      <button onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                      <button onClick={() => { handleReorderRack(rack.id, 'right'); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">
                           <ChevronRight size={14} className="text-stone-400" /> Déplacer à droite
                       </button>
-                      <button onClick={() => { handleQuickFill(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800">
+                      <button onClick={() => { handleQuickFill(rack); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50">
                           <PackagePlus size={14} className="text-amber-500" /> Remplir
                       </button>
-                      <div className="border-t border-stone-100 dark:border-stone-800 my-1" />
-                      <button onClick={() => { handleDeleteRack(rack.id); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                      <div className="border-t border-stone-100 my-1" />
+                      <button onClick={() => { handleDeleteRack(rack.id); setRackMenu(null); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
                           <Trash2 size={14} /> Supprimer
                       </button>
                   </div>
@@ -773,18 +773,18 @@ export const CellarMap: React.FC = () => {
 
       {editingRack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-              <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80" onClick={() => setEditingRack(null)} />
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-sm rounded-2xl p-6 relative z-10">
-                  <h3 className="text-xl font-serif text-stone-800 dark:text-white mb-4">Modifier le Rangement</h3>
+              <div className="absolute inset-0 bg-stone-900/50" onClick={() => setEditingRack(null)} />
+              <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10">
+                  <h3 className="text-xl font-serif text-stone-800 mb-4">Modifier le Rangement</h3>
                   <div className="space-y-4">
                       <div>
                           <label className="text-xs text-stone-500 uppercase">Nom</label>
-                          <input type="text" value={editRackName} onChange={e => setEditRackName(e.target.value)} className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-2 text-stone-800 dark:text-white" />
+                          <input type="text" value={editRackName} onChange={e => setEditRackName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded p-2 text-stone-800" />
                       </div>
                       
                       <div className="flex gap-2">
-                          <button onClick={() => setEditingRack(null)} className="flex-1 py-3 rounded-lg text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800">Annuler</button>
-                          <button onClick={handleSaveRackEdit} className="flex-1 bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold py-3 rounded-lg hover:bg-stone-800 dark:hover:bg-stone-200">Enregistrer</button>
+                          <button onClick={() => setEditingRack(null)} className="flex-1 py-3 rounded-lg text-stone-500 hover:bg-stone-100">Annuler</button>
+                          <button onClick={handleSaveRackEdit} className="flex-1 bg-stone-900 text-white font-bold py-3 rounded-lg hover:bg-stone-800">Enregistrer</button>
                       </div>
                   </div>
               </div>

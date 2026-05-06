@@ -45,11 +45,11 @@ const typeToCellClass: Record<string, string> = {
 };
 
 const slotColor = (type: string | null | undefined, hovered: boolean, isDragSrc: boolean, isDropTarget: boolean) => {
-  let base = 'bg-white dark:bg-stone-800/40 border border-dashed border-stone-300 dark:border-stone-700';
+  let base = 'bg-white border border-dashed border-stone-300';
   if (type && typeToCellClass[type]) base = `border ${typeToCellClass[type]}`;
   if (isDragSrc) base += ' opacity-30';
-  if (isDropTarget) base += ' ring-2 ring-wine-600 ring-offset-1 dark:ring-offset-stone-950';
-  else if (hovered) base += ' ring-1 ring-stone-900/40 dark:ring-white/40';
+  if (isDropTarget) base += ' ring-2 ring-wine-600 ring-offset-1';
+  else if (hovered) base += ' ring-1 ring-stone-900/40';
   return base;
 };
 
@@ -73,7 +73,7 @@ const InlineText: React.FC<{ value: string; onSave: (v: string) => void; classNa
     return (
       <button
         onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-        className={`text-left hover:bg-stone-200/60 dark:hover:bg-stone-700/40 hover:ring-1 hover:ring-stone-300 dark:hover:ring-stone-600 rounded px-1 -mx-1 transition ${className}`}
+        className={`text-left hover:bg-stone-200/60 hover:ring-1 hover:ring-stone-300 rounded px-1 -mx-1 transition ${className}`}
       >
         {value || <span className="text-stone-400 italic">{placeholder}</span>}
       </button>
@@ -90,7 +90,7 @@ const InlineText: React.FC<{ value: string; onSave: (v: string) => void; classNa
         if (e.key === 'Enter') commit();
         if (e.key === 'Escape') { setDraft(value); setEditing(false); }
       }}
-      className={`bg-white dark:bg-stone-900 border border-wine-400 rounded px-1 -mx-1 outline-none ring-1 ring-wine-200 dark:ring-wine-900/50 ${className}`}
+      className={`bg-white border border-wine-400 rounded px-1 -mx-1 outline-none ring-1 ring-wine-200 ${className}`}
     />
   );
 };
@@ -99,10 +99,10 @@ const InlineText: React.FC<{ value: string; onSave: (v: string) => void; classNa
 // +/− stepper for cols/rows/capacity
 // ────────────────────────────────────────────
 const Stepper: React.FC<{ value: number; onMinus: () => void; onPlus: () => void; min?: boolean; max?: boolean }> = ({ value, onMinus, onPlus, min, max }) => (
-  <div className="inline-flex items-center gap-0.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded">
-    <button onClick={onMinus} disabled={min} className="w-5 h-5 flex items-center justify-center text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:text-stone-300 disabled:hover:bg-transparent rounded-l text-sm">−</button>
-    <span className="mono text-[10px] text-stone-700 dark:text-stone-300 px-1.5 min-w-[2ch] text-center">{value}</span>
-    <button onClick={onPlus} disabled={max} className="w-5 h-5 flex items-center justify-center text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 disabled:text-stone-300 disabled:hover:bg-transparent rounded-r text-sm">+</button>
+  <div className="inline-flex items-center gap-0.5 bg-white border border-stone-300 rounded">
+    <button onClick={onMinus} disabled={min} className="w-5 h-5 flex items-center justify-center text-stone-700 hover:bg-stone-100 disabled:text-stone-300 disabled:hover:bg-transparent rounded-l text-sm">−</button>
+    <span className="mono text-[10px] text-stone-700 px-1.5 min-w-[2ch] text-center">{value}</span>
+    <button onClick={onPlus} disabled={max} className="w-5 h-5 flex items-center justify-center text-stone-700 hover:bg-stone-100 disabled:text-stone-300 disabled:hover:bg-transparent rounded-r text-sm">+</button>
   </div>
 );
 
@@ -264,7 +264,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <MonoLabel>VINOFLOW · INVENTAIRE</MonoLabel>
-            <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Plan de cave</h1>
+            <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Plan de cave</h1>
             <div className="mono text-[10px] tracking-widest text-stone-500 mt-2">▢ PLAN · VUE DE DESSUS</div>
           </div>
           <span className="mono text-[10px] tracking-widest text-stone-500 hidden md:block">
@@ -274,7 +274,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
       )}
 
       {/* Legend + edit toggle */}
-      <div className="flex items-center gap-4 mono text-[10px] tracking-widest text-stone-600 dark:text-stone-400 flex-wrap mb-5">
+      <div className="flex items-center gap-4 mono text-[10px] tracking-widest text-stone-600 flex-wrap mb-5">
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-wine-700 rounded-sm border border-wine-800" />ROUGE</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-amber-100 rounded-sm border border-amber-300" />BLANC</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 bg-pink-200 rounded-sm border border-pink-300" />ROSÉ</span>
@@ -287,7 +287,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
           className={`px-2.5 h-7 rounded border inline-flex items-center gap-1 transition ${
             editMode
               ? 'bg-wine-700 text-white border-wine-800 hover:bg-wine-800'
-              : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-300 dark:border-stone-700 hover:border-wine-700 hover:text-wine-700'
+              : 'bg-white text-stone-700 border-stone-300 hover:border-wine-700 hover:text-wine-700'
           }`}
         >
           {editMode ? <Check className="w-3 h-3" /> : <Settings className="w-3 h-3" />}
@@ -337,7 +337,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
               {editMode && (
                 <button
                   onClick={handleAddShelf}
-                  className="shrink-0 self-center mono text-[10px] tracking-widest px-3 py-3 rounded border-2 border-dashed border-stone-300 dark:border-stone-700 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 dark:hover:bg-wine-900/10 transition"
+                  className="shrink-0 self-center mono text-[10px] tracking-widest px-3 py-3 rounded border-2 border-dashed border-stone-300 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 transition"
                 >
                   + AJOUTER<br />UNE ÉTAGÈRE
                 </button>
@@ -350,7 +350,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
       {shelves.length === 0 && editMode && (
         <button
           onClick={handleAddShelf}
-          className="mb-8 mono text-[10px] tracking-widest px-4 py-6 rounded border-2 border-dashed border-stone-300 dark:border-stone-700 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 dark:hover:bg-wine-900/10 transition"
+          className="mb-8 mono text-[10px] tracking-widest px-4 py-6 rounded border-2 border-dashed border-stone-300 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 transition"
         >
           + AJOUTER LA PREMIÈRE ÉTAGÈRE
         </button>
@@ -384,7 +384,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
             {editMode && (
               <button
                 onClick={handleAddCase}
-                className="col-span-2 mono text-[10px] tracking-widest px-3 py-6 rounded border-2 border-dashed border-stone-300 dark:border-stone-700 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 dark:hover:bg-wine-900/10 transition"
+                className="col-span-2 mono text-[10px] tracking-widest px-3 py-6 rounded border-2 border-dashed border-stone-300 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 transition"
               >
                 + AJOUTER<br />UNE CAISSE
               </button>
@@ -398,7 +398,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
           <MonoLabel className="mb-3">▢ CAISSES</MonoLabel>
           <button
             onClick={handleAddCase}
-            className="mono text-[10px] tracking-widest px-4 py-6 rounded border-2 border-dashed border-stone-300 dark:border-stone-700 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 dark:hover:bg-wine-900/10 transition"
+            className="mono text-[10px] tracking-widest px-4 py-6 rounded border-2 border-dashed border-stone-300 text-stone-500 hover:border-wine-600 hover:text-wine-700 hover:bg-wine-50/30 transition"
           >
             + AJOUTER LA PREMIÈRE CAISSE
           </button>
@@ -408,7 +408,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
       {/* Empty state (no shelves, no cases, not editing) */}
       {shelves.length === 0 && boxes.length === 0 && !editMode && (
         <Card className="p-8 text-center">
-          <div className="serif-it text-xl text-stone-700 dark:text-stone-300 mb-2">Pas encore d'emplacement</div>
+          <div className="serif-it text-xl text-stone-700 mb-2">Pas encore d'emplacement</div>
           <p className="text-sm text-stone-500 mb-4">
             Active le mode édition pour créer tes premières étagères et caisses.
           </p>
@@ -421,10 +421,10 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         </Card>
       )}
 
-      <div className="mono text-[10px] text-stone-500 italic pt-3 mt-6 border-t border-stone-200 dark:border-stone-800">
+      <div className="mono text-[10px] text-stone-500 italic pt-3 mt-6 border-t border-stone-200">
         {editMode
           ? <>Édition en direct · clic sur un nom pour renommer · stepper pour redimensionner · drag&amp;drop pour déplacer une bouteille</>
-          : <>Vue lecture · adressage <span className="text-stone-700 dark:text-stone-300">[Étagère][Colonne]-[Rangée]</span> (ex: A2-3) · ouvrir l'édition pour réorganiser</>
+          : <>Vue lecture · adressage <span className="text-stone-700">[Étagère][Colonne]-[Rangée]</span> (ex: A2-3) · ouvrir l'édition pour réorganiser</>
         }
       </div>
     </div>
@@ -452,20 +452,20 @@ const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDr
       onDrop={onDrop}
       className={`rounded-lg p-3 mb-6 transition ${
         dropAttempt
-          ? 'ring-2 ring-wine-600 ring-offset-1 border border-wine-300 bg-wine-50/30 dark:bg-wine-900/20 dark:border-wine-900/50'
+          ? 'ring-2 ring-wine-600 ring-offset-1 border border-wine-300 bg-wine-50/30'
           : bottles.length > 0
-          ? 'border border-amber-300 bg-amber-50/40 dark:bg-amber-900/10 dark:border-amber-900/50'
-          : 'border border-dashed border-stone-300 dark:border-stone-700 bg-stone-50/40 dark:bg-stone-900/40'
+          ? 'border border-amber-300 bg-amber-50/40'
+          : 'border border-dashed border-stone-300 bg-stone-50/40'
       }`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className={`mono text-[10px] tracking-widest ${bottles.length ? 'text-amber-800 dark:text-amber-300' : 'text-stone-500'}`}>
+        <span className={`mono text-[10px] tracking-widest ${bottles.length ? 'text-amber-800' : 'text-stone-500'}`}>
           ▼ ZONE DE DÉCHARGEMENT {bottles.length > 0 && `· ${bottles.length} EN ATTENTE`}
         </span>
         <div className="flex-1" />
         <Link
           to="/add-wine"
-          className="mono text-[10px] tracking-widest px-2.5 h-7 inline-flex items-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-600 hover:text-wine-700 transition"
+          className="mono text-[10px] tracking-widest px-2.5 h-7 inline-flex items-center rounded border border-stone-300 bg-white text-stone-700 hover:border-wine-600 hover:text-wine-700 transition"
         >
           + AJOUTER UNE BOUTEILLE
         </Link>
@@ -485,13 +485,13 @@ const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDr
                 draggable
                 onDragStart={() => onStartDrag(bottle, wine)}
                 onClick={() => { window.location.href = `/wine/${wine.id}`; }}
-                className={`flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 hover:border-wine-700 rounded-md cursor-grab active:cursor-grabbing transition ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 bg-white border border-stone-300 hover:border-wine-700 rounded-md cursor-grab active:cursor-grabbing transition ${
                   isDragSrc ? 'opacity-30' : ''
                 }`}
                 title={`Glisser pour placer · ${wine.name} ${wine.vintage || ''}`}
               >
                 <span className={`w-2.5 h-2.5 rounded-sm border shrink-0 ${cls}`} />
-                <span className="serif-it text-[12.5px] text-stone-900 dark:text-white leading-tight truncate max-w-[200px]">{wine.name}</span>
+                <span className="serif-it text-[12.5px] text-stone-900 leading-tight truncate max-w-[200px]">{wine.name}</span>
                 <span className="mono text-[9px] tracking-widest text-stone-500">{wine.vintage}</span>
               </div>
             );
@@ -536,7 +536,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
       {/* Header */}
       <div className="mb-2 flex items-end justify-between gap-3">
         <div>
-          <div className="serif text-lg text-stone-900 dark:text-white leading-none">{rackAlias(rack.name)}</div>
+          <div className="serif text-lg text-stone-900 leading-none">{rackAlias(rack.name)}</div>
           {editMode ? (
             <InlineText
               value={rack.name}
@@ -549,7 +549,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             </div>
           )}
         </div>
-        <div className="mono text-[10px] text-stone-600 dark:text-stone-400">{filled}/{total}</div>
+        <div className="mono text-[10px] text-stone-600">{filled}/{total}</div>
       </div>
 
       {/* Edit controls */}
@@ -562,7 +562,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 12} />
             <button
               onClick={onDelete}
-              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
+              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
               title="Supprimer cette étagère"
             >
               <X className="w-3 h-3" />
@@ -572,7 +572,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             <button
               onClick={onMoveLeft}
               disabled={!canMoveLeft}
-              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
+              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 bg-white text-stone-700 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
               title="Déplacer à gauche"
             >
               <ChevronLeft className="w-3 h-3" /> GAUCHE
@@ -580,7 +580,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             <button
               onClick={onMoveRight}
               disabled={!canMoveRight}
-              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
+              className="flex-1 h-6 flex items-center justify-center gap-1 rounded border border-stone-300 bg-white text-stone-700 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition mono text-[9px] tracking-widest"
               title="Déplacer à droite"
             >
               DROITE <ChevronRight className="w-3 h-3" />
@@ -590,7 +590,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
       )}
 
       {/* Grid */}
-      <div className="border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-900/40 p-2 rounded-sm">
+      <div className="border border-stone-300 bg-stone-50/50 p-2 rounded-sm">
         {/* Column labels */}
         <div className="grid mb-1" style={{ gridTemplateColumns: `16px repeat(${rack.width}, 28px)`, gap: '4px' }}>
           <span />
@@ -655,7 +655,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
           );
         })}
       </div>
-      <div className="h-1 bg-stone-300 dark:bg-stone-700 mx-2 mt-1 rounded-b" />
+      <div className="h-1 bg-stone-300 mx-2 mt-1 rounded-b" />
     </div>
   );
 };
@@ -700,10 +700,10 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
   const filled = lots.reduce((a, l) => a + l.qty, 0);
 
   return (
-    <div className={`${span} border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-900/40 rounded p-2.5`}>
+    <div className={`${span} border border-stone-300 bg-stone-50/50 rounded p-2.5`}>
       <div className="flex items-center justify-between mb-2 gap-2">
         <div className="mono text-[9px] tracking-widest text-stone-500">{rack.id.slice(0, 6).toUpperCase()}</div>
-        <div className="mono text-[10px] text-stone-700 dark:text-stone-300">{filled}/{capacity}</div>
+        <div className="mono text-[10px] text-stone-700">{filled}/{capacity}</div>
       </div>
 
       {editMode && (
@@ -715,7 +715,7 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
             <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 8} />
             <button
               onClick={onDelete}
-              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50 dark:hover:bg-wine-900/30"
+              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
               title="Supprimer cette caisse"
             >
               <X className="w-3 h-3" />
@@ -725,7 +725,7 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
             <button
               onClick={onMoveLeft}
               disabled={!canMoveLeft}
-              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
+              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
               title="Déplacer à gauche"
             >
               <ChevronLeft className="w-3 h-3" />
@@ -733,7 +733,7 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
             <button
               onClick={onMoveRight}
               disabled={!canMoveRight}
-              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
+              className="flex-1 h-6 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-700 hover:border-wine-700 hover:text-wine-700 disabled:opacity-30 disabled:hover:border-stone-300 disabled:hover:text-stone-700 transition"
               title="Déplacer à droite"
             >
               <ChevronRight className="w-3 h-3" />
@@ -763,7 +763,7 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
               <div
                 key={i}
                 {...cellProps}
-                className={`w-7 h-7 rounded-sm border bg-white dark:bg-stone-800/40 border-stone-200 dark:border-stone-700 border-dashed transition ${isDropTargetCell ? 'ring-2 ring-wine-600 ring-offset-1' : ''}`}
+                className={`w-7 h-7 rounded-sm border bg-white border-stone-200 border-dashed transition ${isDropTargetCell ? 'ring-2 ring-wine-600 ring-offset-1' : ''}`}
               />
             );
           }
@@ -787,9 +787,9 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
       {/* Label */}
       <div className="mb-2">
         {editMode ? (
-          <InlineText value={rack.name} onSave={onRename} className="serif text-[12px] text-stone-900 dark:text-white" />
+          <InlineText value={rack.name} onSave={onRename} className="serif text-[12px] text-stone-900" />
         ) : (
-          <div className="serif text-[12px] text-stone-900 dark:text-white">{rack.name}</div>
+          <div className="serif text-[12px] text-stone-900">{rack.name}</div>
         )}
       </div>
 
@@ -804,11 +804,11 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
             <Link
               key={lot.wine.id}
               to={`/wine/${lot.wine.id}`}
-              className="flex items-center gap-1.5 text-[10.5px] hover:bg-white dark:hover:bg-stone-800/60 rounded -mx-0.5 px-0.5 transition"
+              className="flex items-center gap-1.5 text-[10.5px] hover:bg-white rounded -mx-0.5 px-0.5 transition"
               title={`${lot.wine.name} · ${lot.wine.vintage || '?'} · ×${lot.qty}`}
             >
               <span className={`w-2 h-2 rounded-[2px] border shrink-0 ${swatch}`} />
-              <span className="serif-it text-stone-800 dark:text-stone-200 truncate flex-1 leading-tight">{lot.wine.name}</span>
+              <span className="serif-it text-stone-800 truncate flex-1 leading-tight">{lot.wine.name}</span>
               <span className="mono text-[9px] text-stone-500 shrink-0">×{lot.qty}</span>
             </Link>
           );

@@ -34,14 +34,14 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
       {!embedded && (
         <div className="mb-5">
           <MonoLabel>VINOFLOW · ANALYSE</MonoLabel>
-          <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">Insights</h1>
+          <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Insights</h1>
           <div className="text-[12px] text-stone-500 mt-0.5">Vue temporelle de ta cave — fenêtres, composition, achats.</div>
         </div>
       )}
 
       {/* Lens picker (bg-white card style, matches insights-hifi.jsx) */}
       <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
-        <div className="flex gap-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1">
+        <div className="flex gap-1 bg-white border border-stone-200 rounded-md p-1">
           {(['GARDE', 'INVENTAIRE', 'ACHATS'] as Lens[]).map(l => (
             <button
               key={l}
@@ -49,7 +49,7 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
               className={`px-4 h-9 rounded text-sm transition ${
                 lens === l
                   ? 'bg-wine-700 text-white'
-                  : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800'
+                  : 'text-stone-700 hover:bg-stone-50'
               }`}
             >
               {LENS_META[l].label}
@@ -167,7 +167,7 @@ const GardeTimeline: React.FC = () => {
           <select
             value={filterRegion}
             onChange={(e) => setFilterRegion(e.target.value)}
-            className="h-7 rounded border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-[12px] px-2 text-stone-700 dark:text-stone-300"
+            className="h-7 rounded border border-stone-300 bg-white text-[12px] px-2 text-stone-700"
           >
             {regions.map(r => <option key={r} value={r}>{r === 'all' ? 'Toutes régions' : r}</option>)}
           </select>
@@ -180,7 +180,7 @@ const GardeTimeline: React.FC = () => {
             onChange={e => setHidePast(e.target.checked)}
             className="accent-wine-700"
           />
-          <span className="mono text-[10px] tracking-widest text-stone-600 dark:text-stone-400">MASQUER PASSÉS</span>
+          <span className="mono text-[10px] tracking-widest text-stone-600">MASQUER PASSÉS</span>
         </label>
         <div className="flex-1" />
         <span className="mono text-[10px] tracking-widest text-stone-500">{filtered.length} VINS · {filtered.reduce((a, e) => a + (e.wine.inventoryCount || 0), 0)} BTL</span>
@@ -188,13 +188,13 @@ const GardeTimeline: React.FC = () => {
 
       {/* Timeline */}
       <Card className="p-0 overflow-hidden">
-        <div className="px-5 py-3 border-b border-stone-200 dark:border-stone-800 bg-stone-50/40 dark:bg-stone-950/40 flex items-center justify-between">
+        <div className="px-5 py-3 border-b border-stone-200 bg-stone-50/40 flex items-center justify-between">
           <MonoLabel>◌ FENÊTRES DE GARDE · {horizonStart}–{horizonEnd}</MonoLabel>
           <span className="mono text-[10px] tracking-widest text-stone-500 hidden md:block">▌ ZONE CLAIRE = MONTÉE · ▌ FONCÉE = PIC · ▌ DÉLAVÉ = DESCENTE</span>
         </div>
 
         {/* Year ruler */}
-        <div className="relative px-5 pt-3 pb-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900">
+        <div className="relative px-5 pt-3 pb-2 border-b border-stone-200 bg-white">
           <div className="relative h-5 ml-44">
             {yearLabels.map(y => (
               <span key={y} className="absolute mono text-[10px] text-stone-500" style={{ left: `${yearToPct(y)}%`, transform: 'translateX(-50%)' }}>
@@ -225,7 +225,7 @@ const GardeTimeline: React.FC = () => {
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-stone-200 dark:border-stone-800 bg-stone-50/40 dark:bg-stone-950/40 mono text-[10px] tracking-widest text-stone-500">
+        <div className="px-5 py-3 border-t border-stone-200 bg-stone-50/40 mono text-[10px] tracking-widest text-stone-500">
           Ligne verticale = aujourd'hui ({NOW_YEAR}) · zone foncée = pic ±1 an
         </div>
       </Card>
@@ -258,11 +258,11 @@ const GanttRow: React.FC<{
     <div
       onMouseEnter={onHover}
       onMouseLeave={onUnhover}
-      className={`px-5 py-3 border-b border-stone-100 dark:border-stone-800/50 last:border-b-0 grid items-center transition ${isHovered ? 'bg-stone-50 dark:bg-stone-800/30' : ''}`}
+      className={`px-5 py-3 border-b border-stone-100 last:border-b-0 grid items-center transition ${isHovered ? 'bg-stone-50' : ''}`}
       style={{ gridTemplateColumns: '176px 1fr' }}
     >
       <Link to={`/wine/${wine.id}`} className="pr-3 group">
-        <div className="serif-it text-[13.5px] text-stone-900 dark:text-white leading-tight truncate group-hover:text-wine-700" title={wine.name}>
+        <div className="serif-it text-[13.5px] text-stone-900 leading-tight truncate group-hover:text-wine-700" title={wine.name}>
           {wine.name}
         </div>
         <div className="mono text-[10px] text-stone-500 mt-0.5 flex items-center gap-1.5">
@@ -321,7 +321,7 @@ const GanttRow: React.FC<{
 const KpiBlock: React.FC<{ label: string; value: number | string; unit?: string; tone?: 'warning' | 'neutral' }> = ({ label, value, unit, tone }) => {
   const valueColor = tone === 'warning'
     ? 'text-wine-700'
-    : 'text-stone-900 dark:text-white';
+    : 'text-stone-900';
   return (
     <Card className="p-4">
       <MonoLabel>{label}</MonoLabel>
@@ -339,15 +339,15 @@ const KpiBlock: React.FC<{ label: string; value: number | string; unit?: string;
 const FilterPills: React.FC<{ label: string; value: string; onChange: (v: string) => void; options: [string, string][] }> = ({ label, value, onChange, options }) => (
   <div className="flex items-center gap-1.5">
     <span className="mono text-[10px] tracking-widest text-stone-500">{label}</span>
-    <div className="flex bg-stone-100 dark:bg-stone-800 rounded p-0.5">
+    <div className="flex bg-stone-100 rounded p-0.5">
       {options.map(([k, lbl]) => (
         <button
           key={k}
           onClick={() => onChange(k)}
           className={`px-2 py-1 rounded text-[12px] transition-colors ${
             value === k
-              ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-sm'
-              : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+              ? 'bg-white text-stone-900 shadow-sm'
+              : 'text-stone-500 hover:text-stone-800'
           }`}
         >
           {lbl}
@@ -419,7 +419,7 @@ const InventoryView: React.FC = () => {
     <div className="grid grid-cols-12 gap-4">
       <Card className="col-span-12 md:col-span-4 p-5">
         <MonoLabel>◌ COULEUR</MonoLabel>
-        <div className="serif text-3xl text-stone-900 dark:text-white mt-1">{total}<span className="text-base text-stone-500"> btl</span></div>
+        <div className="serif text-3xl text-stone-900 mt-1">{total}<span className="text-base text-stone-500"> btl</span></div>
         <div className="mt-4 space-y-3">
           {Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
             const pct = (count / total) * 100;
@@ -427,10 +427,10 @@ const InventoryView: React.FC = () => {
             return (
               <div key={type}>
                 <div className="flex items-center justify-between text-[12px] mb-1">
-                  <span className="text-stone-700 dark:text-stone-300">{TYPE_LABELS[type] || type}</span>
+                  <span className="text-stone-700">{TYPE_LABELS[type] || type}</span>
                   <span className="mono text-stone-500">{count} btl · {pct.toFixed(0)}%</span>
                 </div>
-                <div className="h-2 rounded bg-stone-100 dark:bg-stone-800 overflow-hidden">
+                <div className="h-2 rounded bg-stone-100 overflow-hidden">
                   <div className={`h-full rounded ${color}`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
@@ -447,11 +447,11 @@ const InventoryView: React.FC = () => {
             return (
               <div key={region}>
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-stone-700 dark:text-stone-300 truncate">{region}</span>
+                  <span className="text-stone-700 truncate">{region}</span>
                   <span className="mono text-stone-500">{count}</span>
                 </div>
-                <div className="h-1.5 rounded bg-stone-100 dark:bg-stone-800">
-                  <div className="h-full rounded bg-stone-700 dark:bg-stone-400" style={{ width: `${pct}%` }} />
+                <div className="h-1.5 rounded bg-stone-100">
+                  <div className="h-full rounded bg-stone-700" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -467,7 +467,7 @@ const InventoryView: React.FC = () => {
         <div className="mt-4 flex items-end gap-1 h-32">
           {vintageEntries.map(({ y, c }) => (
             <div key={y} className="flex-1 flex flex-col items-center group min-w-0">
-              <div className="text-[10px] text-stone-700 dark:text-stone-300 mono opacity-0 group-hover:opacity-100">{c}</div>
+              <div className="text-[10px] text-stone-700 mono opacity-0 group-hover:opacity-100">{c}</div>
               <div
                 className="w-full bg-wine-700 rounded-t group-hover:bg-wine-800 transition"
                 style={{ height: `${(c / vintageMax) * 100}%`, minHeight: '4px' }}
@@ -492,7 +492,7 @@ const InventoryView: React.FC = () => {
                 key={r}
                 className={`p-2 rounded text-center ${present
                   ? 'bg-wine-700 text-white'
-                  : 'bg-stone-100 text-stone-400 dark:bg-stone-800/50 dark:text-stone-600'
+                  : 'bg-stone-100 text-stone-400'
                   }`}
               >
                 <div className="text-[11px] truncate">{r}</div>
@@ -586,10 +586,10 @@ const AchatsView: React.FC = () => {
         <div className="mt-5 flex items-end gap-2 h-48">
           {months.map(m => (
             <div key={m.key} className="flex-1 flex flex-col items-center group min-w-0">
-              <div className="text-[11px] mono text-stone-700 dark:text-stone-300 mb-1 opacity-0 group-hover:opacity-100 whitespace-nowrap">
+              <div className="text-[11px] mono text-stone-700 mb-1 opacity-0 group-hover:opacity-100 whitespace-nowrap">
                 {m.spent ? `${Math.round(m.spent)}€` : '—'}
               </div>
-              <div className="w-full bg-stone-100 dark:bg-stone-800 rounded-t flex items-end overflow-hidden" style={{ height: '80%' }}>
+              <div className="w-full bg-stone-100 rounded-t flex items-end overflow-hidden" style={{ height: '80%' }}>
                 <div
                   className="w-full bg-gradient-to-t from-wine-800 to-wine-500 rounded-t"
                   style={{ height: `${(m.spent / maxSpent) * 100}%` }}
@@ -608,25 +608,25 @@ const AchatsView: React.FC = () => {
       {/* Flux mensuel + Répartition par type */}
       <Card className="col-span-12 lg:col-span-6 p-5">
         <MonoLabel>◌ FLUX MENSUEL</MonoLabel>
-        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Entrées vs sorties</h3>
+        <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Entrées vs sorties</h3>
         <div className="mt-4 space-y-3">
           {[
             { label: 'Entrées (achats)', value: inFlow, color: 'bg-emerald-600' },
             { label: 'Sorties (consom.)', value: outFlow, color: 'bg-wine-700' },
-            { label: 'Net', value: netFlow, color: 'bg-stone-900 dark:bg-stone-200' },
+            { label: 'Net', value: netFlow, color: 'bg-stone-900' },
           ].map(r => (
             <div key={r.label}>
               <div className="flex items-center justify-between text-[12px] mb-1">
-                <span className="text-stone-700 dark:text-stone-300">{r.label}</span>
+                <span className="text-stone-700">{r.label}</span>
                 <span className="mono text-stone-500">{r.value > 0 ? '+' : ''}{r.value} btl/an</span>
               </div>
-              <div className="h-2 bg-stone-100 dark:bg-stone-800 rounded">
+              <div className="h-2 bg-stone-100 rounded">
                 <div className={`h-full rounded ${r.color}`} style={{ width: `${(Math.abs(r.value) / fluxMax) * 100}%` }} />
               </div>
             </div>
           ))}
         </div>
-        <p className="text-[12px] text-stone-600 dark:text-stone-400 mt-4 italic">
+        <p className="text-[12px] text-stone-600 mt-4 italic">
           {netFlow > 0
             ? `À ce rythme, ta cave gagne ~${netFlow} btl/an.`
             : netFlow < 0
@@ -637,7 +637,7 @@ const AchatsView: React.FC = () => {
 
       <Card className="col-span-12 lg:col-span-6 p-5">
         <MonoLabel>◌ RÉPARTITION PAR TYPE · 12M</MonoLabel>
-        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">Où va ton budget</h3>
+        <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Où va ton budget</h3>
         {budget?.by_type && budget.by_type.length > 0 ? (
           <div className="space-y-2">
             {budget.by_type.sort((a: any, b: any) => b.total - a.total).map((t: any) => {
@@ -645,8 +645,8 @@ const AchatsView: React.FC = () => {
               const TYPE_LABELS_AC: Record<string, string> = { RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Bulles', DESSERT: 'Doux', FORTIFIED: 'Mutés', UNKNOWN: 'Autres' };
               return (
                 <div key={t.type} className="flex items-center gap-3 text-sm">
-                  <span className="w-20 text-stone-700 dark:text-stone-300">{TYPE_LABELS_AC[t.type] || t.type}</span>
-                  <div className="flex-1 h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                  <span className="w-20 text-stone-700">{TYPE_LABELS_AC[t.type] || t.type}</span>
+                  <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
                     <div className="h-full bg-wine-700" style={{ width: `${pct}%` }} />
                   </div>
                   <span className="mono text-[11px] text-stone-500 w-32 text-right">
@@ -664,13 +664,13 @@ const AchatsView: React.FC = () => {
       {/* Suggestions d'achat */}
       <Card className="col-span-12 lg:col-span-7 p-5">
         <MonoLabel>◌ SUGGESTIONS D'ACHAT</MonoLabel>
-        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">À renouveler</h3>
+        <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">À renouveler</h3>
         {purchases?.count > 0 ? (
           <ul className="space-y-2">
             {purchases.suggestions.map((s: any) => (
-              <li key={s.type} className="flex items-center justify-between bg-stone-50 dark:bg-stone-800/40 rounded-md p-3">
+              <li key={s.type} className="flex items-center justify-between bg-stone-50 rounded-md p-3">
                 <div>
-                  <div className="text-sm font-medium text-stone-900 dark:text-white">{s.type}</div>
+                  <div className="text-sm font-medium text-stone-900">{s.type}</div>
                   <div className="text-xs text-stone-500 mt-0.5">
                     Stock: {s.current_stock} · Conso: {s.monthly_rate}/mois · Reste {s.months_of_stock ?? '∞'} mois
                   </div>
@@ -692,15 +692,15 @@ const AchatsView: React.FC = () => {
       {/* À boire d'urgence */}
       <Card className="col-span-12 lg:col-span-5 p-5">
         <MonoLabel>◌ URGENCES · À BOIRE</MonoLabel>
-        <h3 className="serif-it text-xl text-stone-900 dark:text-white mt-0.5 mb-3">À ne pas racheter avant</h3>
+        <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">À ne pas racheter avant</h3>
         {drinkBefore.length > 0 ? (
           <ul className="space-y-1.5 text-sm">
             {drinkBefore.slice(0, 8).map((a: any) => (
-              <li key={a.wine.id} className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800/50 pb-1 last:border-0">
-                <Link to={`/wine/${a.wine.id}`} className="text-stone-700 dark:text-stone-300 hover:text-wine-700 truncate">
+              <li key={a.wine.id} className="flex items-center justify-between border-b border-stone-100 pb-1 last:border-0">
+                <Link to={`/wine/${a.wine.id}`} className="text-stone-700 hover:text-wine-700 truncate">
                   {a.wine.name} {a.wine.vintage}
                 </Link>
-                <span className="mono text-[10px] text-wine-700 dark:text-wine-500">
+                <span className="mono text-[10px] text-wine-700">
                   {a.monthsLeft <= 0 ? 'PASSÉ' : `${a.monthsLeft}m`}
                 </span>
               </li>
@@ -716,7 +716,7 @@ const AchatsView: React.FC = () => {
 
 // 4-col KPI used in Achats top strip (matches proto's KPI block visually)
 const KpiCol: React.FC<{ label: string; value: React.ReactNode; unit?: string; tone?: 'warning' | 'success' | 'neutral' }> = ({ label, value, unit, tone }) => {
-  const valueColor = tone === 'warning' ? 'text-wine-700' : tone === 'success' ? 'text-emerald-700 dark:text-emerald-400' : 'text-stone-900 dark:text-white';
+  const valueColor = tone === 'warning' ? 'text-wine-700' : tone === 'success' ? 'text-emerald-700' : 'text-stone-900';
   return (
     <Card className="col-span-6 md:col-span-3 p-4">
       <MonoLabel>{label}</MonoLabel>

@@ -63,7 +63,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title
     <div className="fixed inset-0 z-50" onClick={onClose}>
       {/* Backdrop */}
       <div
-        className={`absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
           isAnimating ? 'opacity-100' : 'opacity-0'
         }`}
       />
@@ -71,7 +71,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className={`absolute bottom-0 left-0 right-0 bg-white dark:bg-stone-900 rounded-t-3xl shadow-2xl max-h-[85vh] overflow-hidden transition-transform duration-300 ease-out ${
+        className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-hidden transition-transform duration-300 ease-out ${
           isAnimating ? 'translate-y-0' : 'translate-y-full'
         }`}
         onClick={e => e.stopPropagation()}
@@ -81,19 +81,19 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ isOpen, onClose, title
       >
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 cursor-grab">
-          <div className="w-10 h-1 bg-stone-300 dark:bg-stone-700 rounded-full" />
+          <div className="w-10 h-1 bg-stone-300 rounded-full" />
         </div>
 
         {/* Header */}
         {(title || subtitle) && (
           <div className="px-6 pb-3 flex items-start justify-between">
             <div>
-              {title && <h3 className="text-xl font-serif text-stone-900 dark:text-white">{title}</h3>}
-              {subtitle && <p className="text-sm text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>}
+              {title && <h3 className="text-xl font-serif text-stone-900">{title}</h3>}
+              {subtitle && <p className="text-sm text-stone-500 mt-0.5">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-white transition-colors -mt-1"
+              className="p-1 text-stone-400 hover:text-stone-600 transition-colors -mt-1"
             >
               <X size={20} />
             </button>

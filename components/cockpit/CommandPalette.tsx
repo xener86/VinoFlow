@@ -134,11 +134,11 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white dark:bg-stone-900 rounded-lg shadow-2xl border border-stone-200 dark:border-stone-700 overflow-hidden"
+        className="w-full max-w-2xl bg-white rounded-lg shadow-2xl border border-stone-200 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-2 px-4 h-12 border-b border-stone-200 dark:border-stone-800">
+        <div className="flex items-center gap-2 px-4 h-12 border-b border-stone-200">
           <Search className="w-4 h-4 text-stone-400" />
           <input
             ref={inputRef}
@@ -146,9 +146,9 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKey}
             placeholder="Tape un nom de vin, une page, une action…"
-            className="flex-1 bg-transparent outline-none text-sm text-stone-900 dark:text-white placeholder:text-stone-400"
+            className="flex-1 bg-transparent outline-none text-sm text-stone-900 placeholder:text-stone-400"
           />
-          <kbd className="mono text-[10px] text-stone-500 px-1.5 py-0.5 rounded border border-stone-300 dark:border-stone-700">esc</kbd>
+          <kbd className="mono text-[10px] text-stone-500 px-1.5 py-0.5 rounded border border-stone-300">esc</kbd>
         </div>
 
         {/* Results */}
@@ -171,7 +171,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
                       onClick={() => { item.exec(); onClose(); }}
                       onMouseEnter={() => setActiveIndex(idx)}
                       className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
-                        isActive ? 'bg-wine-50 dark:bg-wine-900/20 text-wine-800 dark:text-wine-300' : 'text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                        isActive ? 'bg-wine-50 text-wine-800' : 'text-stone-800 hover:bg-stone-50'
                       }`}
                     >
                       <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-wine-700' : 'text-stone-400'}`} />
@@ -186,10 +186,10 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-stone-200 dark:border-stone-800 px-4 py-2 mono text-[10px] text-stone-500 flex items-center gap-3">
-          <span><kbd className="px-1 rounded border border-stone-300 dark:border-stone-700">↑↓</kbd> naviguer</span>
-          <span><kbd className="px-1 rounded border border-stone-300 dark:border-stone-700">↵</kbd> ouvrir</span>
-          <span><kbd className="px-1 rounded border border-stone-300 dark:border-stone-700">esc</kbd> fermer</span>
+        <div className="border-t border-stone-200 px-4 py-2 mono text-[10px] text-stone-500 flex items-center gap-3">
+          <span><kbd className="px-1 rounded border border-stone-300">↑↓</kbd> naviguer</span>
+          <span><kbd className="px-1 rounded border border-stone-300">↵</kbd> ouvrir</span>
+          <span><kbd className="px-1 rounded border border-stone-300">esc</kbd> fermer</span>
         </div>
       </div>
     </div>

@@ -41,7 +41,7 @@ export const EditWine: React.FC = () => {
   // Loader pendant le chargement
   if (loading || !wine) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-stone-50 dark:bg-stone-950">
+          <div className="min-h-screen flex items-center justify-center bg-stone-50">
               <Loader2 className="animate-spin text-wine-600" size={32} />
           </div>
       );
@@ -53,18 +53,18 @@ export const EditWine: React.FC = () => {
         <div className="flex items-center gap-4 mb-8">
             <button 
                 onClick={() => navigate(-1)} 
-                className="p-2 bg-white dark:bg-stone-900 rounded-full text-stone-400 hover:text-stone-800 dark:hover:text-white border border-stone-200 dark:border-stone-800 shadow-sm"
+                className="p-2 bg-white rounded-full text-stone-400 hover:text-stone-800 border border-stone-200 shadow-sm"
             >
                 <ArrowLeft size={20} />
             </button>
-            <h2 className="text-2xl font-serif text-stone-900 dark:text-white">Éditer la Fiche</h2>
+            <h2 className="text-2xl font-serif text-stone-900">Éditer la Fiche</h2>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
             
             {/* Identity */}
-            <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800 dark:text-stone-200">Identité</h3>
+            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+                <h3 className="text-lg font-serif text-stone-800">Identité</h3>
 
                 {/* Type / Couleur */}
                 <div>
@@ -72,10 +72,10 @@ export const EditWine: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2">
                         {([
                             { value: 'RED' as const, label: 'Rouge', color: 'bg-red-800 border-red-600 text-white' },
-                            { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' },
-                            { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-200' },
-                            { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-200' },
-                            { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-200' },
+                            { value: 'WHITE' as const, label: 'Blanc', color: 'bg-yellow-50 border-yellow-300 text-yellow-800' },
+                            { value: 'ROSE' as const, label: 'Rosé', color: 'bg-pink-200 border-pink-400 text-pink-800' },
+                            { value: 'SPARKLING' as const, label: 'Pétillant', color: 'bg-amber-100 border-amber-400 text-amber-800' },
+                            { value: 'DESSERT' as const, label: 'Dessert', color: 'bg-orange-200 border-orange-400 text-orange-800' },
                             { value: 'FORTIFIED' as const, label: 'Fortifié', color: 'bg-stone-700 border-stone-500 text-white' },
                         ]).map(t => (
                             <button
@@ -85,7 +85,7 @@ export const EditWine: React.FC = () => {
                                 className={`py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
                                     wine.type === t.value
                                     ? `${t.color} ring-2 ring-offset-1 ring-wine-500 shadow-sm`
-                                    : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:border-stone-400'
+                                    : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-stone-400'
                                 }`}
                             >
                                 {t.label}
@@ -101,7 +101,7 @@ export const EditWine: React.FC = () => {
                             type="text" 
                             value={wine.name}
                             onChange={e => setWine({...wine, name: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div className="col-span-2">
@@ -111,7 +111,7 @@ export const EditWine: React.FC = () => {
                             value={wine.cuvee || ''}
                             onChange={e => setWine({...wine, cuvee: e.target.value})}
                             placeholder="ex: Orgasme"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div className="col-span-2">
@@ -121,7 +121,7 @@ export const EditWine: React.FC = () => {
                             value={wine.parcel || ''}
                             onChange={e => setWine({...wine, parcel: e.target.value})}
                             placeholder="ex: Monts de Milieu"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div>
@@ -130,7 +130,7 @@ export const EditWine: React.FC = () => {
                             type="text" 
                             value={wine.producer}
                             onChange={e => setWine({...wine, producer: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div>
@@ -139,7 +139,7 @@ export const EditWine: React.FC = () => {
                             type="number" 
                             value={wine.vintage}
                             onChange={e => setWine({...wine, vintage: Number(e.target.value)})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div>
@@ -148,7 +148,7 @@ export const EditWine: React.FC = () => {
                             type="text" 
                             value={wine.region}
                             onChange={e => setWine({...wine, region: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div>
@@ -158,7 +158,7 @@ export const EditWine: React.FC = () => {
                             value={wine.appellation || ''}
                             onChange={e => setWine({...wine, appellation: e.target.value})}
                             placeholder="ex: Chablis Premier Cru"
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div>
@@ -167,7 +167,7 @@ export const EditWine: React.FC = () => {
                             type="text"
                             value={wine.format}
                             onChange={e => setWine({...wine, format: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                         />
                     </div>
                     <div className="col-span-2">
@@ -175,13 +175,13 @@ export const EditWine: React.FC = () => {
                         <div className="flex flex-wrap gap-2 mt-1">
                             {(['RED', 'WHITE', 'ROSE', 'SPARKLING', 'DESSERT', 'FORTIFIED'] as const).map(t => {
                                 const labels: Record<string, string> = { RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Pétillant', DESSERT: 'Dessert', FORTIFIED: 'Fortifié' };
-                                const colors: Record<string, string> = { RED: 'bg-red-100 border-red-400 text-red-800 dark:bg-red-900/30 dark:border-red-600 dark:text-red-300', WHITE: 'bg-yellow-50 border-yellow-400 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-300', ROSE: 'bg-pink-100 border-pink-400 text-pink-800 dark:bg-pink-900/30 dark:border-pink-600 dark:text-pink-300', SPARKLING: 'bg-blue-50 border-blue-400 text-blue-800 dark:bg-blue-900/20 dark:border-blue-600 dark:text-blue-300', DESSERT: 'bg-amber-100 border-amber-400 text-amber-800 dark:bg-amber-900/30 dark:border-amber-600 dark:text-amber-300', FORTIFIED: 'bg-purple-100 border-purple-400 text-purple-800 dark:bg-purple-900/20 dark:border-purple-600 dark:text-purple-300' };
+                                const colors: Record<string, string> = { RED: 'bg-red-100 border-red-400 text-red-800', WHITE: 'bg-yellow-50 border-yellow-400 text-yellow-800', ROSE: 'bg-pink-100 border-pink-400 text-pink-800', SPARKLING: 'bg-blue-50 border-blue-400 text-blue-800', DESSERT: 'bg-amber-100 border-amber-400 text-amber-800', FORTIFIED: 'bg-purple-100 border-purple-400 text-purple-800' };
                                 return (
                                     <button
                                         key={t}
                                         type="button"
                                         onClick={() => setWine({...wine, type: t})}
-                                        className={`px-3 py-1.5 text-xs rounded border font-medium transition-all ${wine.type === t ? colors[t] + ' ring-2 ring-offset-1 ring-wine-500' : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+                                        className={`px-3 py-1.5 text-xs rounded border font-medium transition-all ${wine.type === t ? colors[t] + ' ring-2 ring-offset-1 ring-wine-500' : 'bg-stone-50 border-stone-200 text-stone-500 hover:bg-stone-100'}`}
                                     >
                                         {labels[t]}
                                     </button>
@@ -193,8 +193,8 @@ export const EditWine: React.FC = () => {
             </div>
 
             {/* Details */}
-            <div className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800 dark:text-stone-200">Détails & IA</h3>
+            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+                <h3 className="text-lg font-serif text-stone-800">Détails & IA</h3>
                 
                 <div>
                     <label className="text-xs text-stone-500 uppercase">Cépages (séparés par virgule)</label>
@@ -202,7 +202,7 @@ export const EditWine: React.FC = () => {
                         type="text" 
                         value={(wine.grapeVarieties || []).join(', ')}
                         onChange={e => setWine({...wine, grapeVarieties: e.target.value.split(',').map(s => s.trim())})}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                     />
                 </div>
 
@@ -212,7 +212,7 @@ export const EditWine: React.FC = () => {
                         value={wine.sensoryDescription}
                         onChange={e => setWine({...wine, sensoryDescription: e.target.value})}
                         rows={4}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none resize-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none resize-none"
                     />
                 </div>
 
@@ -222,7 +222,7 @@ export const EditWine: React.FC = () => {
                         type="text" 
                         value={(wine.suggestedFoodPairings || []).join(', ')}
                         onChange={e => setWine({...wine, suggestedFoodPairings: e.target.value.split(',').map(s => s.trim())})}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-3 text-stone-900 dark:text-white focus:border-wine-500 outline-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-wine-500 outline-none"
                     />
                 </div>
             </div>

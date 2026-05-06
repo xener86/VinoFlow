@@ -68,13 +68,13 @@ const naivePeak = (vintage: number, type: string): PeakWindowResult => {
 export const getPeakBadgeStyles = (status: string): { bg: string; text: string } => {
   switch (status) {
     case 'À Boire':
-      return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' };
+      return { bg: 'bg-green-100', text: 'text-green-700' };
     case 'Boire Vite':
-      return { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400' };
+      return { bg: 'bg-orange-100', text: 'text-orange-700' };
     case 'Apogée passée':
-      return { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' };
+      return { bg: 'bg-red-100', text: 'text-red-700' };
     case 'Garde':
     default:
-      return { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' };
+      return { bg: 'bg-blue-100', text: 'text-blue-700' };
   }
 };

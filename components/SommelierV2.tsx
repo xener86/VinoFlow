@@ -123,7 +123,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-stone-900 dark:text-white">
+      <div className="flex items-center gap-2 text-stone-900">
         <Sparkles className="text-indigo-500" size={20} />
         <h3 className="text-lg font-serif">Sommelier v2 — Accord en 3 perspectives</h3>
       </div>
@@ -137,14 +137,14 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           value={dish}
           onChange={e => setDish(e.target.value)}
           placeholder="Décrivez votre plat (ex: curry de poulet aux noix de cajou)"
-          className="flex-1 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
+          className="flex-1 bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
         />
         <button
           type="button"
           onClick={toggleVoiceInput}
           aria-label={listening ? 'Arrêter la dictée' : 'Dicter le plat'}
           title="Dicter à voix haute"
-          className={`px-3 rounded-xl flex items-center transition-colors ${listening ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'}`}
+          className={`px-3 rounded-xl flex items-center transition-colors ${listening ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-100 hover:bg-stone-200 text-stone-700'}`}
         >
           {listening ? <MicOff size={16} /> : <Mic size={16} />}
         </button>
@@ -159,13 +159,13 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
       </form>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 p-3 rounded-lg text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm">
           {error}
         </div>
       )}
 
       {loading && !result && (
-        <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 space-y-3">
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-5 space-y-3">
           <ProgressStep
             done={progressStep >= 1}
             inProgress={progressStep === 0}
@@ -200,7 +200,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           </div>
 
           {result.criteria?.rationale && (
-            <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-sm text-stone-700 dark:text-stone-300 italic">
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-stone-700 italic">
               {result.criteria.rationale}
             </div>
           )}
@@ -209,8 +209,8 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
             <PickCard
               category="SAFE"
               icon={<Shield size={14} />}
-              color="bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700"
-              accentColor="text-stone-700 dark:text-stone-300"
+              color="bg-stone-100 border-stone-300"
+              accentColor="text-stone-700"
               title="Sûr"
               subtitle="L'accord classique"
               pick={result.picks.safe}
@@ -221,8 +221,8 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
             <PickCard
               category="PERSONAL"
               icon={<Heart size={14} />}
-              color="bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-900/50"
-              accentColor="text-pink-700 dark:text-pink-300"
+              color="bg-pink-50 border-pink-200"
+              accentColor="text-pink-700"
               title="Personnel"
               subtitle="Selon vos goûts"
               pick={result.picks.personal}
@@ -233,8 +233,8 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
             <PickCard
               category="CREATIVE"
               icon={<Flame size={14} />}
-              color="bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-900/50"
-              accentColor="text-indigo-700 dark:text-indigo-300"
+              color="bg-indigo-50 border-indigo-200"
+              accentColor="text-indigo-700"
               title="Audacieux"
               subtitle="L'option originale"
               pick={result.picks.creative}
@@ -245,7 +245,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           </div>
 
           {result.picks.global_advice && (
-            <div className="text-sm text-stone-600 dark:text-stone-400 italic px-2">
+            <div className="text-sm text-stone-600 italic px-2">
               💡 {result.picks.global_advice}
             </div>
           )}
@@ -257,11 +257,11 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
 
 const ProgressStep: React.FC<{ done: boolean; inProgress: boolean; label: string; sublabel: string }> = ({ done, inProgress, label, sublabel }) => (
   <div className="flex items-start gap-3">
-    <div className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center ${done ? 'bg-green-600 text-white' : inProgress ? 'bg-wine-100 dark:bg-wine-900/30 text-wine-600 dark:text-wine-400' : 'bg-stone-200 dark:bg-stone-800 text-stone-400'}`}>
+    <div className={`w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center ${done ? 'bg-green-600 text-white' : inProgress ? 'bg-wine-100 text-wine-600' : 'bg-stone-200 text-stone-400'}`}>
       {done ? <Check size={12} /> : inProgress ? <Loader2 className="animate-spin" size={12} /> : <Circle size={8} />}
     </div>
     <div className="flex-1">
-      <div className={`text-sm font-medium ${done || inProgress ? 'text-stone-900 dark:text-white' : 'text-stone-400'}`}>{label}</div>
+      <div className={`text-sm font-medium ${done || inProgress ? 'text-stone-900' : 'text-stone-400'}`}>{label}</div>
       <div className="text-xs text-stone-500">{sublabel}</div>
     </div>
   </div>
@@ -289,14 +289,14 @@ const PickCard: React.FC<{
     {pick && wine ? (
       <>
         <div className="mb-2">
-          <div className="font-serif text-base text-stone-900 dark:text-white">
+          <div className="font-serif text-base text-stone-900">
             {wine.name} {wine.cuvee && `· ${wine.cuvee}`}
           </div>
           <div className="text-xs text-stone-500">
             {wine.producer && `${wine.producer} · `}{wine.vintage}
           </div>
         </div>
-        <p className="text-xs text-stone-700 dark:text-stone-300 mb-3 flex-1">{pick.reason}</p>
+        <p className="text-xs text-stone-700 mb-3 flex-1">{pick.reason}</p>
 
         {(pick.service_temp_c || pick.decant_minutes > 0) && (
           <div className="flex gap-3 text-xs text-stone-500 mb-3">
@@ -309,11 +309,11 @@ const PickCard: React.FC<{
           </div>
         )}
 
-        <div className="flex gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+        <div className="flex gap-2 pt-2 border-t border-stone-200">
           <button
             onClick={() => onFeedback('UP')}
             disabled={feedback !== undefined}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'UP' ? 'bg-green-600 text-white' : 'hover:bg-green-100 dark:hover:bg-green-900/30 text-stone-600 dark:text-stone-400'} disabled:cursor-not-allowed`}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'UP' ? 'bg-green-600 text-white' : 'hover:bg-green-100 text-stone-600'} disabled:cursor-not-allowed`}
             aria-label="J'aime cet accord"
           >
             <ThumbsUp size={12} />
@@ -321,7 +321,7 @@ const PickCard: React.FC<{
           <button
             onClick={() => onFeedback('DOWN')}
             disabled={feedback !== undefined}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'DOWN' ? 'bg-red-600 text-white' : 'hover:bg-red-100 dark:hover:bg-red-900/30 text-stone-600 dark:text-stone-400'} disabled:cursor-not-allowed`}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'DOWN' ? 'bg-red-600 text-white' : 'hover:bg-red-100 text-stone-600'} disabled:cursor-not-allowed`}
             aria-label="Je n'aime pas cet accord"
           >
             <ThumbsDown size={12} />

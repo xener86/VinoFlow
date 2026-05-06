@@ -37,10 +37,10 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
   const handleConfirmAI = () => onSave(aromas, 'AI', confidence as any || 'MEDIUM');
 
   return (
-    <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 space-y-3">
+    <div className="bg-stone-50 border border-stone-200 rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2 text-sm">
         <Sparkles size={14} className="text-indigo-500" />
-        <span className="font-medium text-stone-900 dark:text-white">
+        <span className="font-medium text-stone-900">
           {isAI ? 'Profil aromatique détecté par l\'IA' : 'Profil aromatique'}
         </span>
         {isAI && (
@@ -51,14 +51,14 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
       </div>
 
       {isAI && (
-        <p className="text-xs text-stone-600 dark:text-stone-400">
+        <p className="text-xs text-stone-600">
           Vérifie ou modifie les arômes détectés. Ton retour rendra les futures recommandations plus précises.
         </p>
       )}
 
       <div className="flex flex-wrap gap-2">
         {aromas.map((aroma, i) => (
-          <span key={i} className="inline-flex items-center gap-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-full px-3 py-1 text-xs">
+          <span key={i} className="inline-flex items-center gap-1 bg-white border border-stone-200 rounded-full px-3 py-1 text-xs">
             {aroma}
             {editing && (
               <button onClick={() => removeAroma(i)} className="text-stone-400 hover:text-red-500" aria-label={`Supprimer ${aroma}`}>
@@ -80,7 +80,7 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
             onChange={e => setNewAroma(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addAroma())}
             placeholder="Ex: fruits rouges"
-            className="flex-1 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
+            className="flex-1 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
           />
           <button onClick={addAroma} className="bg-wine-600 hover:bg-wine-700 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1">
             <Plus size={14} /> Ajouter
@@ -88,7 +88,7 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-stone-200">
         {!editing ? (
           <>
             <button
@@ -101,7 +101,7 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
             <button
               onClick={() => setEditing(true)}
               disabled={saving}
-              className="flex items-center gap-1.5 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-900 dark:text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-stone-200 hover:bg-stone-300 text-stone-900 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
             >
               <Edit3 size={14} /> Modifier
             </button>
@@ -109,7 +109,7 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
               <button
                 onClick={onIgnore}
                 disabled={saving}
-                className="text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 px-3 py-1.5 rounded-lg text-sm disabled:opacity-50"
+                className="text-stone-500 hover:text-stone-700 px-3 py-1.5 rounded-lg text-sm disabled:opacity-50"
               >
                 Plus tard
               </button>
@@ -127,7 +127,7 @@ export const AromaProfileEditor: React.FC<Props> = ({ initial, source, confidenc
             <button
               onClick={() => { setAromas(initial); setEditing(false); }}
               disabled={saving}
-              className="bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-900 dark:text-white px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
+              className="bg-stone-200 hover:bg-stone-300 text-stone-900 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50"
             >
               Annuler
             </button>

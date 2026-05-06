@@ -95,13 +95,13 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                 ? 'bg-wine-600 text-white scale-110' 
                 : currentStep > step 
                 ? 'bg-green-500 text-white' 
-                : 'bg-stone-200 dark:bg-stone-700 text-stone-500'
+                : 'bg-stone-200 text-stone-500'
             }`}
           >
             {currentStep > step ? '✓' : step}
           </div>
           {step < 4 && (
-            <div className={`w-12 h-1 ${currentStep > step ? 'bg-green-500' : 'bg-stone-200 dark:bg-stone-700'}`} />
+            <div className={`w-12 h-1 ${currentStep > step ? 'bg-green-500' : 'bg-stone-200'}`} />
           )}
         </div>
       ))}
@@ -109,24 +109,24 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
   );
 
   return (
-    <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-lg animate-fade-in">
+    <div className="bg-white rounded-2xl border border-stone-200 shadow-lg animate-fade-in">
       <div className="p-6">
         {renderStepIndicator()}
 
         {/* STEP 1: VISUAL */}
         {currentStep === 1 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3 text-wine-600 dark:text-wine-400 mb-4">
+            <div className="flex items-center gap-3 text-wine-600 mb-4">
               <Eye size={24} />
-              <h3 className="text-2xl font-serif text-stone-900 dark:text-white">Analyse Visuelle</h3>
+              <h3 className="text-2xl font-serif text-stone-900">Analyse Visuelle</h3>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+              <label className="block text-sm font-bold text-stone-700 mb-3">
                 Intensité de la couleur
               </label>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-stone-500 dark:text-stone-400 w-16">Pâle</span>
+                <span className="text-sm text-stone-500 w-16">Pâle</span>
                 <input
                   type="range"
                   min="1"
@@ -135,13 +135,13 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                   onChange={(e) => setVisual(parseInt(e.target.value))}
                   className="flex-1 h-2 bg-gradient-to-r from-pink-200 via-red-400 to-red-900 rounded-lg appearance-none cursor-pointer"
                 />
-                <span className="text-sm text-stone-500 dark:text-stone-400 w-16 text-right">Profonde</span>
-                <div className="w-12 text-center font-bold text-wine-600 dark:text-wine-400">{visual}/10</div>
+                <span className="text-sm text-stone-500 w-16 text-right">Profonde</span>
+                <div className="w-12 text-center font-bold text-wine-600">{visual}/10</div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+              <label className="block text-sm font-bold text-stone-700 mb-2">
                 Observations visuelles
               </label>
               <input
@@ -149,7 +149,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                 value={visualNotes}
                 onChange={(e) => setVisualNotes(e.target.value)}
                 placeholder="ex: Rubis brillant, reflets grenat..."
-                className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-wine-500"
+                className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-wine-500"
               />
             </div>
           </div>
@@ -158,13 +158,13 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
         {/* STEP 2: NOSE */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3 text-wine-600 dark:text-wine-400 mb-4">
+            <div className="flex items-center gap-3 text-wine-600 mb-4">
               <Wind size={24} />
-              <h3 className="text-2xl font-serif text-stone-900 dark:text-white">Analyse Olfactive</h3>
+              <h3 className="text-2xl font-serif text-stone-900">Analyse Olfactive</h3>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+              <label className="block text-sm font-bold text-stone-700 mb-3">
                 Sélectionnez les impressions perçues
               </label>
               <div className="flex flex-wrap gap-2">
@@ -175,7 +175,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       selectedNose.includes(impression)
                         ? 'bg-wine-600 text-white border-2 border-wine-700 shadow-md scale-105'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700'
+                        : 'bg-stone-100 text-stone-700 border border-stone-300 hover:bg-stone-200'
                     }`}
                   >
                     {impression}
@@ -194,75 +194,75 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
         {/* STEP 3: STRUCTURE */}
         {currentStep === 3 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3 text-wine-600 dark:text-wine-400 mb-4">
+            <div className="flex items-center gap-3 text-wine-600 mb-4">
               <Droplets size={24} />
-              <h3 className="text-2xl font-serif text-stone-900 dark:text-white">Structure en Bouche</h3>
+              <h3 className="text-2xl font-serif text-stone-900">Structure en Bouche</h3>
             </div>
 
             <div className="space-y-6">
               {/* Body */}
               <div>
-                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+                <label className="block text-sm font-bold text-stone-700 mb-3">
                   Corps
                 </label>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16">Léger</span>
+                  <span className="text-sm text-stone-500 w-16">Léger</span>
                   <input
                     type="range"
                     min="0"
                     max="100"
                     value={body}
                     onChange={(e) => setBody(parseInt(e.target.value))}
-                    className="flex-1 h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer"
                   />
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16 text-right">Corsé</span>
-                  <div className="w-12 text-center font-bold text-wine-600 dark:text-wine-400">{body}%</div>
+                  <span className="text-sm text-stone-500 w-16 text-right">Corsé</span>
+                  <div className="w-12 text-center font-bold text-wine-600">{body}%</div>
                 </div>
               </div>
 
               {/* Acidity */}
               <div>
-                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+                <label className="block text-sm font-bold text-stone-700 mb-3">
                   Acidité
                 </label>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16">Faible</span>
+                  <span className="text-sm text-stone-500 w-16">Faible</span>
                   <input
                     type="range"
                     min="0"
                     max="100"
                     value={acidity}
                     onChange={(e) => setAcidity(parseInt(e.target.value))}
-                    className="flex-1 h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer"
                   />
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16 text-right">Vive</span>
-                  <div className="w-12 text-center font-bold text-wine-600 dark:text-wine-400">{acidity}%</div>
+                  <span className="text-sm text-stone-500 w-16 text-right">Vive</span>
+                  <div className="w-12 text-center font-bold text-wine-600">{acidity}%</div>
                 </div>
               </div>
 
               {/* Tannin */}
               <div>
-                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+                <label className="block text-sm font-bold text-stone-700 mb-3">
                   Tanins
                 </label>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16">Soyeux</span>
+                  <span className="text-sm text-stone-500 w-16">Soyeux</span>
                   <input
                     type="range"
                     min="0"
                     max="100"
                     value={tannin}
                     onChange={(e) => setTannin(parseInt(e.target.value))}
-                    className="flex-1 h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer"
+                    className="flex-1 h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer"
                   />
-                  <span className="text-sm text-stone-500 dark:text-stone-400 w-16 text-right">Puissants</span>
-                  <div className="w-12 text-center font-bold text-wine-600 dark:text-wine-400">{tannin}%</div>
+                  <span className="text-sm text-stone-500 w-16 text-right">Puissants</span>
+                  <div className="w-12 text-center font-bold text-wine-600">{tannin}%</div>
                 </div>
               </div>
 
               {/* Finish */}
               <div>
-                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+                <label className="block text-sm font-bold text-stone-700 mb-3">
                   Longueur en bouche
                 </label>
                 <div className="grid grid-cols-3 gap-3">
@@ -273,7 +273,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                       className={`py-3 px-4 rounded-lg font-medium transition-all ${
                         finish === level
                           ? 'bg-wine-600 text-white border-2 border-wine-700 shadow-md'
-                          : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700 hover:bg-stone-200 dark:hover:bg-stone-700'
+                          : 'bg-stone-100 text-stone-700 border border-stone-300 hover:bg-stone-200'
                       }`}
                     >
                       {getFinishLabel(level)}
@@ -288,14 +288,14 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
         {/* STEP 4: RATING & NOTES */}
         {currentStep === 4 && (
           <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center gap-3 text-wine-600 dark:text-wine-400 mb-4">
+            <div className="flex items-center gap-3 text-wine-600 mb-4">
               <Award size={24} />
-              <h3 className="text-2xl font-serif text-stone-900 dark:text-white">Appréciation Globale</h3>
+              <h3 className="text-2xl font-serif text-stone-900">Appréciation Globale</h3>
             </div>
 
             {/* Rating */}
             <div>
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-3">
+              <label className="block text-sm font-bold text-stone-700 mb-3">
                 Note générale
               </label>
               <div className="flex justify-center gap-2">
@@ -307,7 +307,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                   >
                     <Star
                       size={40}
-                      className={star <= rating ? 'fill-amber-500 text-amber-500' : 'text-stone-300 dark:text-stone-700'}
+                      className={star <= rating ? 'fill-amber-500 text-amber-500' : 'text-stone-300'}
                     />
                   </button>
                 ))}
@@ -315,8 +315,8 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
             </div>
 
             {/* Food Pairing */}
-            <div className="pt-6 border-t border-stone-200 dark:border-stone-800">
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+            <div className="pt-6 border-t border-stone-200">
+              <label className="block text-sm font-bold text-stone-700 mb-2">
                 Accord dégusté (optionnel)
               </label>
               <input
@@ -324,12 +324,12 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                 value={pairedWith}
                 onChange={(e) => setPairedWith(e.target.value)}
                 placeholder="ex: Magret de canard aux cerises"
-                className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-wine-500 mb-3"
+                className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-wine-500 mb-3"
               />
 
               {pairedWith && (
                 <>
-                  <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+                  <label className="block text-sm font-bold text-stone-700 mb-2">
                     Qualité de l'accord
                   </label>
                   <div className="flex justify-center gap-2 mb-3">
@@ -341,13 +341,13 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                       >
                         <Star
                           size={32}
-                          className={star <= pairingQuality ? 'fill-orange-500 text-orange-500' : 'text-stone-300 dark:text-stone-700'}
+                          className={star <= pairingQuality ? 'fill-orange-500 text-orange-500' : 'text-stone-300'}
                         />
                       </button>
                     ))}
                   </div>
 
-                  <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+                  <label className="block text-sm font-bold text-stone-700 mb-2">
                     Suggestion d'accord (optionnel)
                   </label>
                   <input
@@ -355,7 +355,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                     value={pairingSuggestion}
                     onChange={(e) => setPairingSuggestion(e.target.value)}
                     placeholder="Idée pour un prochain accord..."
-                    className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-wine-500"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-wine-500"
                   />
                 </>
               )}
@@ -363,7 +363,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
 
             {/* Personal Notes */}
             <div>
-              <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+              <label className="block text-sm font-bold text-stone-700 mb-2">
                 Notes personnelles
               </label>
               <textarea
@@ -371,7 +371,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Vos impressions, le contexte de la dégustation..."
                 rows={4}
-                className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white outline-none focus:ring-2 focus:ring-wine-500 resize-none"
+                className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 outline-none focus:ring-2 focus:ring-wine-500 resize-none"
               />
             </div>
           </div>
@@ -382,7 +382,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
           {currentStep > 1 && (
             <button
               onClick={() => setCurrentStep(currentStep - 1)}
-              className="flex-1 py-3 rounded-lg border-2 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 font-medium transition-colors"
+              className="flex-1 py-3 rounded-lg border-2 border-stone-300 text-stone-700 hover:bg-stone-100 font-medium transition-colors"
             >
               Précédent
             </button>
@@ -391,7 +391,7 @@ export const TastingQuestionnaire: React.FC<TastingQuestionnaireProps> = ({
           {currentStep === 1 && onCancel && (
             <button
               onClick={onCancel}
-              className="flex-1 py-3 rounded-lg border-2 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 font-medium transition-colors"
+              className="flex-1 py-3 rounded-lg border-2 border-stone-300 text-stone-700 hover:bg-stone-100 font-medium transition-colors"
             >
               Annuler
             </button>

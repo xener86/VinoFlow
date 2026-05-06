@@ -20,14 +20,14 @@ const DrinkNowCard: React.FC<{ wine: WineWithPeak; onClick: () => void }> = ({ w
   return (
     <div
       onClick={onClick}
-      className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-stone-900 border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
+      className={`group relative overflow-hidden rounded-2xl bg-white border shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${
         isUrgent
-          ? 'border-red-200 dark:border-red-900/50 hover:border-red-300'
-          : 'border-green-200 dark:border-green-900/50 hover:border-green-300'
+          ? 'border-red-200 hover:border-red-300'
+          : 'border-green-200 hover:border-green-300'
       }`}
     >
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${
-        isUrgent ? 'from-red-50 dark:from-red-900/20' : 'from-green-50 dark:from-green-900/20'
+        isUrgent ? 'from-red-50' : 'from-green-50'
       } to-transparent rounded-bl-full -mr-6 -mt-6 pointer-events-none`} />
 
       <div className="p-4 relative z-10">
@@ -38,29 +38,29 @@ const DrinkNowCard: React.FC<{ wine: WineWithPeak; onClick: () => void }> = ({ w
                 {wine.peak.status}
               </span>
               <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase border
-                ${wine.type === 'RED' ? 'bg-red-50 text-red-700 border-red-100 dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50' :
-                  wine.type === 'WHITE' ? 'bg-yellow-50 text-yellow-700 border-yellow-100 dark:bg-yellow-950/50 dark:text-yellow-200 dark:border-yellow-900/50' :
-                  wine.type === 'ROSE' ? 'bg-pink-50 text-pink-700 border-pink-100 dark:bg-pink-950/50 dark:text-pink-300 dark:border-pink-900/50' :
-                  'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900/50'}`}
+                ${wine.type === 'RED' ? 'bg-red-50 text-red-700 border-red-100' :
+                  wine.type === 'WHITE' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
+                  wine.type === 'ROSE' ? 'bg-pink-50 text-pink-700 border-pink-100' :
+                  'bg-amber-50 text-amber-700 border-amber-100'}`}
               >
                 {wine.type === 'RED' ? 'Rouge' : wine.type === 'WHITE' ? 'Blanc' : wine.type === 'ROSE' ? 'Rosé' : wine.type}
               </span>
               {isUrgent && (
-                <span className="text-[10px] text-red-500 dark:text-red-400 font-medium">
+                <span className="text-[10px] text-red-500 font-medium">
                   {yearsLeft < 0 ? `${Math.abs(yearsLeft)} an(s) passé` : 'Dernière année'}
                 </span>
               )}
             </div>
-            <h3 className="text-lg font-serif text-stone-800 dark:text-stone-100 leading-tight truncate">{wine.name}</h3>
-            {wine.cuvee && <p className="text-sm font-serif text-wine-700 dark:text-wine-400 italic truncate">{wine.cuvee}</p>}
-            <p className="text-stone-500 dark:text-stone-400 text-sm">{wine.producer} • {wine.vintage}</p>
+            <h3 className="text-lg font-serif text-stone-800 leading-tight truncate">{wine.name}</h3>
+            {wine.cuvee && <p className="text-sm font-serif text-wine-700 italic truncate">{wine.cuvee}</p>}
+            <p className="text-stone-500 text-sm">{wine.producer} • {wine.vintage}</p>
 
-            <div className="flex items-center gap-3 mt-2 text-xs text-stone-500 dark:text-stone-500">
+            <div className="flex items-center gap-3 mt-2 text-xs text-stone-500">
               <span className="flex items-center gap-1"><MapPin size={10} /> {wine.region}</span>
               <span className="flex items-center gap-1"><Grape size={10} /> {wine.grapeVarieties.slice(0, 2).join(', ')}</span>
             </div>
 
-            <div className="mt-2 text-xs text-stone-400 dark:text-stone-600">
+            <div className="mt-2 text-xs text-stone-400">
               Fenêtre idéale : {wine.peak.peakStart} — {wine.peak.peakEnd}
             </div>
           </div>
@@ -68,13 +68,13 @@ const DrinkNowCard: React.FC<{ wine: WineWithPeak; onClick: () => void }> = ({ w
           <div className="text-center flex-shrink-0">
             <div className={`rounded-lg p-2 border min-w-[56px] ${
               isUrgent
-                ? 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/50'
-                : 'bg-green-50 dark:bg-green-950/30 border-green-100 dark:border-green-900/50'
+                ? 'bg-red-50 border-red-100'
+                : 'bg-green-50 border-green-100'
             }`}>
-              <span className={`block text-2xl font-bold ${isUrgent ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+              <span className={`block text-2xl font-bold ${isUrgent ? 'text-red-600' : 'text-green-600'}`}>
                 {wine.inventoryCount}
               </span>
-              <span className="text-[9px] uppercase text-stone-500 dark:text-stone-400 tracking-wider">btl</span>
+              <span className="text-[9px] uppercase text-stone-500 tracking-wider">btl</span>
             </div>
           </div>
         </div>
@@ -121,17 +121,17 @@ export const DrinkNow: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-serif text-stone-800 dark:text-white flex items-center gap-3">
-            <Clock className="text-green-600 dark:text-green-400" size={28} />
+          <h2 className="text-3xl font-serif text-stone-800 flex items-center gap-3">
+            <Clock className="text-green-600" size={28} />
             À Boire
           </h2>
-          <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
+          <p className="text-stone-500 text-sm mt-1">
             {totalDrinkNow} vin{totalDrinkNow > 1 ? 's' : ''} à leur apogée dans votre cave
           </p>
         </div>
         <button
           onClick={() => exportWinesToCsv(wines.filter(w => w.inventoryCount > 0), racks)}
-          className="flex items-center gap-2 text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 px-3 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-2 text-xs text-stone-500 hover:text-stone-700 bg-white border border-stone-200 px-3 py-2 rounded-lg transition-colors"
           title="Exporter CSV"
         >
           <Download size={14} /> CSV
@@ -143,10 +143,10 @@ export const DrinkNow: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-500" />
-            <h3 className="text-lg font-serif text-red-700 dark:text-red-400">
+            <h3 className="text-lg font-serif text-red-700">
               Boire Vite
             </h3>
-            <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
               {boireVite.length}
             </span>
           </div>
@@ -166,11 +166,11 @@ export const DrinkNow: React.FC = () => {
       {aBoire.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Wine size={16} className="text-green-600 dark:text-green-400" />
-            <h3 className="text-lg font-serif text-green-700 dark:text-green-400">
+            <Wine size={16} className="text-green-600" />
+            <h3 className="text-lg font-serif text-green-700">
               À Boire
             </h3>
-            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
               {aBoire.length}
             </span>
           </div>
@@ -188,7 +188,7 @@ export const DrinkNow: React.FC = () => {
 
       {/* Empty State */}
       {totalDrinkNow === 0 && (
-        <div className="text-center py-20 text-stone-500 dark:text-stone-600 border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col items-center gap-3">
+        <div className="text-center py-20 text-stone-500 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center gap-3">
           <Clock size={48} className="opacity-30" />
           <p className="text-lg font-serif">Tous vos vins sont en garde</p>
           <p className="text-sm">Revenez plus tard, vos vins ont besoin de temps !</p>
@@ -200,7 +200,7 @@ export const DrinkNow: React.FC = () => {
         <div className="space-y-3">
           <button
             onClick={() => setShowGarde(!showGarde)}
-            className="flex items-center gap-2 text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
+            className="flex items-center gap-2 text-stone-500 hover:text-stone-700 transition-colors"
           >
             {showGarde ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             <span className="text-sm font-medium">En Garde ({enGarde.length} vins)</span>
@@ -212,14 +212,14 @@ export const DrinkNow: React.FC = () => {
                 <div
                   key={wine.id}
                   onClick={() => navigate(`/wine/${wine.id}`)}
-                  className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-xl cursor-pointer hover:border-stone-300 dark:hover:border-stone-700 transition-colors"
+                  className="flex items-center justify-between p-3 bg-stone-50 border border-stone-200 rounded-xl cursor-pointer hover:border-stone-300 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-stone-700 dark:text-stone-300 truncate">{wine.name}</p>
-                    <p className="text-xs text-stone-500 dark:text-stone-500">{wine.producer} • {wine.vintage} • À partir de {wine.peak.peakStart}</p>
+                    <p className="text-sm font-medium text-stone-700 truncate">{wine.name}</p>
+                    <p className="text-xs text-stone-500">{wine.producer} • {wine.vintage} • À partir de {wine.peak.peakStart}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs text-stone-400 dark:text-stone-600">{wine.inventoryCount} btl</span>
+                    <span className="text-xs text-stone-400">{wine.inventoryCount} btl</span>
                     <ArrowRight size={14} className="text-stone-400" />
                   </div>
                 </div>

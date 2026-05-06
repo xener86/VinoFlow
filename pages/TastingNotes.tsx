@@ -352,7 +352,7 @@ export const TastingNotes: React.FC = () => {
         <div className="pb-24 animate-fade-in space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-serif text-stone-900 dark:text-white">Fiches de Dégustation</h2>
+                    <h2 className="text-3xl font-serif text-stone-900">Fiches de Dégustation</h2>
                     <p className="text-stone-500 text-sm">Évaluations sensorielles</p>
                 </div>
                 <button 
@@ -371,20 +371,20 @@ export const TastingNotes: React.FC = () => {
                     placeholder="Chercher une bouteille..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl py-3 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-stone-300 dark:focus:ring-stone-600 outline-none placeholder-stone-400 dark:placeholder-stone-600 transition-all shadow-sm"
+                    className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-stone-900 focus:ring-2 focus:ring-stone-300 outline-none placeholder-stone-400 transition-all shadow-sm"
                 />
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 text-sm bg-white dark:bg-stone-900 p-1 rounded-lg border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar shadow-sm">
+            <div className="flex gap-2 text-sm bg-white p-1 rounded-lg border border-stone-200 overflow-x-auto no-scrollbar shadow-sm">
                {['ALL', 'RED', 'WHITE', 'ROSE', 'SPARKLING', 'OTHER'].map((t) => (
                  <button
                    key={t}
                    onClick={() => setTypeFilter(t)}
                    className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap text-xs font-medium tracking-wide ${
                        typeFilter === t 
-                       ? 'bg-stone-800 text-white dark:bg-stone-700 shadow-md'
-                       : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
+                       ? 'bg-stone-800 text-white shadow-md'
+                       : 'text-stone-500 hover:text-stone-800'
                     }`}
                  >
                    {filterLabels[t]}
@@ -395,8 +395,8 @@ export const TastingNotes: React.FC = () => {
                  onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
                  className={`px-3 py-1.5 rounded-full transition-all whitespace-nowrap text-xs font-medium tracking-wide flex items-center gap-1.5 ${
                    showFavoritesOnly 
-                     ? 'bg-red-600 text-white dark:bg-red-600 shadow-md'
-                     : 'bg-stone-100 dark:bg-stone-800 text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-red-600 dark:hover:text-red-400'
+                     ? 'bg-red-600 text-white shadow-md'
+                     : 'bg-stone-100 text-stone-500 hover:bg-stone-200 hover:text-red-600'
                  }`}
                >
                  FAVORIS
@@ -404,7 +404,7 @@ export const TastingNotes: React.FC = () => {
                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
                      showFavoritesOnly 
                        ? 'bg-red-700 text-white'
-                       : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
+                       : 'bg-stone-200 text-stone-600'
                    }`}>
                      {favoriteCount}
                    </span>
@@ -414,14 +414,14 @@ export const TastingNotes: React.FC = () => {
 
             {/* Wines to Taste Alert */}
             {filteredWinesToTaste.length > 0 && (
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 p-4 rounded-xl">
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
                     <div className="flex items-center gap-3">
-                        <FileText className="text-amber-600 dark:text-amber-400" size={24} />
+                        <FileText className="text-amber-600" size={24} />
                         <div>
-                            <p className="font-bold text-amber-900 dark:text-amber-200">
+                            <p className="font-bold text-amber-900">
                                 {filteredWinesToTaste.length} vin{filteredWinesToTaste.length > 1 ? 's' : ''} à déguster
                             </p>
-                            <p className="text-xs text-amber-700 dark:text-amber-300">
+                            <p className="text-xs text-amber-700">
                                 Créez vos premières impressions
                             </p>
                         </div>
@@ -432,7 +432,7 @@ export const TastingNotes: React.FC = () => {
             {/* Tasting Notes List */}
             <div className="space-y-4">
                 {filteredTastingNotes.length === 0 && tastingNotes.length > 0 && (
-                    <div className="text-center py-20 text-stone-500 dark:text-stone-600 border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col items-center gap-2">
+                    <div className="text-center py-20 text-stone-500 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center gap-2">
                         <Search size={32} className="opacity-50" />
                         <p>Aucune fiche de dégustation trouvée pour cette recherche.</p>
                     </div>
@@ -445,9 +445,9 @@ export const TastingNotes: React.FC = () => {
                     </div>
                 )}
                 {filteredTastingNotes.map(note => (
-                    <div key={note.id} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 shadow-sm">
+                    <div key={note.id} className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm">
                         <div className="flex justify-between items-start mb-3">
-                            <h3 className="text-lg font-serif text-stone-900 dark:text-white">{note.wineName}</h3>
+                            <h3 className="text-lg font-serif text-stone-900">{note.wineName}</h3>
                             <div className="flex items-center gap-2 text-xs text-stone-500">
                                 <Calendar size={12} />
                                 {new Date(note.date).toLocaleDateString('fr-FR')}
@@ -466,25 +466,25 @@ export const TastingNotes: React.FC = () => {
             {/* Add/Edit Tasting Note Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-                    <div className="absolute inset-0 bg-stone-900/50 dark:bg-black/80 backdrop-blur-sm" onClick={() => {
+                    <div className="absolute inset-0 bg-stone-900/50 backdrop-blur-sm" onClick={() => {
                         setShowAddModal(false);
                         setSelectedWine(null);
                         setEditingNote(null);
                         setAiQuestionnaire(null);
                         setInitialFormData(undefined);
                     }} />
-                    <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 w-full max-w-2xl rounded-2xl p-4 relative z-10 shadow-2xl animate-fade-in-up max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white border border-stone-200 w-full max-w-2xl rounded-2xl p-4 relative z-10 shadow-2xl animate-fade-in-up max-h-[90vh] overflow-y-auto">
                         <button onClick={() => {
                             setShowAddModal(false);
                             setSelectedWine(null);
                             setEditingNote(null);
                             setAiQuestionnaire(null);
                             setInitialFormData(undefined);
-                        }} className="absolute top-3 right-3 text-stone-400 hover:text-stone-600 dark:hover:text-white z-10">
+                        }} className="absolute top-3 right-3 text-stone-400 hover:text-stone-600 z-10">
                             <X size={18} />
                         </button>
                         
-                        <h3 className="text-xl font-serif text-stone-900 dark:text-white mb-1">
+                        <h3 className="text-xl font-serif text-stone-900 mb-1">
                             {editingNote ? 'Modifier la Dégustation' : 'Nouvelle Dégustation'}
                         </h3>
                         <p className="text-[10px] text-stone-500 mb-4">Questionnaire rapide</p>
@@ -496,17 +496,17 @@ export const TastingNotes: React.FC = () => {
                                     <button
                                         key={wine.id}
                                         onClick={() => handleSelectWine(wine)}
-                                        className="w-full text-left p-4 rounded-lg bg-stone-50 dark:bg-stone-950 hover:bg-stone-100 dark:hover:bg-stone-800 border border-stone-200 dark:border-stone-800 transition-all flex justify-between items-center group"
+                                        className="w-full text-left p-4 rounded-lg bg-stone-50 hover:bg-stone-100 border border-stone-200 transition-all flex justify-between items-center group"
                                     >
                                         <div>
-                                            <h4 className="font-serif text-stone-900 dark:text-white">{wine.name} {wine.cuvee}</h4>
+                                            <h4 className="font-serif text-stone-900">{wine.name} {wine.cuvee}</h4>
                                             <p className="text-xs text-stone-500">{wine.producer} • {wine.vintage}</p>
                                         </div>
                                         <ChevronRight className="text-stone-400 group-hover:text-wine-600 transition-colors" size={20} />
                                     </button>
                                 ))}
                                 {filteredWinesToTaste.length === 0 && (
-                                    <div className="text-center py-10 text-stone-500 dark:text-stone-600">
+                                    <div className="text-center py-10 text-stone-500">
                                         <Search size={32} className="mx-auto mb-4 opacity-50" />
                                         <p>Aucun vin trouvé pour cette recherche.</p>
                                     </div>

@@ -36,7 +36,7 @@ export const CockpitLayout: React.FC<CockpitLayoutProps> = ({ children }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-cream-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+    <div className="min-h-screen bg-cream-50 text-stone-900">
       <TopStrip />
       <div className="flex">
         {/* Sidebar visible only on md+ screens (tablet/desktop) */}
@@ -48,18 +48,18 @@ export const CockpitLayout: React.FC<CockpitLayoutProps> = ({ children }) => {
         </div>
         <main className="flex-1 min-w-0 pb-20 md:pb-0">
           {/* Top bar: search + quick add (page title comes from each page) */}
-          <div className="px-4 md:px-7 py-3 md:py-3.5 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 flex items-center gap-2 md:gap-3 sticky top-0 z-30">
+          <div className="px-4 md:px-7 py-3 md:py-3.5 border-b border-stone-200 bg-white flex items-center gap-2 md:gap-3 sticky top-0 z-30">
             {/* Mobile brand */}
-            <Link to="/" className="md:hidden serif-it text-xl text-stone-900 dark:text-white mr-1">VinoFlow</Link>
+            <Link to="/" className="md:hidden serif-it text-xl text-stone-900 mr-1">VinoFlow</Link>
             <div className="flex-1" />
             <button
               onClick={() => setPaletteOpen(true)}
-              className="h-9 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 hover:bg-stone-50 dark:hover:bg-stone-800 flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300"
+              className="h-9 px-3 rounded-md border border-stone-300 bg-white hover:bg-stone-50 flex items-center gap-2 text-sm text-stone-700"
               aria-label="Recherche universelle"
             >
               <Search className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Cherche</span>
-              <span className="hidden md:inline mono text-[10px] text-stone-500 px-1.5 py-0.5 rounded border border-stone-300 dark:border-stone-700 ml-1.5">⌘K</span>
+              <span className="hidden md:inline mono text-[10px] text-stone-500 px-1.5 py-0.5 rounded border border-stone-300 ml-1.5">⌘K</span>
             </button>
             <Link
               to="/add-wine"

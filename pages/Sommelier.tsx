@@ -159,11 +159,11 @@ export const Sommelier: React.FC = () => {
 
   const getPeakColor = (status: string) => {
       switch(status) {
-          case 'DRINK_NOW': return 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/50';
-          case 'KEEP_2_3_YEARS': return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/50';
-          case 'DRINK_SOON': return 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-900/50';
-          case 'PAST_PEAK': return 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/50';
-          default: return 'bg-stone-50 dark:bg-stone-900/20 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-900/50';
+          case 'DRINK_NOW': return 'bg-green-50 text-green-700 border-green-200';
+          case 'KEEP_2_3_YEARS': return 'bg-blue-50 text-blue-700 border-blue-200';
+          case 'DRINK_SOON': return 'bg-orange-50 text-orange-700 border-orange-200';
+          case 'PAST_PEAK': return 'bg-red-50 text-red-700 border-red-200';
+          default: return 'bg-stone-50 text-stone-700 border-stone-200';
       }
   };
 
@@ -182,17 +182,17 @@ export const Sommelier: React.FC = () => {
       
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-gradient-to-tr dark:from-indigo-600 dark:to-purple-600 flex items-center justify-center text-indigo-600 dark:text-white shadow-sm dark:shadow-lg border border-indigo-200 dark:border-none">
+          <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-200">
              <Sparkles size={24} />
           </div>
           <div>
-              <h2 className="text-3xl font-serif text-stone-800 dark:text-white">Sommelier IA</h2>
-              <p className="text-stone-500 dark:text-stone-400 text-sm">Votre expert personnel en dégustation.</p>
+              <h2 className="text-3xl font-serif text-stone-800">Sommelier IA</h2>
+              <p className="text-stone-500 text-sm">Votre expert personnel en dégustation.</p>
           </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-stone-100 dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-800 overflow-x-auto no-scrollbar">
+      <div className="flex bg-stone-100 p-1 rounded-xl border border-stone-200 overflow-x-auto no-scrollbar">
           {[
               { id: 'PAIRING', label: 'Accords IA', icon: Sparkles },
               { id: 'ADVICE', label: 'Conseil', icon: Layers },
@@ -203,7 +203,7 @@ export const Sommelier: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex-1 min-w-[80px] py-3 text-xs font-medium rounded-lg transition-all flex flex-col items-center gap-1 ${
-                    activeTab === tab.id ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-white shadow-sm' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
+                    activeTab === tab.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
                   <tab.icon size={18} />
@@ -216,19 +216,19 @@ export const Sommelier: React.FC = () => {
       {activeTab === 'ADVICE' && (
           <div className="space-y-6 animate-fade-in">
               
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-xl font-serif text-stone-800 dark:text-white">Organiser votre Moment</h3>
-                      <div className="flex bg-stone-100 dark:bg-stone-950 p-1 rounded-lg border border-stone-200 dark:border-stone-800">
+                      <h3 className="text-xl font-serif text-stone-800">Organiser votre Moment</h3>
+                      <div className="flex bg-stone-100 p-1 rounded-lg border border-stone-200">
                           <button 
                             onClick={() => setAdviceMode('BOTTLE')}
-                            className={`px-3 py-1.5 text-xs rounded-md transition-all ${adviceMode === 'BOTTLE' ? 'bg-white dark:bg-wine-900/30 text-wine-700 dark:text-wine-200 shadow-sm border border-stone-200 dark:border-wine-500/30' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-all ${adviceMode === 'BOTTLE' ? 'bg-white text-wine-700 shadow-sm border border-stone-200' : 'text-stone-500 hover:text-stone-800'}`}
                           >
                               Juste une Bouteille
                           </button>
                           <button 
                             onClick={() => setAdviceMode('MENU')}
-                            className={`px-3 py-1.5 text-xs rounded-md transition-all ${adviceMode === 'MENU' ? 'bg-white dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 shadow-sm border border-stone-200 dark:border-indigo-500/30' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'}`}
+                            className={`px-3 py-1.5 text-xs rounded-md transition-all ${adviceMode === 'MENU' ? 'bg-white text-indigo-700 shadow-sm border border-stone-200' : 'text-stone-500 hover:text-stone-800'}`}
                           >
                               Menu Complet
                           </button>
@@ -237,23 +237,23 @@ export const Sommelier: React.FC = () => {
 
                   <form onSubmit={handleGetAdvice} className="space-y-4">
                       <div>
-                          <label className="text-sm text-stone-500 dark:text-stone-400">Le Repas</label>
+                          <label className="text-sm text-stone-500">Le Repas</label>
                           <input 
                             type="text" 
                             placeholder="ex: Curry de poulet, Pizza, Sushis..."
                             value={adviceContext.meal}
                             onChange={(e) => setAdviceContext({...adviceContext, meal: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-800 mt-1 outline-none focus:ring-2 focus:ring-stone-400"
                           />
                       </div>
                       <div>
-                          <label className="text-sm text-stone-500 dark:text-stone-400">Contrainte</label>
+                          <label className="text-sm text-stone-500">Contrainte</label>
                           <input 
                             type="text" 
                             placeholder="ex: Besoin de fraîcheur, Soirée décontractée, Impression à faire..."
                             value={adviceContext.mood}
                             onChange={(e) => setAdviceContext({...adviceContext, mood: e.target.value})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-800 dark:text-white mt-1 outline-none focus:ring-2 focus:ring-stone-400 dark:focus:ring-stone-600"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-800 mt-1 outline-none focus:ring-2 focus:ring-stone-400"
                           />
                       </div>
                       <button 
@@ -272,25 +272,25 @@ export const Sommelier: React.FC = () => {
               {/* RESULTS: BOTTLE LIST */}
               {adviceMode === 'BOTTLE' && recommendations.length > 0 && (
                   <div className="space-y-4 animate-fade-in-up">
-                      <h3 className="text-stone-500 dark:text-stone-400 text-sm font-bold uppercase tracking-wider">Top Suggestions</h3>
+                      <h3 className="text-stone-500 text-sm font-bold uppercase tracking-wider">Top Suggestions</h3>
                       {recommendations.map(({rec, wine}) => {
                           const isPerfectMatch = rec.score >= 95;
                           return (
                           <div 
                             key={rec.wineId} 
-                            className={`bg-white dark:bg-stone-900/50 border rounded-xl p-5 transition-all shadow-sm relative overflow-hidden ${
+                            className={`bg-white border rounded-xl p-5 transition-all shadow-sm relative overflow-hidden ${
                                 isPerfectMatch 
-                                ? 'border-yellow-400 dark:border-yellow-500 shadow-xl shadow-yellow-500/20 animate-pulse-slow' 
-                                : 'border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-800/50'
+                                ? 'border-yellow-400 shadow-xl shadow-yellow-500/20 animate-pulse-slow' 
+                                : 'border-stone-200 hover:border-wine-300'
                             }`}
                           >
                               {/* Perfect Match Animation Background */}
                               {isPerfectMatch && (
                                   <>
-                                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 via-amber-50/30 to-orange-50/50 dark:from-yellow-900/20 dark:via-amber-900/10 dark:to-orange-900/20 pointer-events-none animate-gradient-shift" />
-                                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-yellow-100 dark:bg-yellow-900/40 px-3 py-1 rounded-full border border-yellow-300 dark:border-yellow-700 z-10">
-                                          <Award size={14} className="text-yellow-700 dark:text-yellow-400" />
-                                          <span className="text-xs font-bold text-yellow-700 dark:text-yellow-400">MATCH PARFAIT</span>
+                                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-50/50 via-amber-50/30 to-orange-50/50 pointer-events-none animate-gradient-shift" />
+                                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300 z-10">
+                                          <Award size={14} className="text-yellow-700" />
+                                          <span className="text-xs font-bold text-yellow-700">MATCH PARFAIT</span>
                                       </div>
                                   </>
                               )}
@@ -299,7 +299,7 @@ export const Sommelier: React.FC = () => {
                                   <div className="flex justify-between items-start mb-3">
                                       <div className="flex-1">
                                           <div className="flex items-center gap-2 mb-1">
-                                              <h4 className="text-lg font-serif text-stone-800 dark:text-white">{wine.name}</h4>
+                                              <h4 className="text-lg font-serif text-stone-800">{wine.name}</h4>
                                               {wine.isFavorite && (
                                                   <Heart size={16} className="text-red-500 fill-red-500" />
                                               )}
@@ -308,26 +308,26 @@ export const Sommelier: React.FC = () => {
                                       </div>
                                       <div className={`px-3 py-1 rounded-lg text-xs font-bold border ${
                                           isPerfectMatch 
-                                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700' 
-                                          : 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900/50'
+                                          ? 'bg-yellow-100 text-yellow-700 border-yellow-300' 
+                                          : 'bg-green-100 text-green-700 border-green-200'
                                       }`}>
                                           Match {rec.score}%
                                       </div>
                                   </div>
 
                                   {isPerfectMatch && (
-                                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-lg p-3 mb-3">
-                                          <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium flex items-center gap-2">
+                                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                                          <p className="text-yellow-800 text-sm font-medium flex items-center gap-2">
                                               🏆 Vous avez LA bouteille idéale en cave !
                                           </p>
                                       </div>
                                   )}
 
-                                  <p className="text-stone-600 dark:text-stone-300 italic text-sm mb-3">"{rec.reasoning}"</p>
+                                  <p className="text-stone-600 italic text-sm mb-3">"{rec.reasoning}"</p>
                                   
                                   {/* Locations */}
                                   {rec.locations && rec.locations.length > 0 && (
-                                      <div className="flex items-center gap-2 mb-3 text-xs text-stone-600 dark:text-stone-400">
+                                      <div className="flex items-center gap-2 mb-3 text-xs text-stone-600">
                                           <MapPin size={14} className="text-wine-500" />
                                           <span>{rec.locations.join(' • ')}</span>
                                       </div>
@@ -339,7 +339,7 @@ export const Sommelier: React.FC = () => {
                                       <span className="font-medium">{rec.peakExplanation}</span>
                                   </div>
 
-                                  <div className="grid grid-cols-2 gap-2 text-xs text-stone-600 dark:text-stone-500 bg-stone-100 dark:bg-stone-950/50 p-3 rounded-lg mb-3">
+                                  <div className="grid grid-cols-2 gap-2 text-xs text-stone-600 bg-stone-100 p-3 rounded-lg mb-3">
                                       <div className="flex items-center gap-1">
                                           <Thermometer size={12} /> {rec.servingTemp}
                                       </div>
@@ -353,7 +353,7 @@ export const Sommelier: React.FC = () => {
 
                                   <button 
                                     onClick={() => navigate(`/wine/${wine.id}`)}
-                                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-medium"
+                                    className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium"
                                   >
                                       Voir la fiche
                                   </button>
@@ -363,30 +363,30 @@ export const Sommelier: React.FC = () => {
 
                       {/* Out of Cellar Suggestion */}
                       {outOfCellarSuggestion && (
-                          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 rounded-xl p-6 shadow-lg animate-fade-in">
+                          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 shadow-lg animate-fade-in">
                               <div className="flex items-center gap-2 mb-3">
-                                  <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
-                                      <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                      <ShoppingBag size={16} className="text-indigo-600" />
                                   </div>
-                                  <h4 className="text-lg font-serif text-indigo-900 dark:text-indigo-200">Si vous souhaitez acheter...</h4>
+                                  <h4 className="text-lg font-serif text-indigo-900">Si vous souhaitez acheter...</h4>
                               </div>
                               
-                              <p className="text-indigo-800 dark:text-indigo-300 text-sm mb-4 italic">
+                              <p className="text-indigo-800 text-sm mb-4 italic">
                                   "{outOfCellarSuggestion.reason}"
                               </p>
 
-                              <div className="bg-white/50 dark:bg-stone-900/30 rounded-lg p-4 space-y-3">
+                              <div className="bg-white/50 rounded-lg p-4 space-y-3">
                                   <div>
-                                      <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Appellation recommandée</h5>
-                                      <p className="text-indigo-900 dark:text-indigo-100 font-serif text-lg">{outOfCellarSuggestion.appellation}</p>
+                                      <h5 className="text-xs font-bold uppercase text-indigo-600 mb-2">Appellation recommandée</h5>
+                                      <p className="text-indigo-900 font-serif text-lg">{outOfCellarSuggestion.appellation}</p>
                                   </div>
 
                                   {outOfCellarSuggestion.recommendedDomains.length > 0 && (
                                       <div>
-                                          <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Domaines suggérés</h5>
+                                          <h5 className="text-xs font-bold uppercase text-indigo-600 mb-2">Domaines suggérés</h5>
                                           <div className="flex flex-wrap gap-2">
                                               {outOfCellarSuggestion.recommendedDomains.map((domain, i) => (
-                                                  <span key={i} className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-200 rounded-full text-xs border border-indigo-200 dark:border-indigo-800">
+                                                  <span key={i} className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs border border-indigo-200">
                                                       {domain}
                                                   </span>
                                               ))}
@@ -396,10 +396,10 @@ export const Sommelier: React.FC = () => {
 
                                   {outOfCellarSuggestion.recommendedVintages.length > 0 && (
                                       <div>
-                                          <h5 className="text-xs font-bold uppercase text-indigo-600 dark:text-indigo-400 mb-2">Millésimes conseillés</h5>
+                                          <h5 className="text-xs font-bold uppercase text-indigo-600 mb-2">Millésimes conseillés</h5>
                                           <div className="flex flex-wrap gap-2">
                                               {outOfCellarSuggestion.recommendedVintages.map((vintage, i) => (
-                                                  <span key={i} className="px-3 py-1 bg-white dark:bg-stone-900/50 text-indigo-900 dark:text-indigo-100 rounded-lg text-xs font-mono border border-indigo-200 dark:border-indigo-800">
+                                                  <span key={i} className="px-3 py-1 bg-white text-indigo-900 rounded-lg text-xs font-mono border border-indigo-200">
                                                       {vintage}
                                                   </span>
                                               ))}
@@ -416,20 +416,20 @@ export const Sommelier: React.FC = () => {
               {adviceMode === 'MENU' && eveningPlan && (
                   <div className="space-y-6 animate-fade-in-up">
                       <div className="flex justify-between items-center">
-                          <h3 className="text-2xl font-serif text-stone-800 dark:text-white">{eveningPlan.theme}</h3>
-                          <button onClick={() => setEveningPlan(null)} className="text-stone-500 hover:text-stone-800 dark:hover:text-white text-sm">Nouveau</button>
+                          <h3 className="text-2xl font-serif text-stone-800">{eveningPlan.theme}</h3>
+                          <button onClick={() => setEveningPlan(null)} className="text-stone-500 hover:text-stone-800 text-sm">Nouveau</button>
                       </div>
 
-                      <div className="relative border-l-2 border-stone-200 dark:border-stone-800 pl-8 space-y-12 ml-4">
+                      <div className="relative border-l-2 border-stone-200 pl-8 space-y-12 ml-4">
                           {/* APERO */}
                           <div className="relative">
-                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white dark:bg-stone-900 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-500">1</div>
-                              <h4 className="text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider text-xs mb-2">Apéritif</h4>
-                              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 shadow-sm">
-                                  <h5 className="text-lg text-stone-800 dark:text-white font-serif">{eveningPlan.aperitif.name}</h5>
-                                  <p className="text-stone-500 dark:text-stone-400 text-sm mb-2">{eveningPlan.aperitif.description}</p>
+                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-500">1</div>
+                              <h4 className="text-indigo-600 font-bold uppercase tracking-wider text-xs mb-2">Apéritif</h4>
+                              <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm">
+                                  <h5 className="text-lg text-stone-800 font-serif">{eveningPlan.aperitif.name}</h5>
+                                  <p className="text-stone-500 text-sm mb-2">{eveningPlan.aperitif.description}</p>
                                   {eveningPlan.aperitif.pairingSnack && (
-                                      <div className="text-xs text-stone-500 bg-stone-50 dark:bg-stone-950 p-2 rounded">
+                                      <div className="text-xs text-stone-500 bg-stone-50 p-2 rounded">
                                           🍿 Snack : {eveningPlan.aperitif.pairingSnack}
                                       </div>
                                   )}
@@ -438,28 +438,28 @@ export const Sommelier: React.FC = () => {
 
                           {/* MAIN */}
                           <div className="relative">
-                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white dark:bg-stone-900 border-2 border-wine-500 flex items-center justify-center text-[10px] font-bold text-wine-500">2</div>
-                              <h4 className="text-wine-600 dark:text-wine-400 font-bold uppercase tracking-wider text-xs mb-2">Repas Principal</h4>
-                              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 shadow-sm">
+                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white border-2 border-wine-500 flex items-center justify-center text-[10px] font-bold text-wine-500">2</div>
+                              <h4 className="text-wine-600 font-bold uppercase tracking-wider text-xs mb-2">Repas Principal</h4>
+                              <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm">
                                   <div className="mb-3">
                                       <span className="text-xs text-stone-500">Plat</span>
-                                      <div className="text-stone-800 dark:text-white font-medium">{eveningPlan.mainCourse.dishName}</div>
+                                      <div className="text-stone-800 font-medium">{eveningPlan.mainCourse.dishName}</div>
                                   </div>
-                                  <div className="pt-3 border-t border-stone-200 dark:border-stone-800">
+                                  <div className="pt-3 border-t border-stone-200">
                                       <span className="text-xs text-stone-500">Vin Accordé</span>
-                                      <div className="text-xl text-stone-800 dark:text-white font-serif">{eveningPlan.mainCourse.wineName}</div>
-                                      <p className="text-stone-500 dark:text-stone-400 text-sm italic mt-1">"{eveningPlan.mainCourse.pairingReason}"</p>
+                                      <div className="text-xl text-stone-800 font-serif">{eveningPlan.mainCourse.wineName}</div>
+                                      <p className="text-stone-500 text-sm italic mt-1">"{eveningPlan.mainCourse.pairingReason}"</p>
                                   </div>
                               </div>
                           </div>
 
                           {/* DIGESTIF */}
                           <div className="relative">
-                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white dark:bg-stone-900 border-2 border-amber-500 flex items-center justify-center text-[10px] font-bold text-amber-500">3</div>
-                              <h4 className="text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider text-xs mb-2">Digestif & Conclusion</h4>
-                              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 shadow-sm">
-                                  <h5 className="text-lg text-stone-800 dark:text-white font-serif">{eveningPlan.digestif.spiritName}</h5>
-                                  <p className="text-stone-500 dark:text-stone-400 text-sm">{eveningPlan.digestif.description}</p>
+                              <div className="absolute -left-[41px] top-0 w-6 h-6 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center text-[10px] font-bold text-amber-500">3</div>
+                              <h4 className="text-amber-600 font-bold uppercase tracking-wider text-xs mb-2">Digestif & Conclusion</h4>
+                              <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm">
+                                  <h5 className="text-lg text-stone-800 font-serif">{eveningPlan.digestif.spiritName}</h5>
+                                  <p className="text-stone-500 text-sm">{eveningPlan.digestif.description}</p>
                               </div>
                           </div>
                       </div>
@@ -471,7 +471,7 @@ export const Sommelier: React.FC = () => {
       {/* --- PAIRING MODE — Sommelier v2 fullscreen --- */}
       {activeTab === 'PAIRING' && (
           <div className="animate-fade-in">
-              <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm">
                   <SommelierV2 inventory={inventory} />
               </div>
               <p className="mt-4 text-center text-xs text-stone-400">
@@ -484,10 +484,10 @@ export const Sommelier: React.FC = () => {
       {activeTab === 'SHOPPING' && (
           <div className="space-y-6 animate-fade-in">
               {!shoppingAnalysis ? (
-                  <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-8 text-center shadow-sm">
-                      <ShoppingBag className="mx-auto text-green-600 dark:text-green-500 mb-4" size={48} />
-                      <h3 className="text-2xl font-serif text-stone-800 dark:text-white mb-2">Foire aux Vins & Achats</h3>
-                      <p className="text-stone-500 dark:text-stone-400 text-sm mb-8 max-w-md mx-auto">
+                  <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center shadow-sm">
+                      <ShoppingBag className="mx-auto text-green-600 mb-4" size={48} />
+                      <h3 className="text-2xl font-serif text-stone-800 mb-2">Foire aux Vins & Achats</h3>
+                      <p className="text-stone-500 text-sm mb-8 max-w-md mx-auto">
                           L'IA analyse la répartition de votre cave (régions, couleurs, millésimes) pour identifier les manques et générer une liste d'achat stratégique pour la prochaine Foire aux Vins.
                       </p>
                       <button 
@@ -502,26 +502,26 @@ export const Sommelier: React.FC = () => {
               ) : (
                   <div className="space-y-6 animate-fade-in-up">
                       <div className="flex justify-between items-center">
-                           <h3 className="text-xl font-serif text-stone-800 dark:text-white">Votre Stratégie d'Achat</h3>
+                           <h3 className="text-xl font-serif text-stone-800">Votre Stratégie d'Achat</h3>
                            <button 
                              onClick={() => setShoppingAnalysis(null)}
-                             className="text-xs text-stone-500 hover:text-stone-800 dark:hover:text-white"
+                             className="text-xs text-stone-500 hover:text-stone-800"
                            >
                                Réinitialiser
                            </button>
                       </div>
 
                       {/* Analysis Summary */}
-                      <div className="bg-white dark:bg-stone-900/50 p-6 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm">
-                          <h4 className="text-sm font-bold uppercase text-stone-500 dark:text-stone-400 mb-3 flex items-center gap-2">
+                      <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+                          <h4 className="text-sm font-bold uppercase text-stone-500 mb-3 flex items-center gap-2">
                               <TrendingUp size={16} /> Bilan de Cave
                           </h4>
-                          <p className="text-stone-700 dark:text-stone-200 text-sm leading-relaxed mb-4">
+                          <p className="text-stone-700 text-sm leading-relaxed mb-4">
                               {shoppingAnalysis.generalAnalysis}
                           </p>
                           <div className="flex flex-wrap gap-2">
                               {shoppingAnalysis.gaps.map((gap, i) => (
-                                  <span key={i} className="px-3 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 border border-red-100 dark:border-red-900/50 rounded-lg text-xs flex items-center gap-2">
+                                  <span key={i} className="px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded-lg text-xs flex items-center gap-2">
                                       <AlertTriangle size={12} /> {gap}
                                   </span>
                               ))}
@@ -530,12 +530,12 @@ export const Sommelier: React.FC = () => {
 
                       {/* Shopping List */}
                       <div>
-                          <h4 className="text-sm font-bold uppercase text-stone-500 dark:text-stone-400 mb-3 flex items-center gap-2 ml-1">
+                          <h4 className="text-sm font-bold uppercase text-stone-500 mb-3 flex items-center gap-2 ml-1">
                               <CheckCircle2 size={16} /> Checklist Foire aux Vins
                           </h4>
                           <div className="grid gap-3">
                               {shoppingAnalysis.suggestions.map((item, i) => (
-                                  <div key={i} className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 rounded-xl flex flex-col md:flex-row gap-4 md:items-center relative overflow-hidden shadow-sm">
+                                  <div key={i} className="bg-white border border-stone-200 p-4 rounded-xl flex flex-col md:flex-row gap-4 md:items-center relative overflow-hidden shadow-sm">
                                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                                           item.priority === 'HIGH' ? 'bg-red-500' : item.priority === 'MEDIUM' ? 'bg-yellow-500' : 'bg-blue-500'
                                       }`} />
@@ -543,19 +543,19 @@ export const Sommelier: React.FC = () => {
                                       <div className="flex-1">
                                           <div className="flex items-center gap-2 mb-1">
                                               <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                                                  item.priority === 'HIGH' ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400' : item.priority === 'MEDIUM' ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                                  item.priority === 'HIGH' ? 'bg-red-50 text-red-600' : item.priority === 'MEDIUM' ? 'bg-yellow-50 text-yellow-600' : 'bg-blue-50 text-blue-600'
                                               }`}>
                                                   {item.priority === 'HIGH' ? 'PRIORITAIRE' : item.priority === 'MEDIUM' ? 'CONSEILLÉ' : 'OPTIONNEL'}
                                               </span>
                                               <span className="text-xs text-stone-500 uppercase tracking-wider">{item.type} • {item.region}</span>
                                           </div>
-                                          <h5 className="text-stone-800 dark:text-white font-serif text-lg">{item.specificTarget}</h5>
-                                          <p className="text-stone-500 dark:text-stone-400 text-xs mt-1">{item.reason}</p>
+                                          <h5 className="text-stone-800 font-serif text-lg">{item.specificTarget}</h5>
+                                          <p className="text-stone-500 text-xs mt-1">{item.reason}</p>
                                       </div>
 
                                       <div className="md:text-right">
-                                          <div className="text-green-600 dark:text-green-400 font-mono text-sm">{item.budgetRecommendation}</div>
-                                          <div className="text-[10px] text-stone-500 dark:text-stone-600">Budget estimé</div>
+                                          <div className="text-green-600 font-mono text-sm">{item.budgetRecommendation}</div>
+                                          <div className="text-[10px] text-stone-500">Budget estimé</div>
                                       </div>
                                   </div>
                               ))}
@@ -568,7 +568,7 @@ export const Sommelier: React.FC = () => {
 
       {/* --- CHAT MODE --- */}
       {activeTab === 'CHAT' && (
-          <div className="flex flex-col h-[60vh] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl overflow-hidden shadow-sm">
+          <div className="flex flex-col h-[60vh] bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {chatHistory.length === 0 && (
                       <div className="text-center text-stone-500 mt-10">
@@ -581,7 +581,7 @@ export const Sommelier: React.FC = () => {
                           <div className={`max-w-[80%] p-3 rounded-xl text-sm ${
                               msg.role === 'user' 
                               ? 'bg-wine-600 text-white rounded-tr-none' 
-                              : 'bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 rounded-tl-none'
+                              : 'bg-stone-100 text-stone-800 rounded-tl-none'
                           }`}>
                               {msg.text}
                           </div>
@@ -589,21 +589,21 @@ export const Sommelier: React.FC = () => {
                   ))}
                   {loadingChat && (
                       <div className="flex justify-start">
-                          <div className="bg-stone-100 dark:bg-stone-800 p-3 rounded-xl rounded-tl-none">
+                          <div className="bg-stone-100 p-3 rounded-xl rounded-tl-none">
                               <Loader2 className="animate-spin text-stone-500" size={16} />
                           </div>
                       </div>
                   )}
               </div>
-              <form onSubmit={handleChat} className="p-3 border-t border-stone-200 dark:border-stone-800 flex gap-2">
+              <form onSubmit={handleChat} className="p-3 border-t border-stone-200 flex gap-2">
                   <input 
                     type="text" 
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Posez votre question..."
-                    className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg px-3 text-stone-800 dark:text-white focus:outline-none focus:border-wine-500"
+                    className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-3 text-stone-800 focus:outline-none focus:border-wine-500"
                   />
-                  <button type="submit" disabled={!chatInput || loadingChat} className="p-2 bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-white rounded-lg hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50">
+                  <button type="submit" disabled={!chatInput || loadingChat} className="p-2 bg-stone-100 text-stone-500 rounded-lg hover:bg-stone-200 disabled:opacity-50">
                       <Send size={18} />
                   </button>
               </form>

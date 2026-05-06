@@ -137,7 +137,7 @@ const CaveList: React.FC = () => {
     <th className="text-left font-normal py-2">
       <button
         onClick={() => setSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'asc' })}
-        className="mono text-[10px] tracking-widest text-stone-500 hover:text-stone-900 dark:hover:text-white inline-flex items-center gap-1"
+        className="mono text-[10px] tracking-widest text-stone-500 hover:text-stone-900 inline-flex items-center gap-1"
       >
         {children}
         {sort.key === k && <span className="text-wine-700">{sort.dir === 'asc' ? '↑' : '↓'}</span>}
@@ -148,17 +148,17 @@ const CaveList: React.FC = () => {
   return (
     <Card className="overflow-hidden">
       {/* Toolbar */}
-      <header className="px-5 py-4 border-b border-stone-200 dark:border-stone-800 flex flex-wrap items-center gap-3 bg-stone-50/40 dark:bg-stone-950/40">
+      <header className="px-5 py-4 border-b border-stone-200 flex flex-wrap items-center gap-3 bg-stone-50/40">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Filtrer… (nom, producteur, région, millésime)"
-          className="h-9 px-3 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm w-72 outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600 dark:text-stone-200"
+          className="h-9 px-3 rounded-md border border-stone-300 bg-white text-sm w-72 outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600"
         />
         <select
           value={filterColor}
           onChange={e => setFilterColor(e.target.value as any)}
-          className="h-9 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm px-2 text-stone-700 dark:text-stone-300"
+          className="h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700"
         >
           <option value="all">Toutes couleurs</option>
           <option value="RED">Rouge</option>
@@ -169,7 +169,7 @@ const CaveList: React.FC = () => {
         <select
           value={filterRegion}
           onChange={e => setFilterRegion(e.target.value)}
-          className="h-9 rounded-md border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 text-sm px-2 text-stone-700 dark:text-stone-300 max-w-[180px]"
+          className="h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700 max-w-[180px]"
         >
           {regions.map(r => <option key={r} value={r}>{r === 'all' ? 'Toutes régions' : r}</option>)}
         </select>
@@ -182,7 +182,7 @@ const CaveList: React.FC = () => {
 
       {/* Bulk actions strip */}
       {selected.size > 0 && (
-        <div className="bg-stone-900 dark:bg-stone-950 text-white px-5 h-12 flex items-center gap-3">
+        <div className="bg-stone-900 text-white px-5 h-12 flex items-center gap-3">
           <span className="mono text-[11px] tracking-widest">{selected.size} SÉLECTIONNÉ{selected.size > 1 ? 'S' : ''}</span>
           <button onClick={() => setSelected(new Set())} className="mono text-[10px] tracking-widest text-stone-400 hover:text-white">
             DÉSÉLECTIONNER
@@ -200,7 +200,7 @@ const CaveList: React.FC = () => {
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-stone-200 dark:border-stone-800">
+            <tr className="border-b border-stone-200">
               <th className="w-10 px-5 py-2">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-wine-700" />
               </th>
@@ -222,7 +222,7 @@ const CaveList: React.FC = () => {
               return (
                 <tr
                   key={w.id}
-                  className={`border-b border-stone-100 dark:border-stone-800/50 group ${isSelected ? 'bg-wine-50/40 dark:bg-wine-900/10' : 'hover:bg-stone-50 dark:hover:bg-stone-800/30'}`}
+                  className={`border-b border-stone-100 group ${isSelected ? 'bg-wine-50/40' : 'hover:bg-stone-50'}`}
                 >
                   <td className="px-5 py-2.5">
                     <input
@@ -235,13 +235,13 @@ const CaveList: React.FC = () => {
                   <td className="py-2.5">
                     <Link to={`/wine/${w.id}`} className="flex items-center gap-2 group">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colorDot(w.type)}`} />
-                      <span className="serif-it text-stone-900 dark:text-white group-hover:text-wine-700 truncate">{w.name}</span>
+                      <span className="serif-it text-stone-900 group-hover:text-wine-700 truncate">{w.name}</span>
                     </Link>
                   </td>
-                  <td className="text-stone-700 dark:text-stone-400 text-xs">{w.region}</td>
+                  <td className="text-stone-700 text-xs">{w.region}</td>
                   <td className="mono text-stone-500 text-xs">{w.vintage || '—'}</td>
                   <td className="mono text-stone-500 text-xs">{formatLoc(w)}</td>
-                  <td className="mono text-stone-700 dark:text-stone-300 text-xs">×{w.inventoryCount}</td>
+                  <td className="mono text-stone-700 text-xs">×{w.inventoryCount}</td>
                   <td>
                     <Badge tone={peakTone(days)}>
                       {days < 0 ? 'PASSÉ' : days < 365 ? `${days} J` : `${Math.round(days / 365)} A`}
@@ -249,7 +249,7 @@ const CaveList: React.FC = () => {
                   </td>
                   <td className="text-xs">
                     {rating ? (
-                      <span className="serif text-wine-700 dark:text-wine-500 font-medium">{rating.toFixed(1)}</span>
+                      <span className="serif text-wine-700 font-medium">{rating.toFixed(1)}</span>
                     ) : (
                       <span className="text-stone-300">—</span>
                     )}
@@ -266,7 +266,7 @@ const CaveList: React.FC = () => {
         </table>
       )}
 
-      <div className="px-5 py-2 border-t border-stone-200 dark:border-stone-800 mono text-[10px] text-stone-500 flex justify-between bg-stone-50/40 dark:bg-stone-950/40">
+      <div className="px-5 py-2 border-t border-stone-200 mono text-[10px] text-stone-500 flex justify-between bg-stone-50/40">
         <span>{filtered.length} affichés</span>
         <span>TOTAL : {inStock.reduce((a, w) => a + w.inventoryCount, 0)} BTL</span>
       </div>
@@ -282,8 +282,8 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.FC
     onClick={onClick}
     className={`px-4 h-9 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
       active
-        ? 'bg-white dark:bg-stone-900 shadow-sm text-stone-900 dark:text-white'
-        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+        ? 'bg-white shadow-sm text-stone-900'
+        : 'text-stone-600 hover:text-stone-900'
     }`}
   >
     <Icon className="w-3.5 h-3.5" />
@@ -320,14 +320,14 @@ export const CockpitCave: React.FC = () => {
       <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
         <div>
           <MonoLabel>VINOFLOW · INVENTAIRE</MonoLabel>
-          <h1 className="text-2xl text-stone-900 dark:text-white font-medium leading-tight mt-1">
+          <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">
             {titles[tab]}
           </h1>
           <div className="text-[12px] text-stone-500 mt-0.5">
             {inStock.length} vins en stock · {total} bouteilles
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-md">
+        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md">
           <TabButton active={tab === 'liste'} onClick={() => switchTab('liste')} icon={List}>Liste</TabButton>
           <TabButton active={tab === 'plan'} onClick={() => switchTab('plan')} icon={Map}>Plan</TabButton>
           <TabButton active={tab === 'insights'} onClick={() => switchTab('insights')} icon={TrendingUp}>Insights</TabButton>

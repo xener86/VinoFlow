@@ -47,8 +47,8 @@ export const RackGrid: React.FC<RackGridProps> = ({
     };
 
     const containerClass = rack.type === 'BOX' 
-        ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/50' 
-        : 'bg-white dark:bg-stone-900/50 border-stone-200 dark:border-stone-800';
+        ? 'bg-amber-50 border-amber-200' 
+        : 'bg-white border-stone-200';
 
     return (
       <div className={`p-4 rounded-2xl border shadow-sm overflow-x-auto min-h-[200px] relative transition-colors ${containerClass}`}>
@@ -67,20 +67,20 @@ export const RackGrid: React.FC<RackGridProps> = ({
                        const cellData = getBottleDataAt(x, y);
                        
                        let bgClass = rack.type === 'BOX' 
-                        ? "bg-amber-50 border-amber-100 dark:bg-amber-900/10 dark:border-amber-900/30" 
-                        : "bg-stone-100 border-stone-200 dark:bg-stone-950/80 dark:border-stone-800";
+                        ? "bg-amber-50 border-amber-100" 
+                        : "bg-stone-100 border-stone-200";
                        
-                       let content = <span className="text-[9px] text-stone-400 dark:text-stone-700 font-mono">{String.fromCharCode(65+y)}{x+1}</span>;
+                       let content = <span className="text-[9px] text-stone-400 font-mono">{String.fromCharCode(65+y)}{x+1}</span>;
 
                        if (cellData) {
                            const { wine, bottle } = cellData;
                            const isMatch = searchQuery && matchesWineSearch(wine, searchQuery);
                            
-                           if (wine.type === 'RED') bgClass = "bg-red-100 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-900 dark:text-red-400";
-                           else if (wine.type === 'WHITE') bgClass = "bg-yellow-100 border-yellow-200 text-yellow-800 dark:bg-yellow-950 dark:border-yellow-900 dark:text-yellow-400";
-                           else if (wine.type === 'ROSE') bgClass = "bg-pink-100 border-pink-200 text-pink-800 dark:bg-pink-950 dark:border-pink-900 dark:text-pink-400";
+                           if (wine.type === 'RED') bgClass = "bg-red-100 border-red-200 text-red-800";
+                           else if (wine.type === 'WHITE') bgClass = "bg-yellow-100 border-yellow-200 text-yellow-800";
+                           else if (wine.type === 'ROSE') bgClass = "bg-pink-100 border-pink-200 text-pink-800";
                            
-                           if (wine.isFavorite) bgClass += " ring-2 ring-purple-400 dark:ring-purple-500";
+                           if (wine.isFavorite) bgClass += " ring-2 ring-purple-400";
                            if (searchQuery && !isMatch) bgClass += " opacity-20 grayscale";
                            if (searchQuery && isMatch) bgClass += " ring-2 ring-green-500 scale-105 z-10 shadow-lg";
                            if (moveSource?.bottleId === bottle.id) bgClass += " ring-2 ring-blue-500 opacity-50";
@@ -104,10 +104,10 @@ export const RackGrid: React.FC<RackGridProps> = ({
                            );
                        } else {
                            if (moveSource) {
-                               bgClass = "bg-blue-100 border-blue-300 dark:bg-blue-900/20 dark:border-blue-500/30 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 hover:border-blue-400 animate-pulse";
+                               bgClass = "bg-blue-100 border-blue-300 cursor-pointer hover:bg-blue-200 hover:border-blue-400 animate-pulse";
                                content = <div className="w-2 h-2 bg-blue-500/50 rounded-full" />
                            } else {
-                               bgClass += " cursor-pointer hover:border-stone-400 dark:hover:border-stone-600 hover:bg-stone-50 dark:hover:bg-stone-800/30";
+                               bgClass += " cursor-pointer hover:border-stone-400 hover:bg-stone-50";
                            }
                            
                            return (

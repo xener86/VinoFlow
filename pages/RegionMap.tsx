@@ -149,26 +149,26 @@ export const RegionMap: React.FC = () => {
     <div className="space-y-6 animate-fade-in pb-24">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-serif text-stone-800 dark:text-white flex items-center gap-3">
-          <Globe className="text-wine-600 dark:text-wine-400" size={28} />
+        <h2 className="text-3xl font-serif text-stone-800 flex items-center gap-3">
+          <Globe className="text-wine-600" size={28} />
           Carte des Régions
         </h2>
-        <p className="text-stone-500 dark:text-stone-400 text-sm mt-1">
+        <p className="text-stone-500 text-sm mt-1">
           {totalRegions} région{totalRegions > 1 ? 's' : ''} • {totalBottlesOnMap} bouteille{totalBottlesOnMap > 1 ? 's' : ''} localisées
         </p>
       </div>
 
       {/* ── Map Card ────────────────────────────────────────────── */}
-      <div className="relative bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-sm overflow-hidden">
+      <div className="relative bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
         {/* Zoom controls */}
         <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
-          <button onClick={handleZoomIn} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+          <button onClick={handleZoomIn} className="w-8 h-8 bg-white/90 border border-stone-200 rounded-lg flex items-center justify-center text-stone-600 hover:bg-stone-50 transition-colors shadow-sm backdrop-blur-sm">
             <ZoomIn size={16} />
           </button>
-          <button onClick={handleZoomOut} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+          <button onClick={handleZoomOut} className="w-8 h-8 bg-white/90 border border-stone-200 rounded-lg flex items-center justify-center text-stone-600 hover:bg-stone-50 transition-colors shadow-sm backdrop-blur-sm">
             <ZoomOut size={16} />
           </button>
-          <button onClick={handleReset} className="w-8 h-8 bg-white/90 dark:bg-stone-800/90 border border-stone-200 dark:border-stone-700 rounded-lg flex items-center justify-center text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors shadow-sm backdrop-blur-sm">
+          <button onClick={handleReset} className="w-8 h-8 bg-white/90 border border-stone-200 rounded-lg flex items-center justify-center text-stone-600 hover:bg-stone-50 transition-colors shadow-sm backdrop-blur-sm">
             <RotateCcw size={14} />
           </button>
         </div>
@@ -242,15 +242,15 @@ export const RegionMap: React.FC = () => {
               onClick={() => setSelectedRegion(prev => prev === r ? null : r)}
               className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all ${
                 selectedRegion === r
-                  ? 'bg-stone-100 dark:bg-stone-800 ring-1 ring-wine-500'
-                  : 'hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                  ? 'bg-stone-100 ring-1 ring-wine-500'
+                  : 'hover:bg-stone-50'
               }`}
             >
               <span
                 className="w-2.5 h-2.5 rounded-full inline-block border border-white/30"
                 style={{ backgroundColor: REGION_FILL[r] }}
               />
-              <span className="text-stone-600 dark:text-stone-400 font-medium">
+              <span className="text-stone-600 font-medium">
                 {r} ({regionMap[r].totalBottles})
               </span>
             </button>
@@ -271,7 +271,7 @@ export const RegionMap: React.FC = () => {
       {/* ── Unmapped regions ──────────────────────────────────── */}
       {unmappedGroups.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-stone-500 dark:text-stone-400">Autres régions / pays</h3>
+          <h3 className="text-sm font-medium text-stone-500">Autres régions / pays</h3>
           <div className="flex flex-wrap gap-2">
             {unmappedGroups.map(([name, data]) => (
               <button
@@ -280,7 +280,7 @@ export const RegionMap: React.FC = () => {
                 className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                   selectedRegion === name
                     ? 'bg-wine-600 text-white border-wine-700'
-                    : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-800 hover:border-wine-300 dark:hover:border-wine-700'
+                    : 'bg-white text-stone-600 border-stone-200 hover:border-wine-300'
                 }`}
               >
                 {name} ({data.total})
@@ -294,11 +294,11 @@ export const RegionMap: React.FC = () => {
       {selectedRegion && selectedWines.length > 0 && (
         <div className="space-y-3 animate-slide-up">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-serif text-stone-800 dark:text-white flex items-center gap-2">
-              <MapPin size={16} className="text-wine-600 dark:text-wine-400" />
+            <h3 className="text-lg font-serif text-stone-800 flex items-center gap-2">
+              <MapPin size={16} className="text-wine-600" />
               {selectedRegion}
             </h3>
-            <span className="text-xs text-stone-500 dark:text-stone-400">
+            <span className="text-xs text-stone-500">
               {selectedWines.reduce((s, w) => s + w.inventoryCount, 0)} btl • {selectedWines.length} vin{selectedWines.length > 1 ? 's' : ''}
             </span>
           </div>
@@ -307,20 +307,20 @@ export const RegionMap: React.FC = () => {
               <div
                 key={wine.id}
                 onClick={() => navigate(`/wine/${wine.id}`)}
-                className="flex items-center justify-between p-3 bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-xl cursor-pointer hover:border-wine-300 dark:hover:border-wine-700 transition-colors group"
+                className="flex items-center justify-between p-3 bg-white border border-stone-200 rounded-xl cursor-pointer hover:border-wine-300 transition-colors group"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-stone-700 dark:text-stone-300 truncate">{wine.name}</p>
-                  <p className="text-xs text-stone-500 dark:text-stone-500">
+                  <p className="text-sm font-medium text-stone-700 truncate">{wine.name}</p>
+                  <p className="text-xs text-stone-500">
                     {wine.producer} • {wine.vintage}{wine.appellation ? ` • ${wine.appellation}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    wine.type === 'RED' ? 'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400' :
-                    wine.type === 'WHITE' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300' :
-                    wine.type === 'ROSE' ? 'bg-pink-100 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300' :
-                    'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300'
+                    wine.type === 'RED' ? 'bg-red-100 text-red-700' :
+                    wine.type === 'WHITE' ? 'bg-yellow-100 text-yellow-700' :
+                    wine.type === 'ROSE' ? 'bg-pink-100 text-pink-700' :
+                    'bg-stone-100 text-stone-700'
                   }`}>
                     {wine.inventoryCount} btl
                   </span>
@@ -334,7 +334,7 @@ export const RegionMap: React.FC = () => {
 
       {/* Empty */}
       {wines.filter(w => w.inventoryCount > 0).length === 0 && (
-        <div className="text-center py-20 text-stone-500 dark:text-stone-600 border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl flex flex-col items-center gap-3">
+        <div className="text-center py-20 text-stone-500 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center gap-3">
           <Wine size={48} className="opacity-30" />
           <p className="text-lg font-serif">Aucun vin en stock</p>
           <p className="text-sm">Ajoutez des vins pour voir la carte des régions.</p>

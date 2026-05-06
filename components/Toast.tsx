@@ -20,10 +20,10 @@ const iconMap = {
 };
 
 const bgMap = {
-  success: 'bg-green-600 dark:bg-green-700',
-  info: 'bg-stone-800 dark:bg-stone-700',
-  warning: 'bg-amber-600 dark:bg-amber-700',
-  error: 'bg-red-600 dark:bg-red-700',
+  success: 'bg-green-600',
+  info: 'bg-stone-800',
+  warning: 'bg-amber-600',
+  error: 'bg-red-600',
 };
 
 export const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration = 5000, onUndo, onClose }) => {

@@ -17,11 +17,11 @@ type EntryType = 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
 type Period = 'month' | '3m' | '12m' | 'all';
 
 const TYPE_META: Record<EntryType, { label: string; verb: string; bg: string; fg: string; dot: string }> = {
-  IN:   { label: 'Entrée',      verb: '+', bg: 'bg-emerald-50 dark:bg-emerald-900/20',  fg: 'text-emerald-800 dark:text-emerald-300', dot: 'bg-emerald-600' },
-  OUT:  { label: 'Sortie',      verb: '−', bg: 'bg-wine-50 dark:bg-wine-900/20',         fg: 'text-wine-800 dark:text-wine-300',       dot: 'bg-wine-700' },
-  MOVE: { label: 'Déplacement', verb: '→', bg: 'bg-stone-100 dark:bg-stone-800',         fg: 'text-stone-800 dark:text-stone-200',     dot: 'bg-stone-500' },
-  GIFT: { label: 'Cadeau',      verb: '⬦', bg: 'bg-amber-50 dark:bg-amber-900/20',       fg: 'text-amber-800 dark:text-amber-300',     dot: 'bg-amber-600' },
-  NOTE: { label: 'Note',        verb: '✎', bg: 'bg-cream-100 dark:bg-stone-800',         fg: 'text-stone-800 dark:text-stone-200',     dot: 'bg-stone-700' },
+  IN:   { label: 'Entrée',      verb: '+', bg: 'bg-emerald-50',  fg: 'text-emerald-800', dot: 'bg-emerald-600' },
+  OUT:  { label: 'Sortie',      verb: '−', bg: 'bg-wine-50',         fg: 'text-wine-800',       dot: 'bg-wine-700' },
+  MOVE: { label: 'Déplacement', verb: '→', bg: 'bg-stone-100',         fg: 'text-stone-800',     dot: 'bg-stone-500' },
+  GIFT: { label: 'Cadeau',      verb: '⬦', bg: 'bg-amber-50',       fg: 'text-amber-800',     dot: 'bg-amber-600' },
+  NOTE: { label: 'Note',        verb: '✎', bg: 'bg-cream-100',         fg: 'text-stone-800',     dot: 'bg-stone-700' },
 };
 
 // ────────────────────────────────────────────
@@ -120,7 +120,7 @@ export const CockpitCellarJournal: React.FC = () => {
       {/* Page intro */}
       <div>
         <MonoLabel>◇ JOURNAL DE CAVE</MonoLabel>
-        <h1 className="serif text-4xl text-stone-900 dark:text-white mt-1.5 leading-tight">
+        <h1 className="serif text-4xl text-stone-900 mt-1.5 leading-tight">
           Tout ce qui passe par la cave.
         </h1>
         <p className="serif-it text-stone-500 mt-1.5 text-lg">
@@ -179,15 +179,15 @@ export const CockpitCellarJournal: React.FC = () => {
 // ────────────────────────────────────────────
 const KPI: React.FC<{ label: string; value: string; delta?: string; accent?: 'forest' | 'wine' | 'stone' }> = ({ label, value, delta, accent = 'stone' }) => {
   const accentMap = {
-    forest: 'text-emerald-700 dark:text-emerald-400',
-    wine:   'text-wine-700 dark:text-wine-500',
-    stone:  'text-stone-900 dark:text-white',
+    forest: 'text-emerald-700',
+    wine:   'text-wine-700',
+    stone:  'text-stone-900',
   };
   return (
     <Card className="p-5">
       <MonoLabel>{label}</MonoLabel>
       <div className={`serif text-[44px] leading-none mt-2 ${accentMap[accent]}`}>{value}</div>
-      {delta && <div className="text-xs text-stone-500 dark:text-stone-400 mt-2">{delta}</div>}
+      {delta && <div className="text-xs text-stone-500 mt-2">{delta}</div>}
     </Card>
   );
 };
@@ -236,13 +236,13 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Type chips */}
-      <div className="flex items-center gap-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1">
+      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1">
         <button
           onClick={() => setTypes([])}
           className={`px-2.5 h-7 rounded text-xs transition ${
             types.length === 0
-              ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-              : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+              ? 'bg-stone-900 text-white'
+              : 'text-stone-600 hover:text-stone-900'
           }`}
         >
           Tout
@@ -256,8 +256,8 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
               onClick={() => toggle(t)}
               className={`px-2.5 h-7 rounded text-xs flex items-center gap-1.5 transition ${
                 on
-                  ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                  ? 'bg-stone-900 text-white'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${m.dot}`} />
@@ -268,7 +268,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
       </div>
 
       {/* Period chips */}
-      <div className="flex items-center gap-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-md p-1">
+      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1">
         {([
           { k: 'month', l: 'Ce mois' }, { k: '3m', l: '3 mois' },
           { k: '12m', l: '12 mois' }, { k: 'all', l: 'Tout' },
@@ -278,8 +278,8 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
             onClick={() => setPeriod(p.k)}
             className={`px-2.5 h-7 rounded text-xs transition ${
               period === p.k
-                ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                ? 'bg-stone-900 text-white'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             {p.l}
@@ -294,7 +294,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Rechercher un vin, destinataire, occasion…"
-            className="w-full h-9 pl-9 pr-3 rounded-md bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-sm placeholder:text-stone-400 focus:outline-none focus:border-stone-400 dark:focus:border-stone-600 text-stone-900 dark:text-white"
+            className="w-full h-9 pl-9 pr-3 rounded-md bg-white border border-stone-200 text-sm placeholder:text-stone-400 focus:outline-none focus:border-stone-400 text-stone-900"
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-3.5 h-3.5" />
         </div>
@@ -303,7 +303,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
       {/* Export */}
       <button
         onClick={onExport}
-        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:border-stone-400 dark:hover:border-stone-600 transition"
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm bg-white border border-stone-200 text-stone-700 hover:border-stone-400 transition"
       >
         <Download className="w-3.5 h-3.5" />
         Export CSV
@@ -400,9 +400,9 @@ const Timeline: React.FC<{
         <div key={g.k}>
           {/* Day header */}
           <div className="flex items-baseline gap-3 pl-[88px] py-3 flex-wrap">
-            <div className="serif text-stone-900 dark:text-white text-lg">{g.label}</div>
+            <div className="serif text-stone-900 text-lg">{g.label}</div>
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">{g.sub}</div>
-            <div className="flex-1 ml-2 border-t border-dashed border-stone-200 dark:border-stone-800 self-center" />
+            <div className="flex-1 ml-2 border-t border-dashed border-stone-200 self-center" />
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">
               {g.items.length} évènement{g.items.length > 1 ? 's' : ''}
             </div>
@@ -439,13 +439,13 @@ const EventRow: React.FC<{
 
       {/* Rail + node */}
       <div className="relative w-6 shrink-0">
-        <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-stone-200 dark:bg-stone-800" />
-        <div className={`absolute left-1/2 -translate-x-1/2 top-4 w-3 h-3 rounded-full ${m.dot} ring-4 ring-cream-50 dark:ring-stone-950 z-10`} />
+        <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-stone-200" />
+        <div className={`absolute left-1/2 -translate-x-1/2 top-4 w-3 h-3 rounded-full ${m.dot} ring-4 ring-cream-50 z-10`} />
       </div>
 
       {/* Card */}
       <div className="flex-1 min-w-0 pb-5">
-        <div className="rounded-md border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3 hover:border-stone-300 dark:hover:border-stone-700 transition-colors">
+        <div className="rounded-md border border-stone-200 bg-white px-4 py-3 hover:border-stone-300 transition-colors">
           <div className="flex items-start gap-3">
             {/* Type icon */}
             <div className={`shrink-0 w-9 h-9 rounded-md ${m.bg} flex items-center justify-center mono text-base ${m.fg} leading-none`}>
@@ -457,13 +457,13 @@ const EventRow: React.FC<{
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`mono text-[10px] tracking-widest ${m.fg}`}>{m.label.toUpperCase()}</span>
                 {appellation && <>
-                  <span className="text-stone-300 dark:text-stone-700">·</span>
+                  <span className="text-stone-300">·</span>
                   <span className="mono text-[10px] tracking-widest text-stone-400 uppercase truncate">{appellation}</span>
                 </>}
               </div>
 
               <div className="mt-1 flex items-baseline gap-2 flex-wrap">
-                <span className="serif text-[18px] text-stone-900 dark:text-white leading-tight">{entry.wineName}</span>
+                <span className="serif text-[18px] text-stone-900 leading-tight">{entry.wineName}</span>
                 {entry.wineVintage && <span className="mono text-xs text-stone-500">· {entry.wineVintage}</span>}
                 {(entry.quantity || 0) > 1 && (
                   <span className="mono text-[10px] tracking-widest text-stone-500 uppercase">× {entry.quantity} btl</span>
@@ -487,7 +487,7 @@ const EventRow: React.FC<{
               {entry.wineId && (
                 <Link
                   to={`/wine/${entry.wineId}`}
-                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 uppercase inline-flex items-center gap-1"
+                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 uppercase inline-flex items-center gap-1"
                 >
                   Voir vin <ArrowRight className="w-2.5 h-2.5" />
                 </Link>
@@ -506,30 +506,30 @@ const EventRow: React.FC<{
 const EventDetail: React.FC<{ entry: JournalEntry }> = ({ entry }) => {
   if (entry.type === 'MOVE') {
     return (
-      <div className="mt-1.5 flex items-center gap-2 text-sm text-stone-600 dark:text-stone-400 flex-wrap">
+      <div className="mt-1.5 flex items-center gap-2 text-sm text-stone-600 flex-wrap">
         {entry.fromLocation && <span className="mono text-xs text-stone-500">{entry.fromLocation}</span>}
         <ArrowRight className="w-3.5 h-3.5 text-stone-400" />
-        {entry.toLocation && <span className="mono text-xs text-stone-700 dark:text-stone-300">{entry.toLocation}</span>}
+        {entry.toLocation && <span className="mono text-xs text-stone-700">{entry.toLocation}</span>}
       </div>
     );
   }
   if (entry.type === 'GIFT') {
     return (
-      <div className="mt-1.5 text-sm text-stone-600 dark:text-stone-400">
+      <div className="mt-1.5 text-sm text-stone-600">
         {entry.recipient && (<>
           <span className="text-stone-500">Pour</span>{' '}
-          <span className="text-stone-800 dark:text-stone-200">{entry.recipient}</span>
+          <span className="text-stone-800">{entry.recipient}</span>
         </>)}
         {entry.occasion && <>
-          <span className="text-stone-300 dark:text-stone-700 mx-1.5">·</span>
-          <span className="serif-it text-stone-700 dark:text-stone-300">{entry.occasion}</span>
+          <span className="text-stone-300 mx-1.5">·</span>
+          <span className="serif-it text-stone-700">{entry.occasion}</span>
         </>}
       </div>
     );
   }
   if (entry.type === 'NOTE') {
     return (
-      <div className="mt-2 text-sm text-stone-700 dark:text-stone-300 serif-it leading-snug pr-4">
+      <div className="mt-2 text-sm text-stone-700 serif-it leading-snug pr-4">
         « {entry.note || entry.description || 'Note de dégustation'} »
       </div>
     );
@@ -537,17 +537,17 @@ const EventDetail: React.FC<{ entry: JournalEntry }> = ({ entry }) => {
   if (entry.type === 'IN') {
     // Try to extract a "source" from the description (e.g. "Caviste — Lavinia")
     return (
-      <div className="mt-1.5 text-sm text-stone-600 dark:text-stone-400 flex flex-wrap gap-x-3 gap-y-0.5">
+      <div className="mt-1.5 text-sm text-stone-600 flex flex-wrap gap-x-3 gap-y-0.5">
         {entry.description && <span>{entry.description}</span>}
       </div>
     );
   }
   // OUT
   return (
-    <div className="mt-1.5 text-sm text-stone-600 dark:text-stone-400">
+    <div className="mt-1.5 text-sm text-stone-600">
       {entry.description && <div>{entry.description}</div>}
       {entry.note && (
-        <div className="serif-it text-stone-500 dark:text-stone-400 text-[13px] mt-1 pr-4 leading-snug">
+        <div className="serif-it text-stone-500 text-[13px] mt-1 pr-4 leading-snug">
           « {entry.note} »
         </div>
       )}

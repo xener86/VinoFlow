@@ -157,10 +157,10 @@ export const Settings: React.FC = () => {
   };
 
   const Section = ({ title, icon: Icon, children }: any) => (
-      <div className="bg-white dark:bg-stone-900/50 border border-stone-200 dark:border-stone-800 rounded-xl p-6 mb-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 text-stone-500 dark:text-stone-300 border-b border-stone-200 dark:border-stone-800 pb-2">
+      <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-4 text-stone-500 border-b border-stone-200 pb-2">
               <Icon size={18} />
-              <h3 className="font-serif text-lg text-stone-900 dark:text-white">{title}</h3>
+              <h3 className="font-serif text-lg text-stone-900">{title}</h3>
           </div>
           {children}
       </div>
@@ -176,12 +176,12 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto pb-20 animate-fade-in">
-        <h2 className="text-3xl font-serif text-stone-900 dark:text-white mb-6">Paramètres</h2>
+        <h2 className="text-3xl font-serif text-stone-900 mb-6">Paramètres</h2>
 
         <Section title="Intelligence Artificielle" icon={Cpu}>
              <div className="space-y-6">
                  {backendProviders && (
-                     <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-900/50 rounded-lg p-3 text-xs text-indigo-900 dark:text-indigo-200">
+                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs text-indigo-900">
                          <div className="flex items-center gap-2 font-bold mb-2">
                              <Sparkles size={12} /> Sommelier v2 — Providers backend
                          </div>
@@ -209,7 +209,7 @@ export const Settings: React.FC = () => {
                             className={`py-3 rounded-lg text-sm font-bold border transition-all ${
                                 localConfig.provider === p
                                 ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : 'bg-stone-50 dark:bg-stone-950 border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-500 hover:text-stone-800 dark:hover:text-stone-300'
+                                : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-800'
                             }`}
                          >
                              {p === 'GEMINI' ? 'Google Gemini' : p === 'OPENAI' ? 'OpenAI' : p === 'MISTRAL' ? 'Mistral AI' : 'Claude'}
@@ -224,7 +224,7 @@ export const Settings: React.FC = () => {
                             type="password"
                             value={localConfig.keys.gemini}
                             onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, gemini: e.target.value}})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
                             placeholder="sk-..."
                          />
                      </div>
@@ -234,7 +234,7 @@ export const Settings: React.FC = () => {
                             type="password"
                             value={localConfig.keys.openai}
                             onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, openai: e.target.value}})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
                             placeholder="sk-..."
                          />
                      </div>
@@ -244,7 +244,7 @@ export const Settings: React.FC = () => {
                             type="password"
                             value={localConfig.keys.mistral}
                             onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, mistral: e.target.value}})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
                             placeholder="key..."
                          />
                      </div>
@@ -254,7 +254,7 @@ export const Settings: React.FC = () => {
                             type="password"
                             value={localConfig.keys.claude || ''}
                             onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, claude: e.target.value}})}
-                            className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg p-3 text-stone-900 dark:text-white focus:border-indigo-500 outline-none"
+                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
                             placeholder="sk-ant-..."
                          />
                      </div>
@@ -262,7 +262,7 @@ export const Settings: React.FC = () => {
 
                  <button 
                     onClick={handleSaveConfig}
-                    className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200"
+                    className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-stone-900 text-white hover:bg-stone-800"
                  >
                      {saved ? <Check size={18}/> : <Server size={18}/>}
                      {saved ? 'Configuration Enregistrée' : 'Sauvegarder les Clés'}
@@ -272,7 +272,7 @@ export const Settings: React.FC = () => {
 
         <Section title="Sommelier — Enrichissement de la cave" icon={Wand2}>
             <div className="space-y-4">
-                <p className="text-sm text-stone-500 dark:text-stone-400">
+                <p className="text-sm text-stone-500">
                     Génère le profil aromatique IA des vins qui n'en ont pas encore (ou avec un profil pauvre). Recommandé après l'import d'une cave existante.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -287,26 +287,26 @@ export const Settings: React.FC = () => {
                     <button
                         onClick={() => handleEnrich(true)}
                         disabled={enriching}
-                        className="bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-900 dark:text-white py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                        className="bg-stone-200 hover:bg-stone-300 text-stone-900 py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
                         title="Croise Gemini + Claude pour augmenter la confiance (plus lent, plus coûteux)"
                     >
                         Enrichir avec consensus 2 IA
                     </button>
                 </div>
                 {enrichResult && (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-lg text-sm text-green-700 dark:text-green-300">
+                    <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-sm text-green-700">
                         ✓ {enrichResult.enriched} vins enrichis sur {enrichResult.processed} traités. {enrichResult.failed > 0 && ` ${enrichResult.failed} échecs.`}
                     </div>
                 )}
 
-                <div className="border-t border-stone-200 dark:border-stone-800 pt-4">
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mb-2">
+                <div className="border-t border-stone-200 pt-4">
+                    <p className="text-sm text-stone-500 mb-2">
                         Audit des profils faibles ou suspects.
                     </p>
                     <button
                         onClick={handleAudit}
                         disabled={auditing}
-                        className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-900 dark:text-white py-2 px-4 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
+                        className="bg-stone-100 hover:bg-stone-200 text-stone-900 py-2 px-4 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
                     >
                         {auditing ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
                         Auditer
@@ -315,7 +315,7 @@ export const Settings: React.FC = () => {
                         <div className="mt-3 text-sm">
                             <div className="font-bold mb-2">{auditResult.count} vins suspects</div>
                             {auditResult.wines.slice(0, 10).map(w => (
-                                <div key={w.id} className="flex items-center justify-between py-1 border-b border-stone-100 dark:border-stone-800 text-xs">
+                                <div key={w.id} className="flex items-center justify-between py-1 border-b border-stone-100 text-xs">
                                     <span>{w.name} {w.vintage}</span>
                                     <span className="text-stone-500">
                                         {w.aromaProfile ? `${w.aromaProfile.length} arômes` : 'pas de profil'} · {w.aromaConfidence || '?'}
@@ -330,28 +330,28 @@ export const Settings: React.FC = () => {
 
         <Section title="Nettoyage de la Cave" icon={Trash2}>
             <div className="space-y-4">
-                <p className="text-sm text-stone-500 dark:text-stone-400">
+                <p className="text-sm text-stone-500">
                     Détectez et supprimez les bouteilles orphelines (vin parent supprimé) ou les données de test restantes.
                 </p>
 
                 <button
                     onClick={handleScanGhosts}
                     disabled={isScanning}
-                    className="w-full bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 dark:border-stone-700 disabled:opacity-50"
+                    className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 disabled:opacity-50"
                 >
                     {isScanning ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
                     {isScanning ? 'Analyse en cours...' : 'Scanner les anomalies'}
                 </button>
 
                 {orphanedBottles !== null && orphanedBottles.length === 0 && (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center gap-2">
+                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-sm flex items-center gap-2">
                         <Check size={18} /> Aucune anomalie détectée. Votre cave est propre !
                     </div>
                 )}
 
                 {orphanedBottles !== null && orphanedBottles.length > 0 && (
                     <div className="space-y-3">
-                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-4 rounded-lg text-yellow-700 dark:text-yellow-300 text-sm flex items-center gap-2">
+                        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-700 text-sm flex items-center gap-2">
                             <AlertTriangle size={18} />
                             <span><strong>{orphanedBottles.length}</strong> bouteille(s) orpheline(s) détectée(s)</span>
                         </div>
@@ -367,7 +367,7 @@ export const Settings: React.FC = () => {
                 )}
 
                 {cleanupResult && (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center gap-2">
+                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-sm flex items-center gap-2">
                         <Check size={18} /> {cleanupResult.cleaned}/{cleanupResult.orphaned} bouteille(s) nettoyée(s) avec succès.
                     </div>
                 )}
@@ -380,7 +380,7 @@ export const Settings: React.FC = () => {
                     <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="flex-1 min-w-[140px] bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 dark:border-stone-700 disabled:opacity-50"
+                        className="flex-1 min-w-[140px] bg-stone-100 hover:bg-stone-200 text-stone-800 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 disabled:opacity-50"
                     >
                         {isExporting ? <Loader2 className="animate-spin" size={18}/> : <Download size={18} />}
                         {isExporting ? 'Export...' : 'Sauvegarde (JSON)'}
@@ -388,17 +388,17 @@ export const Settings: React.FC = () => {
                     <button
                         onClick={handleCsvExport}
                         disabled={isExportingCsv}
-                        className="flex-1 min-w-[140px] bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-900/50 disabled:opacity-50"
+                        className="flex-1 min-w-[140px] bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-green-200 disabled:opacity-50"
                     >
                         {isExportingCsv ? <Loader2 className="animate-spin" size={18}/> : <FileSpreadsheet size={18} />}
                         {isExportingCsv ? 'Export...' : 'Export (CSV)'}
                     </button>
-                    <label className="flex-1 min-w-[140px] bg-wine-50 dark:bg-wine-900/20 hover:bg-wine-100 dark:hover:bg-wine-900/40 text-wine-600 dark:text-wine-400 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-wine-100 dark:border-wine-900/50 cursor-pointer">
+                    <label className="flex-1 min-w-[140px] bg-wine-50 hover:bg-wine-100 text-wine-600 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-wine-100 cursor-pointer">
                         <Upload size={18} /> Restaurer
                         <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                     </label>
                 </div>
-                {importStatus && <p className="text-center text-sm font-bold text-wine-600 dark:text-wine-400 mt-2">{importStatus}</p>}
+                {importStatus && <p className="text-center text-sm font-bold text-wine-600 mt-2">{importStatus}</p>}
             </div>
         </Section>
     </div>

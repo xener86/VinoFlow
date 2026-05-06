@@ -55,23 +55,23 @@ export const CellarJournal: React.FC = () => {
 
     const getEntryIcon = (type: string) => {
         switch (type) {
-            case 'IN': return <Package className="text-green-600 dark:text-green-500" size={20} />;
-            case 'OUT': return <Droplet className="text-red-600 dark:text-red-500" size={20} />;
-            case 'MOVE': return <MapPin className="text-blue-600 dark:text-blue-500" size={20} />;
-            case 'GIFT': return <Gift className="text-purple-600 dark:text-purple-500" size={20} />;
-            case 'NOTE': return <BookOpen className="text-amber-600 dark:text-amber-500" size={20} />;
-            default: return <Wine className="text-stone-600 dark:text-stone-500" size={20} />;
+            case 'IN': return <Package className="text-green-600" size={20} />;
+            case 'OUT': return <Droplet className="text-red-600" size={20} />;
+            case 'MOVE': return <MapPin className="text-blue-600" size={20} />;
+            case 'GIFT': return <Gift className="text-purple-600" size={20} />;
+            case 'NOTE': return <BookOpen className="text-amber-600" size={20} />;
+            default: return <Wine className="text-stone-600" size={20} />;
         }
     };
 
     const getEntryColor = (type: string) => {
         switch (type) {
-            case 'IN': return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/50';
-            case 'OUT': return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50';
-            case 'MOVE': return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-900/50';
-            case 'GIFT': return 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-900/50';
-            case 'NOTE': return 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50';
-            default: return 'bg-stone-50 dark:bg-stone-900/20 border-stone-200 dark:border-stone-800';
+            case 'IN': return 'bg-green-50 border-green-200';
+            case 'OUT': return 'bg-red-50 border-red-200';
+            case 'MOVE': return 'bg-blue-50 border-blue-200';
+            case 'GIFT': return 'bg-purple-50 border-purple-200';
+            case 'NOTE': return 'bg-amber-50 border-amber-200';
+            default: return 'bg-stone-50 border-stone-200';
         }
     };
 
@@ -124,12 +124,12 @@ export const CellarJournal: React.FC = () => {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-serif text-stone-900 dark:text-white">Journal de Cave</h2>
+                    <h2 className="text-3xl font-serif text-stone-900">Journal de Cave</h2>
                     <p className="text-stone-500 text-sm">Historique complet de vos mouvements</p>
                 </div>
                 <button 
                     onClick={exportJournal}
-                    className="bg-stone-900 dark:bg-white text-white dark:text-stone-900 p-3 rounded-full shadow-lg hover:scale-105 transition-transform"
+                    className="bg-stone-900 text-white p-3 rounded-full shadow-lg hover:scale-105 transition-transform"
                     title="Exporter le journal"
                 >
                     <Download size={20} />
@@ -138,49 +138,49 @@ export const CellarJournal: React.FC = () => {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center">
-                            <BookOpen size={20} className="text-stone-600 dark:text-stone-400" />
+                        <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center">
+                            <BookOpen size={20} className="text-stone-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-stone-900 dark:text-white">{stats.total}</p>
+                            <p className="text-2xl font-bold text-stone-900">{stats.total}</p>
                             <p className="text-xs text-stone-500">Entrées</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                            <TrendingUp size={20} className="text-green-600 dark:text-green-500" />
+                        <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <TrendingUp size={20} className="text-green-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-stone-900 dark:text-white">{stats.in}</p>
+                            <p className="text-2xl font-bold text-stone-900">{stats.in}</p>
                             <p className="text-xs text-stone-500">Ajouts</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                            <TrendingDown size={20} className="text-red-600 dark:text-red-500" />
+                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <TrendingDown size={20} className="text-red-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-stone-900 dark:text-white">{stats.out}</p>
+                            <p className="text-2xl font-bold text-stone-900">{stats.out}</p>
                             <p className="text-xs text-stone-500">Sorties</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                            <Gift size={20} className="text-purple-600 dark:text-purple-500" />
+                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <Gift size={20} className="text-purple-600" />
                         </div>
                         <div>
-                            <p className="text-2xl font-bold text-stone-900 dark:text-white">{stats.gifts}</p>
+                            <p className="text-2xl font-bold text-stone-900">{stats.gifts}</p>
                             <p className="text-xs text-stone-500">Offerts</p>
                         </div>
                     </div>
@@ -188,7 +188,7 @@ export const CellarJournal: React.FC = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-sm space-y-4">
+            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm space-y-4">
                 <div className="flex items-center gap-2 text-stone-500">
                     <Filter size={16} />
                     <span className="text-sm font-bold">Filtres</span>
@@ -203,7 +203,7 @@ export const CellarJournal: React.FC = () => {
                             className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
                                 filter === type
                                 ? 'bg-wine-600 text-white shadow-md'
-                                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                             }`}
                         >
                             {type === 'ALL' ? 'Tout' : 
@@ -223,8 +223,8 @@ export const CellarJournal: React.FC = () => {
                             onClick={() => setDateRange(range)}
                             className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all ${
                                 dateRange === range
-                                ? 'bg-stone-800 dark:bg-white text-white dark:text-stone-900 shadow-md'
-                                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                                ? 'bg-stone-800 text-white shadow-md'
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                             }`}
                         >
                             {range === 'ALL' ? 'Tout' : `${range}j`}
@@ -240,7 +240,7 @@ export const CellarJournal: React.FC = () => {
                         placeholder="Rechercher un vin, destinataire..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-lg py-2.5 pl-10 pr-4 text-stone-900 dark:text-white focus:ring-2 focus:ring-wine-500 outline-none"
+                        className="w-full bg-stone-50 border border-stone-200 rounded-lg py-2.5 pl-10 pr-4 text-stone-900 focus:ring-2 focus:ring-wine-500 outline-none"
                     />
                 </div>
             </div>
@@ -260,12 +260,12 @@ export const CellarJournal: React.FC = () => {
                             className={`p-4 rounded-xl border shadow-sm transition-all hover:shadow-md ${getEntryColor(entry.type)}`}
                         >
                             <div className="flex items-start gap-4">
-                                <div className="w-10 h-10 rounded-full bg-white dark:bg-stone-900 flex items-center justify-center shadow-sm">
+                                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
                                     {getEntryIcon(entry.type)}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-start mb-1">
-                                        <h4 className="font-serif text-lg text-stone-900 dark:text-white">
+                                        <h4 className="font-serif text-lg text-stone-900">
                                             {entry.wineName} {entry.wineVintage && `(${entry.wineVintage})`}
                                         </h4>
                                         <span className="text-xs text-stone-500 flex items-center gap-1">
@@ -279,7 +279,7 @@ export const CellarJournal: React.FC = () => {
                                             })}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-stone-700 dark:text-stone-300">
+                                    <p className="text-sm text-stone-700">
                                         {getEntryDescription(entry)}
                                     </p>
                                 </div>
