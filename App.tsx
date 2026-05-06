@@ -21,6 +21,7 @@ const SommelierTools     = lazy(() => import('./pages/SommelierTools').then(m =>
 const Settings           = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Wishlist           = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
 const CellarJournal      = lazy(() => import('./pages/CellarJournal').then(m => ({ default: m.CellarJournal })));
+const CockpitCellarJournal = lazy(() => import('./pages/CockpitCellarJournal').then(m => ({ default: m.CockpitCellarJournal })));
 const RegionMap          = lazy(() => import('./pages/RegionMap').then(m => ({ default: m.RegionMap })));
 const CellarMap          = lazy(() => import('./pages/CellarMap').then(m => ({ default: m.CellarMap })));
 const CompareWines       = lazy(() => import('./pages/CompareWines').then(m => ({ default: m.CompareWines })));
@@ -92,7 +93,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/tasting" element={<Suspense fallback={<PageLoader />}><CockpitTasting /></Suspense>} />
         <Route path="/tasting/:wineId" element={<Suspense fallback={<PageLoader />}><CockpitTasting /></Suspense>} />
         <Route path="/tasting-classic" element={<Suspense fallback={<PageLoader />}><TastingNotes /></Suspense>} />
-        <Route path="/journal" element={<Suspense fallback={<PageLoader />}><CellarJournal /></Suspense>} />
+        <Route path="/journal" element={<Suspense fallback={<PageLoader />}><CockpitCellarJournal /></Suspense>} />
+        <Route path="/journal-classic" element={<Suspense fallback={<PageLoader />}><CellarJournal /></Suspense>} />
         <Route path="/wishlist" element={<Suspense fallback={<PageLoader />}><Wishlist /></Suspense>} />
         <Route path="/compare" element={<Suspense fallback={<PageLoader />}><CompareWines /></Suspense>} />
         <Route path="/drink-now" element={<Suspense fallback={<PageLoader />}><DrinkNow /></Suspense>} />
