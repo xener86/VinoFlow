@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { Wine, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
@@ -7,11 +7,16 @@ import { Wine, Lock, Mail, Loader2, AlertCircle } from 'lucide-react';
 export const Login: React.FC = () => {
   const { refreshUser } = useAuth();
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState(
+    searchParams.get('expired') === '1'
+      ? 'Session expirée — reconnecte-toi pour continuer.'
+      : ''
+  );
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 

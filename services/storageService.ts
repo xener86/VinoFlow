@@ -30,6 +30,19 @@ const getHeaders = (): Record<string, string> => {
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
+    // Token expired or invalid → purge session and bounce to /login.
+    // The error is still thrown so callers see a clean failure, but the
+    // redirect happens regardless.
+    if (response.status === 401) {
+      try {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+      } catch {}
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.replace('/login?expired=1');
+      }
+    }
     const errorText = await response.text();
     throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
   }
