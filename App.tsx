@@ -19,7 +19,6 @@ const CockpitTasting     = lazy(() => import('./pages/CockpitTasting').then(m =>
 const SommelierTools     = lazy(() => import('./pages/SommelierTools').then(m => ({ default: m.SommelierTools })));
 const Settings           = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Wishlist           = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
-const CellarJournal      = lazy(() => import('./pages/CellarJournal').then(m => ({ default: m.CellarJournal })));
 const CockpitCellarJournal = lazy(() => import('./pages/CockpitCellarJournal').then(m => ({ default: m.CockpitCellarJournal })));
 const RegionMap          = lazy(() => import('./pages/RegionMap').then(m => ({ default: m.RegionMap })));
 const CellarMap          = lazy(() => import('./pages/CellarMap').then(m => ({ default: m.CellarMap })));
@@ -30,14 +29,6 @@ const EditWine           = lazy(() => import('./pages/EditWine').then(m => ({ de
 const Bar                = lazy(() => import('./pages/Bar').then(m => ({ default: m.Bar })));
 const SpiritDetails      = lazy(() => import('./pages/SpiritDetails').then(m => ({ default: m.SpiritDetails })));
 const EditSpirit         = lazy(() => import('./pages/EditSpirit').then(m => ({ default: m.EditSpirit })));
-
-// Legacy classic pages (kept as fallback) — also lazy
-const Dashboard      = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const AddWine        = lazy(() => import('./pages/AddWine').then(m => ({ default: m.AddWine })));
-const WineDetails    = lazy(() => import('./pages/WineDetails').then(m => ({ default: m.WineDetails })));
-const Sommelier      = lazy(() => import('./pages/Sommelier').then(m => ({ default: m.Sommelier })));
-const TastingNotes   = lazy(() => import('./pages/TastingNotes').then(m => ({ default: m.TastingNotes })));
-const Insights       = lazy(() => import('./pages/Insights').then(m => ({ default: m.Insights })));
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-64">
@@ -50,7 +41,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-50 dark:bg-stone-950 flex items-center justify-center">
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-wine-600"></div>
       </div>
     );
@@ -73,33 +64,25 @@ const AppRoutes: React.FC = () => {
       <Route element={<ProtectedRoute><CockpitLayout /></ProtectedRoute>}>
         <Route path="/" element={<CockpitDashboard />} />
         <Route path="/cave" element={<Suspense fallback={<PageLoader />}><CockpitCave /></Suspense>} />
-        <Route path="/cave-classic" element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
         <Route path="/add-wine" element={<Suspense fallback={<PageLoader />}><CockpitAddWine /></Suspense>} />
-        <Route path="/add-wine-classic" element={<Suspense fallback={<PageLoader />}><AddWine /></Suspense>} />
         <Route path="/wine/:id" element={<Suspense fallback={<PageLoader />}><CockpitWineDetails /></Suspense>} />
-        <Route path="/wine/:id/classic" element={<Suspense fallback={<PageLoader />}><WineDetails /></Suspense>} />
         <Route path="/wine/:id/edit" element={<Suspense fallback={<PageLoader />}><EditWine /></Suspense>} />
         <Route path="/plan" element={<Suspense fallback={<PageLoader />}><CockpitPlan /></Suspense>} />
         <Route path="/cellar-map" element={<Suspense fallback={<PageLoader />}><CellarMap /></Suspense>} />
-        <Route path="/cellar-map-classic" element={<Suspense fallback={<PageLoader />}><CellarMap /></Suspense>} />
         <Route path="/analytics" element={<Suspense fallback={<PageLoader />}><Analytics /></Suspense>} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
         <Route path="/sommelier" element={<Suspense fallback={<PageLoader />}><CockpitSommelier /></Suspense>} />
-        <Route path="/sommelier-classic" element={<Suspense fallback={<PageLoader />}><Sommelier /></Suspense>} />
         <Route path="/bar" element={<Suspense fallback={<PageLoader />}><Bar /></Suspense>} />
         <Route path="/spirit/:id" element={<Suspense fallback={<PageLoader />}><SpiritDetails /></Suspense>} />
         <Route path="/spirit/:id/edit" element={<Suspense fallback={<PageLoader />}><EditSpirit /></Suspense>} />
         <Route path="/tasting" element={<Suspense fallback={<PageLoader />}><CockpitTasting /></Suspense>} />
         <Route path="/tasting/:wineId" element={<Suspense fallback={<PageLoader />}><CockpitTasting /></Suspense>} />
-        <Route path="/tasting-classic" element={<Suspense fallback={<PageLoader />}><TastingNotes /></Suspense>} />
         <Route path="/journal" element={<Suspense fallback={<PageLoader />}><CockpitCellarJournal /></Suspense>} />
-        <Route path="/journal-classic" element={<Suspense fallback={<PageLoader />}><CellarJournal /></Suspense>} />
         <Route path="/wishlist" element={<Suspense fallback={<PageLoader />}><Wishlist /></Suspense>} />
         <Route path="/compare" element={<Suspense fallback={<PageLoader />}><CompareWines /></Suspense>} />
         <Route path="/drink-now" element={<Suspense fallback={<PageLoader />}><DrinkNow /></Suspense>} />
         <Route path="/regions" element={<Suspense fallback={<PageLoader />}><RegionMap /></Suspense>} />
         <Route path="/insights" element={<Suspense fallback={<PageLoader />}><CockpitInsights /></Suspense>} />
-        <Route path="/insights-classic" element={<Suspense fallback={<PageLoader />}><Insights /></Suspense>} />
         <Route path="/sommelier-tools" element={<Suspense fallback={<PageLoader />}><SommelierTools /></Suspense>} />
       </Route>
 

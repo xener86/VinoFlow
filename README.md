@@ -4,7 +4,7 @@
 
 **Your self-hosted wine cellar & bar management app**
 
-Modern, AI-powered wine cellar management with tasting notes, cocktail recipes, and sommelier recommendations.
+Modern, AI-powered wine cellar management with tasting notes, cocktail recipes, and sommelier recommendations — with a "Cockpit" interface and an MCP server to manage your cellar from Claude.
 
 [![CI](https://github.com/xener86/VinoFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/xener86/VinoFlow/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Custom-blue.svg)](LICENSE)
@@ -17,26 +17,29 @@ Modern, AI-powered wine cellar management with tasting notes, cocktail recipes, 
 
 ## Features
 
+- **Cockpit** — Dashboard, unified cellar view (List / Plan / Insights), command palette (⌘K)
 - **Wine Cellar** — Add, edit, and organize your wine collection
 - **Visual Cellar Map** — Drag & drop bottles on customizable rack layouts
 - **Bar & Spirits** — Manage your spirits collection with cocktail suggestions
 - **Tasting Notes** — Record tasting notes with flavor radar charts
-- **AI Sommelier** — Get food pairing and wine recommendations powered by Gemini AI
+- **AI Sommelier** — Food pairing, menus, verticals and comparisons powered by Gemini and/or Claude
+- **Peak Windows** — AI-computed drinking windows per wine
 - **Analytics** — Stats, charts, and insights about your collection
 - **Region Map** — Visualize where your wines come from
 - **Wine Comparison** — Compare wines side by side
 - **Drink Now** — Suggestions for wines at peak drinking window
 - **Cellar Journal** — Track additions, removals, and cellar activity
 - **Wishlist** — Keep track of wines you want to buy
-- **Dark Mode** — Full dark theme support
-- **Mobile Friendly** — Responsive design, works on phone and tablet
+- **Mobile Friendly** — Responsive design, installable as a PWA with bottom navigation
+- **MCP Server** — Query and manage your cellar from Claude or any MCP client
 
 ## Tech Stack
 
 - **Frontend**: React 19 + TypeScript + Tailwind CSS + Vite
 - **Backend**: Node.js + Express
-- **Database**: PostgreSQL
-- **AI**: Google Gemini (optional)
+- **Database**: PostgreSQL + pgvector
+- **AI**: Google Gemini and/or Anthropic Claude (optional)
+- **MCP**: TypeScript server (`mcp-server/`)
 - **Deploy**: Docker + Nginx
 
 ## Installation
@@ -81,11 +84,29 @@ Copy `.env.example` to `.env` and customize:
 | `FRONTEND_URL` | Public URL of your frontend (used for CORS) | Yes |
 | `VINOFLOW_PORT` | Frontend port (default: 5001) | No |
 
-### Gemini AI (Optional)
+### AI Providers (Optional)
 
-The AI Sommelier feature uses Google Gemini. You can configure the API key directly in the app's **Settings** page — no environment variable needed.
+The AI Sommelier works with **Google Gemini**, **Anthropic Claude**, or both. By default Gemini extracts criteria and Claude writes the argumentation; if only one provider is configured, VinoFlow falls back to it for every task.
 
-Get a free API key at [Google AI Studio](https://aistudio.google.com/apikey).
+Set the keys either in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) or directly in the app's **Settings** page. Per-task overrides (`VINOFLOW_PROVIDER_*`) are documented in `.env.example`.
+
+- Gemini: [Google AI Studio](https://aistudio.google.com/apikey)
+- Claude: [Anthropic Console](https://console.anthropic.com/)
+
+### MCP Server (Optional)
+
+`mcp-server/` exposes your cellar to Claude Desktop / Claude Code (inventory, search, sommelier pairing, drink-before alerts, consume a bottle…).
+
+```bash
+cd mcp-server && npm install && npm run build
+```
+
+Then register `node /path/to/VinoFlow/mcp-server/dist/index.js` as an MCP server with these environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `VINOFLOW_API_URL` | Backend API URL (default `http://localhost:3100/api`) |
+| `VINOFLOW_AUTH_TOKEN` | A JWT from your VinoFlow session (`auth_token` in the browser's localStorage) — expires after 30 days |
 
 ### Reverse Proxy
 
