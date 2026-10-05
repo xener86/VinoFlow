@@ -20,6 +20,7 @@ export default defineConfig({
       GEMINI_API_KEY: '',
       ANTHROPIC_API_KEY: '',
       SWEEGO_API_KEY: '',
+      NOTIFICATIONS_ENABLED: 'false',
     },
   },
 });

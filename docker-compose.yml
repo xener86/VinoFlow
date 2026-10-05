@@ -43,6 +43,10 @@ services:
       - ENRICH_DAILY_LIMIT=${ENRICH_DAILY_LIMIT:-30}
       - ENRICH_TICK_MINUTES=${ENRICH_TICK_MINUTES:-60}
       - MAIL_FROM=${MAIL_FROM:-}
+      # Notifications « à boire avant » et newsletter
+      - NOTIFICATIONS_ENABLED=${NOTIFICATIONS_ENABLED:-true}
+      - NOTIFY_TZ=${NOTIFY_TZ:-Europe/Paris}
+      - NOTIFY_TICK_MINUTES=${NOTIFY_TICK_MINUTES:-60}
       # Sommelier en un appel avec outils (repli automatique sur le pipeline en cas d'échec)
       - VINOFLOW_SOMMELIER_AGENT=${VINOFLOW_SOMMELIER_AGENT:-true}
       - NODE_ENV=production
