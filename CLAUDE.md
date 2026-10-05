@@ -31,7 +31,7 @@ docker compose up -d --build
 cd mcp-server && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`): backend `node --check` + Vitest (unit + API tests on a pgvector Postgres service), frontend typecheck + Vitest + build, Docker image builds. Known bugs are pinned with `it.fails` (budget / CSV prices) — remove `.fails` when fixing them.
+CI (`.github/workflows/ci.yml`): backend `node --check` + Vitest (unit + API tests on a pgvector Postgres service), frontend typecheck + Vitest + build, Docker image builds.
 
 ## Conventions
 

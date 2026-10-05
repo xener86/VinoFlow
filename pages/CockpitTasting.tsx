@@ -78,11 +78,8 @@ export const CockpitTasting: React.FC = () => {
       const ratingStars = Math.round((rating / 10) * 5);
       await saveTastingNote({
         wineId: wine.id,
-        wineName: wine.name,
-        wineVintage: wine.vintage,
         date: new Date().toISOString(),
-        rating: ratingStars,
-        notes: phrase,
+        overallRating: ratingStars,
         // Verdict + reasons stored in generalNotes for now (until backend
         // schema gains explicit fields)
         generalNotes: JSON.stringify({
@@ -96,14 +93,7 @@ export const CockpitTasting: React.FC = () => {
           keep,
           phrase,
         }),
-        visual: 0,
-        visualNotes: '',
-        nose: [],
-        body: 0,
-        acidity: 0,
-        tannin: 0,
-        finish: 0,
-      } as any);
+      });
       navigate(`/wine/${wine.id}`);
     } catch (e: any) {
       setError(e.message || 'Erreur lors de la sauvegarde');

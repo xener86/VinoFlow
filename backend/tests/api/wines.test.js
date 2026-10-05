@@ -54,6 +54,17 @@ describe.skipIf(!hasDb)('API vins et bouteilles', () => {
     expect((await client.get(`/api/wines/${wineId}`)).body).not.toHaveProperty('embedding');
   });
 
+  it('dégustation express (corps envoyé par CockpitTasting) : enregistrée avec sa note', async () => {
+    const wineId = (await client.post('/api/wines', newWine)).body.id;
+    const res = await client.post('/api/tasting-notes', {
+      wineId, date: '2026-03-01T20:00:00.000Z', overallRating: 4,
+      generalNotes: JSON.stringify({ score10: 8, phrase: 'Superbe' }),
+    });
+    expect(res.status).toBe(201);
+    const [note] = (await client.get(`/api/tasting-notes?wineId=${wineId}`)).body;
+    expect(note).toMatchObject({ wineId, overallRating: 4, date: '2026-03-01T20:00:00.000Z' });
+  });
+
   it('vin inexistant : 404', async () => {
     expect((await client.get('/api/wines/00000000-0000-0000-0000-000000000000')).status).toBe(404);
   });

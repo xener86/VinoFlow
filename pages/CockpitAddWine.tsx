@@ -92,7 +92,7 @@ export const CockpitAddWine: React.FC = () => {
         tastingNotes: analysis.tastingNotes || '',
         suggestedFoodPairings: analysis.suggestedFoodPairings || [],
         producerHistory: analysis.producerHistory || '',
-        enrichedByAI: true,
+        enrichedByAi: true,
         aiConfidence: analysis.aiConfidence || 'MEDIUM',
         isFavorite: false,
         sensoryProfile: analysis.sensoryProfile || { body: 50, acidity: 50, tannin: 50, sweetness: 0, alcohol: 50, flavors: [] },
