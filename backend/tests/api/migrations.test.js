@@ -17,6 +17,13 @@ describe.skipIf(!hasDb)('runner de migrations', () => {
     expect(rows.map((r) => r.table_name)).toEqual(['notification_log', 'notification_settings', 'wine_alert_state']);
   });
 
+  it('010 : dinner_pairings et journal.for_dinner', async () => {
+    const t = await pool.query("SELECT 1 FROM information_schema.tables WHERE table_name = 'dinner_pairings'");
+    expect(t.rowCount).toBe(1);
+    const c = await pool.query("SELECT data_type FROM information_schema.columns WHERE table_name = 'journal' AND column_name = 'for_dinner'");
+    expect(c.rows[0]?.data_type).toBe('boolean');
+  });
+
   it('relancé, il n’applique rien', async () => {
     const report = await runMigrations(pool, { log: () => {} });
     expect(report).toMatchObject({ baseline: false, detected: [], applied: [] });
