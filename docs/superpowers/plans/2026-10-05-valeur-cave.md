@@ -172,6 +172,8 @@ describe('quoteHasPrice', () => {
     expect(quoteHasPrice('Un très beau vin de garde', 29.9)).toBe(false);
     expect(quoteHasPrice('Prix : 19,90 €', 29.9)).toBe(false);
     expect(quoteHasPrice('Millésime 2019, 75 cl', 2019)).toBe(true); // ambigu mais accepté : le montant figure
+    expect(quoteHasPrice('Lot de 1250 bouteilles', 125)).toBe(false); // pas de découpage « 125 » + « 0 »
+    expect(quoteHasPrice('Vendu 1.250,00 € aux enchères', 1250)).toBe(true);
   });
 });
 
@@ -183,7 +185,7 @@ describe('summarizePrices', () => {
       { price_eur: 70, format_ml: 1500 },   // magnum → 35 en 75 cl
       { price_eur: 400, format_ml: 750 },   // > 3 × médiane → écarté
     ], 750);
-    expect(r).toMatchObject({ price: 34.5, low: 30, high: 35 });
+    expect(r).toMatchObject({ price: 34, low: 30, high: 35 }); // médiane de 30, 34, 35
     expect(r.kept).toHaveLength(3);
   });
   it('null sans prix exploitable', () => {
@@ -313,7 +315,7 @@ export const median = (values) => {
 /** Montants présents dans un texte : « 1 250,00 € », « 29.90 », « 29€ ». */
 const amountsIn = (text) => {
   const out = [];
-  const re = /\d{1,3}(?:[   .]\d{3})*(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?/g;
+  const re = /\d+(?:[ \u00a0\u202f.]\d{3}(?!\d))*(?:[.,]\d{1,2})?/g;
   for (const raw of String(text ?? '').match(re) || []) {
     let t = raw.replace(/[   ]/g, '');
     // « 1.250,00 » ou « 1.250 » : le point est un séparateur de milliers
@@ -552,7 +554,7 @@ import { valueWine, saveManualValuation, getValuations } from '../../src/valuati
 const PAGES = {
   'https://caviste.example/alpha-2019': '<html><body><p>Domaine Alpha 2019, 75 cl. Prix : 32,50 € TTC. Livraison offerte.</p></body></html>',
   'https://encheres.example/lot-12': '<html><body><p>Lot 12 — Alpha 2019, adjugé 28 € frais compris.</p></body></html>',
-  'https://blog.example/alpha': '<html><body><p>Un grand vin, à boire jusqu’en 2030.</p></body></html>',
+  'https://blog.example/alpha': '<html><body><p>Un grand vin de garde, à boire jusqu’en 2030.</p></body></html>',
 };
 const fetchPage = async (url) => {
   if (!PAGES[url]) throw new Error('HTTP 404');
@@ -562,6 +564,8 @@ const runnerReturning = (data) => async () => ({ code: 0, stdout: JSON.stringify
 const found = (prices, extra = {}) => ({ status: 'FOUND', basis: 'EXACT', basis_vintage: null, prices, note: 'ok', ...extra });
 const NOW = new Date('2026-10-05T10:00:00Z');
 
+afterAll(() => pool.end()); // un seul pool pour les deux blocs du fichier (le second est ajouté en tâche 5)
+
 describe.skipIf(!hasDb)('passe « cote »', () => {
   let wineId;
   beforeEach(async () => {
@@ -570,7 +574,6 @@ describe.skipIf(!hasDb)('passe « cote »', () => {
     wineId = rows[0].id;
     await pool.query('INSERT INTO bottles (wine_id) VALUES ($1)', [wineId]);
   });
-  afterAll(() => pool.end());
 
   it('enregistre la médiane des prix dont la citation (avec le prix) est retrouvée', async () => {
     const r = await valueWine(wineId, {
@@ -578,7 +581,7 @@ describe.skipIf(!hasDb)('passe « cote »', () => {
       runner: runnerReturning(found([
         { price_eur: 32.5, format_ml: 750, seller: 'Caviste', url: 'https://caviste.example/alpha-2019', quote: 'Prix : 32,50 € TTC' },
         { price_eur: 28, format_ml: 750, seller: 'Enchères', url: 'https://encheres.example/lot-12', quote: 'adjugé 28 € frais compris' },
-        { price_eur: 90, format_ml: 750, seller: 'Blog', url: 'https://blog.example/alpha', quote: 'Un grand vin' }, // citation sans prix
+        { price_eur: 90, format_ml: 750, seller: 'Blog', url: 'https://blog.example/alpha', quote: 'Un grand vin de garde, à boire jusqu’en 2030' }, // citation sans prix
         { price_eur: 45, format_ml: 750, seller: 'Fantôme', url: 'https://introuvable.example/x', quote: '45 €' }, // page inaccessible
       ])),
     });
@@ -594,7 +597,7 @@ describe.skipIf(!hasDb)('passe « cote »', () => {
   it('aucun prix vérifié : statut NONE, aucun point, nouvel essai dans un mois', async () => {
     const r = await valueWine(wineId, {
       engine: 'claude-code', fetchPage, now: NOW,
-      runner: runnerReturning(found([{ price_eur: 90, format_ml: 750, seller: 'Blog', url: 'https://blog.example/alpha', quote: 'Un grand vin' }])),
+      runner: runnerReturning(found([{ price_eur: 90, format_ml: 750, seller: 'Blog', url: 'https://blog.example/alpha', quote: 'Un grand vin de garde, à boire jusqu’en 2030' }])),
     });
     expect(r).toMatchObject({ ok: true, status: 'NONE' });
     const v = await getValuations(wineId);
@@ -808,7 +811,7 @@ export const valueWine = async (wineId, { engine = availableEngine(), runner, fe
 };
 ```
 
-Note : la source « Blog » du premier test a le statut `verified` (sa citation figure dans la page) mais `counted: false` (pas de prix dans la citation) ; d'où l'assertion sur `counted`.
+Note : la source « Blog » du premier test a le statut `verified` (sa citation figure dans la page) mais `counted: false` (le montant 90 n'est pas dans la citation) ; d'où l'assertion sur `counted`. Rappel : `excerptMatches` exige au moins 4 mots normalisés — une citation plus courte n'est jamais vérifiée.
 
 - [ ] **Step 7: Run tests** — `cd backend && TEST_DATABASE_URL=… npx vitest run tests/api/valuation.test.js` → PASS ; `npx vitest run` (unitaires) → PASS.
 
@@ -1694,16 +1697,16 @@ export const WineValuationCard: React.FC<{ wineId: string; avgPurchase: number |
 
 (Vérifier que `Modal` accepte `footer` et `size="sm"`, et `Badge` les tons `success`/`neutral` — c'est le cas dans `primitives.tsx`.)
 
-- [ ] **Step 2: Fiche vin** — `pages/CockpitWineDetails.tsx` : importer `WineValuationCard` ; calculer, près des autres `useMemo`,
+- [ ] **Step 2: Fiche vin** — `pages/CockpitWineDetails.tsx` : importer `WineValuationCard` ; `activeBottles` est calculé **après** les `return` anticipés (`if (loadingWines)`, `if (!wine)`), donc pas de hook ici : juste après `const activeBottles = …`, ajouter
 
 ```tsx
-  const avgPurchase = useMemo(() => {
-    const priced = activeBottles.filter((b) => (b.purchasePrice ?? 0) > 0);
-    return priced.length ? priced.reduce((s, b) => s + (b.purchasePrice ?? 0), 0) / priced.length : null;
-  }, [activeBottles]);
+  const pricedBottles = activeBottles.filter((b) => (b.purchasePrice ?? 0) > 0);
+  const avgPurchase = pricedBottles.length
+    ? pricedBottles.reduce((s, b) => s + (b.purchasePrice ?? 0), 0) / pricedBottles.length
+    : null;
 ```
 
-(placer ce `useMemo` après la définition de `activeBottles`) ; insérer, juste avant la carte « Bouteilles » (`<Card id="bouteilles" …>`) :
+puis insérer, juste avant la carte « Bouteilles » (`<Card id="bouteilles" …>`) :
 
 ```tsx
         <WineValuationCard wineId={wine.id} avgPurchase={avgPurchase} className="col-span-12" />
