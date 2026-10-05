@@ -13,7 +13,7 @@ Self-hosted wine cellar & bar app. Deployed with Docker Compose (db + backend + 
 - `backend/src/menuflow/` — passerelle vers MenuFlow (planning des dîners, autre dépôt) : VinoFlow lit les dîners et pousse le vin conseillé / ouvert par date (`dinner_pairings`, `journal.for_dinner`), dans le tick des notifications ; rubriques MenuFlow de la newsletter ; routes `/api/menuflow/*`. Inactive sans `MENUFLOW_URL` + `MENUFLOW_TOKEN`. `sommelier/pairForDish.js` = accord partagé (route `/sommelier/pair`, passerelle).
 - `backend/src/valuation/` — valeur de la cave : cote par vin (recherche web sourcée tous les 3 mois avec les moteurs de l'enrichissement — `runEngine` accepte `schema`/`systemPrompt`/`task` —, citations contenant le prix vérifiées, saisie manuelle `USER` prioritaire), historisée dans `wine_valuations` ; investi / valeur / plus-value recalculés à partir des bouteilles (`compute.js`) ; file `scheduler.js` (`VALUATION_DAILY_LIMIT`). Routes `/api/cellar/value`, `/api/cellar/missing-prices`, `/api/wines/:id/valuations`.
 - `db/init.sql` + `db/migrations/*.sql` — Postgres 16 + pgvector schema, applied by the backend at startup (`backend/src/migrations.js`): `init.sql` on an empty DB, then missing `NNN_*.sql` files in order, one transaction each, tracked in `schema_migrations`. New migration = new numbered file, idempotent, **without** `BEGIN`/`COMMIT` (the runner wraps it); add `-- vinoflow:optional` if failure must not block startup. Pre-runner DBs: 001-004 are detected from the schema (`LEGACY_PROBES`). The backend image is built from the repo root (`backend/Dockerfile` + `backend/Dockerfile.dockerignore`) to embed `db/`.
-- `mcp-server/` — TypeScript MCP server wrapping the REST API (`VINOFLOW_API_URL`, `VINOFLOW_AUTH_TOKEN`).
+- `mcp-server/` — TypeScript MCP server (stdio) wrapping the REST API (`VINOFLOW_API_URL` + `VINOFLOW_EMAIL`/`VINOFLOW_PASSWORD`, or legacy `VINOFLOW_AUTH_TOKEN`). 26 historical tools in `src/index.ts`; tools by domain in `src/tools/` (bar, tastings/wishlist, cellar writes, enrichment/AI, valuation, MenuFlow tonight/newsletter preview), registered by `registerAll`. No delete/restore tool on purpose. Writes mirror the app (journal entries IN/OUT/MOVE/GIFT). A missing backend route yields a readable « pas disponible sur ce serveur » error. Tests: `cd mcp-server && npm test` (Vitest, `fetch` mocked).
 - `design-protos/` — Claude Design HTML/JSX prototypes the Cockpit pages were ported from. Reference only, not built.
 
 ## Security model
@@ -32,10 +32,10 @@ npm test            # vitest — utils/*.test.ts
 npm run build       # vite build
 cd backend && npm test   # vitest — tests/unit (pure) + tests/api (supertest, only if TEST_DATABASE_URL is set; that DB is WIPED)
 docker compose up -d --build
-cd mcp-server && npm run build
+cd mcp-server && npm test && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`): backend `node --check` + Vitest (unit + API tests on a pgvector Postgres service), frontend typecheck + Vitest + build, Docker image builds.
+CI (`.github/workflows/ci.yml`): backend `node --check` + Vitest (unit + API tests on a pgvector Postgres service), frontend typecheck + Vitest + build, MCP server Vitest + build, Docker image builds.
 
 ## Conventions
 
