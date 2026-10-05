@@ -4,7 +4,7 @@ import { pool, withTransaction } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
 import { availableEngine } from '../enrichment/engines.js';
 import { cellarValue } from '../valuation/compute.js';
-import { getValuations, saveManualValuation } from '../valuation/service.js';
+import { getLatestValuation, getValuations, saveManualValuation } from '../valuation/service.js';
 import { requestValuation } from '../valuation/scheduler.js';
 
 const router = Router();
@@ -66,8 +66,19 @@ router.post(`/wines/:id(${UUID})/valuations`, async (req, res) => {
 
 router.post(`/wines/:id(${UUID})/valuations/refresh`, async (req, res) => {
   if (!availableEngine()) return res.status(409).json({ error: 'Aucun moteur de recherche configuré sur le serveur' });
-  if (!(await wineExists(req.params.id))) return res.status(404).json({ error: 'Vin introuvable' });
-  res.status(202).json(requestValuation(req.params.id, 'manual'));
+  try {
+    if (!(await wineExists(req.params.id))) return res.status(404).json({ error: 'Vin introuvable' });
+    // Une cote saisie récente est prioritaire : la recherche serait ignorée (SKIPPED),
+    // on le dit plutôt que de promettre un résultat qui ne viendra pas.
+    const latest = await getLatestValuation(req.params.id);
+    if (latest?.basis === 'USER' && Date.now() - new Date(latest.valuedAt).getTime() < 90 * 86_400_000) {
+      return res.status(409).json({ error: 'Cote saisie il y a moins de 3 mois : elle reste prioritaire sur la recherche automatique' });
+    }
+    res.status(202).json(requestValuation(req.params.id, 'manual'));
+  } catch (error) {
+    console.error('valuation refresh error:', error);
+    res.status(500).json({ error: 'Demande de cote impossible' });
+  }
 });
 
 router.get('/cellar/missing-prices', async (req, res) => {

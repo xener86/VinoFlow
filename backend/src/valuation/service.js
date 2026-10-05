@@ -51,6 +51,7 @@ export const saveManualValuation = async (wineId, { priceEur, lowEur = null, hig
 };
 
 const isHttp = (url) => /^https?:\/\//i.test(String(url || ''));
+const MAX_PRICE = 100_000;
 
 export const valueWine = async (wineId, { engine = availableEngine(), runner, fetchPage, now = new Date() } = {}) => {
   const { rows } = await pool.query(
@@ -77,10 +78,17 @@ export const valueWine = async (wineId, { engine = availableEngine(), runner, fe
   }
 
   const data = result.data || {};
+  // Montant plausible : positif, borné comme la saisie manuelle, et jamais égal au
+  // millésime (« Alpha 2019 » lu comme un prix de 2019 €).
+  const plausible = (price) => price > 0 && price <= MAX_PRICE && price !== Number(wine.vintage);
   const candidates = data.status === 'FOUND'
-    ? (data.prices || []).filter((p) => isHttp(p.url) && p.quote && Number(p.price_eur) > 0)
+    ? (data.prices || []).filter((p) => isHttp(p.url) && p.quote && plausible(Number(p.price_eur)))
     : [];
-  const checked = await verifySources(candidates.map((p) => ({ ...p, excerpt: p.quote })), fetchPage ? { fetchPage } : {});
+  // Vérification stricte : la citation doit figurer telle quelle (bornée aux mots) dans la page.
+  const checked = await verifySources(
+    candidates.map((p) => ({ ...p, excerpt: p.quote })),
+    { strict: true, ...(fetchPage ? { fetchPage } : {}) },
+  );
   const counted = checked.filter((c) => c.check === 'verified' && quoteHasPrice(c.quote, Number(c.price_eur)));
   const summary = summarizePrices(counted, formatMl(wine.format));
   if (!summary) {

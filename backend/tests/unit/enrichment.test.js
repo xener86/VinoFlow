@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('../../src/db.js', () => ({ pool: { query: vi.fn().mockResolvedValue({ rows: [] }) }, withTransaction: vi.fn() }));
 
 const { producerKey, cuveeKey, queryVariants } = await import('../../src/enrichment/normalize.js');
-const { excerptMatches, verifySources, levelSupported, normalizeText } = await import('../../src/enrichment/verify.js');
+const { excerptMatches, strictExcerptMatches, verifySources, levelSupported, normalizeText } = await import('../../src/enrichment/verify.js');
 const { resolveLevel, planChanges } = await import('../../src/enrichment/service.js');
 const { rulePeak } = await import('../../src/enrichment/rules.js');
 const { nextCheckDate, confidenceFor } = await import('../../src/enrichment/levels.js');
@@ -69,6 +69,28 @@ describe('vérification des sources', () => {
       { level: 'EXACT', check: 'unreachable', domain: 'a.fr' },
       { level: 'EXACT', check: 'unreachable', domain: 'b.fr' },
     ], 'EXACT')).toBe(true);
+  });
+});
+
+describe('vérification stricte (passe « cote »)', () => {
+  const page = 'Domaine X 2019, notre prix 145,00 € TTC la bouteille, livraison offerte dès 6 bouteilles.';
+  it('citation exacte et bornée aux mots', () => {
+    expect(strictExcerptMatches('notre prix 145,00 € TTC la bouteille', page)).toBe(true);
+  });
+  it('refuse un montant tronqué (45 au lieu de 145) que la recherche floue accepterait', () => {
+    expect(excerptMatches('45,00 € TTC la bouteille, livraison offerte', page)).toBe(true);
+    expect(strictExcerptMatches('45,00 € TTC la bouteille, livraison offerte', page)).toBe(false);
+  });
+  it('refuse une longue citation au montant modifié', () => {
+    const long = `${'mot '.repeat(40)}prix 39,00 € la bouteille ${'suite '.repeat(20)}`;
+    const altered = long.replace('39,00', '59,00');
+    expect(excerptMatches(altered, long)).toBe(true);
+    expect(strictExcerptMatches(altered, long)).toBe(false);
+  });
+  it('verifySources en mode strict', async () => {
+    const fetchPage = async () => `<p>${page}</p>`;
+    const [r] = await verifySources([{ url: 'https://x.example/a', excerpt: '45,00 € TTC la bouteille, livraison offerte' }], { fetchPage, strict: true });
+    expect(r.check).toBe('not_found');
   });
 });
 

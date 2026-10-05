@@ -8,6 +8,7 @@ const PAGES = {
   'https://caviste.example/alpha-2019': '<html><body><p>Domaine Alpha 2019, 75 cl. Prix : 32,50 € TTC. Livraison offerte.</p></body></html>',
   'https://encheres.example/lot-12': '<html><body><p>Lot 12 — Alpha 2019, adjugé 28 € frais compris.</p></body></html>',
   'https://blog.example/alpha': '<html><body><p>Un grand vin de garde, à boire jusqu’en 2030.</p></body></html>',
+  'https://grand-cru.example/alpha': '<html><body><p>Alpha 2019, notre prix 145,00 € TTC la bouteille, livraison offerte.</p></body></html>',
 };
 const fetchPage = async (url) => {
   if (!PAGES[url]) throw new Error('HTTP 404');
@@ -84,6 +85,24 @@ describe.skipIf(!hasDb)('passe « cote »', () => {
       runner: runnerReturning(found([{ price_eur: 32.5, format_ml: 750, seller: 'Caviste', url: 'https://caviste.example/alpha-2019', quote: 'Prix : 32,50 € TTC' }])),
     });
     expect(r.price).toBe(65);
+  });
+
+  it('montant mal lu (45 € au lieu de 145 €) : la citation doit figurer telle quelle, bornée aux mots', async () => {
+    const r = await valueWine(wineId, {
+      engine: 'claude-code', fetchPage, now: NOW,
+      runner: runnerReturning(found([{ price_eur: 45, format_ml: 750, seller: 'Grand cru', url: 'https://grand-cru.example/alpha', quote: '45,00 € TTC la bouteille, livraison offerte' }])),
+    });
+    expect(r.status).toBe('NONE');
+  });
+
+  it('montant égal au millésime ou démesuré : jamais une cote', async () => {
+    const r = await valueWine(wineId, {
+      engine: 'claude-code', fetchPage, now: NOW,
+      runner: runnerReturning(found([
+        { price_eur: 2019, format_ml: 750, seller: 'Caviste', url: 'https://caviste.example/alpha-2019', quote: 'Domaine Alpha 2019, 75 cl. Prix' },
+      ])),
+    });
+    expect(r.status).toBe('NONE');
   });
 });
 describe.skipIf(!hasDb)('file des cotes', () => {

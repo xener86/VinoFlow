@@ -46,11 +46,28 @@ export const WineValuationCard: React.FC<{ wineId: string; avgPurchase: number |
     }
   };
 
+  // Après une demande, la carte se recharge toutes les 15 s (8 min au plus) jusqu'à
+  // ce que la recherche aboutisse (nouveau point ou nouveau statut).
+  const [watching, setWatching] = useState<{ since: string | null; status: string | null } | null>(null);
+  useEffect(() => {
+    if (!watching) return undefined;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries++;
+      const next = await getWineValuations(wineId).catch(() => null);
+      if (next) setData(next);
+      const changed = next && ((next.latest?.valuedAt ?? null) !== watching.since || next.status !== watching.status || next.nextCheckAt !== data?.nextCheckAt);
+      if (changed || tries >= 32) setWatching(null);
+    }, 15_000);
+    return () => clearInterval(timer);
+  }, [watching, wineId]);
+
   const refresh = async () => {
     setBusy(true);
     try {
       const r = await refreshWineValuation(wineId);
-      toast.success(r.position > 1 ? `Recherche de cote en file (position ${r.position})` : 'Recherche de cote lancée');
+      toast.success(r.position > 1 ? `Recherche de cote en file (position ${r.position}) — résultat dans quelques minutes` : 'Recherche de cote lancée — résultat dans quelques minutes');
+      setWatching({ since: data?.latest?.valuedAt ?? null, status: data?.status ?? null });
     } catch (e) {
       toast.error('Impossible de lancer la recherche : ' + errMsg(e));
     } finally {
@@ -69,7 +86,7 @@ export const WineValuationCard: React.FC<{ wineId: string; avgPurchase: number |
         <MonoLabel>◌ Cote</MonoLabel>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)} disabled={busy}><Pencil className="w-3.5 h-3.5" /> Saisir</Button>
-          <Button variant="ghost" size="sm" onClick={refresh} disabled={busy}>{busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Rafraîchir</Button>
+          <Button variant="ghost" size="sm" onClick={refresh} disabled={busy || watching !== null}>{busy || watching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} {watching ? 'Recherche…' : 'Rafraîchir'}</Button>
         </div>
       </div>
       {!latest ? (

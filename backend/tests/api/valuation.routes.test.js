@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from 'vitest';
 import { api, authed, bootstrapUser, hasDb, pool, resetData } from './helpers.js';
 
 describe.skipIf(!hasDb)('API valeur de la cave', () => {
@@ -62,5 +62,24 @@ describe.skipIf(!hasDb)('API valeur de la cave', () => {
 
   it('rafraîchir sans moteur : 409', async () => {
     expect((await client.post(`/api/wines/${a}/valuations/refresh`, {})).status).toBe(409);
+  });
+
+  describe('avec un moteur disponible (repli API)', () => {
+    beforeEach(() => vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test-factice'));
+    afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+    it('cote saisie il y a moins de 3 mois : 409 explicite, aucune recherche promise', async () => {
+      await client.post(`/api/wines/${a}/valuations`, { priceEur: 30 });
+      const r = await client.post(`/api/wines/${a}/valuations/refresh`, {});
+      expect(r.status).toBe(409);
+      expect(r.body.error).toMatch(/moins de 3 mois/);
+    });
+
+    it('base indisponible : 500, pas de rejet non géré', async () => {
+      vi.spyOn(pool, 'query').mockRejectedValueOnce(new Error('connexion perdue'));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const r = await client.post(`/api/wines/${a}/valuations/refresh`, {});
+      expect(r.status).toBe(500);
+    });
   });
 });

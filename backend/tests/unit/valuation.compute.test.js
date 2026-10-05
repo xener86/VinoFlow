@@ -22,6 +22,15 @@ describe('quoteHasPrice', () => {
     expect(quoteHasPrice('Adjugé 1 250 € frais compris', 1250)).toBe(true);
     expect(quoteHasPrice('seulement 29€ la bouteille', 29)).toBe(true);
   });
+  it('extraits réels de cavistes : millésime avant le prix, carton, décimales en exposant, format anglais', () => {
+    expect(quoteHasPrice('Château Talbot 2015 125,00 €', 125)).toBe(true);
+    expect(quoteHasPrice('Talbot 2015 125 €', 125)).toBe(true);
+    expect(quoteHasPrice('Carton de 6 150,00 €', 150)).toBe(true);
+    expect(quoteHasPrice('Prix 29€90 la bouteille', 29.9)).toBe(true);
+    expect(quoteHasPrice('Price 1,250.00 € per bottle', 1250)).toBe(true);
+    expect(quoteHasPrice('Adjugé 1 250 € frais compris', 250)).toBe(true); // dernier groupe aussi candidat (cf. « 6 150 »)
+  });
+
   it('refuse une citation sans le montant ou avec un autre montant', () => {
     expect(quoteHasPrice('Un très beau vin de garde', 29.9)).toBe(false);
     expect(quoteHasPrice('Prix : 19,90 €', 29.9)).toBe(false);

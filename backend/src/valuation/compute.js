@@ -24,16 +24,31 @@ export const median = (values) => {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 };
 
-/** Montants présents dans un texte : « 1 250,00 € », « 29.90 », « 29€ ». */
+// Nombres avec séparateurs de milliers (« 1 250,00 », « 1.250,00 », « 1,250.00 ») ;
+// le premier groupe a 1 à 3 chiffres et ne commence pas au milieu d'un nombre.
+const GROUPED = /(?<!\d)\d{1,3}(?:[   .,]\d{3}(?!\d))+(?:[.,]\d{1,2}(?!\d))?/g;
+// Nombres simples (« 2015 », « 125,00 », « 29.90 ») : chaque nombre d'une suite
+// « millésime prix » ou « quantité prix » est un candidat distinct.
+const PLAIN = /(?<!\d)\d+(?:[.,]\d{1,2}(?!\d))?/g;
+// Centimes en exposant après l'euro : « 29€90 ».
+const EURO_CENTS = /(?<!\d)(\d+)\s?€\s?(\d{2})(?!\d)/g;
+
+const toNumber = (intDigits, decimals) => Number(`${intDigits}.${decimals || '0'}`);
+
+/** Montants candidats présents dans un texte. */
 const amountsIn = (text) => {
+  const s = String(text ?? '');
   const out = [];
-  const re = /\d+(?:[ \u00a0\u202f.]\d{3}(?!\d))*(?:[.,]\d{1,2})?/g;
-  for (const raw of String(text ?? '').match(re) || []) {
-    let t = raw.replace(/[   ]/g, '');
-    // « 1.250,00 » ou « 1.250 » : le point est un séparateur de milliers
-    if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(t)) t = t.replace(/\./g, '');
-    out.push(Number(t.replace(',', '.')));
+  for (const [raw] of s.matchAll(GROUPED)) {
+    const dec = raw.match(/[.,](\d{1,2})$/);
+    const intPart = dec ? raw.slice(0, -dec[0].length) : raw;
+    out.push(toNumber(intPart.replace(/\D/g, ''), dec?.[1]));
   }
+  for (const [raw] of s.matchAll(PLAIN)) {
+    const [intPart, decimals] = raw.split(/[.,]/);
+    out.push(toNumber(intPart, decimals));
+  }
+  for (const m of s.matchAll(EURO_CENTS)) out.push(toNumber(m[1], m[2]));
   return out.filter((n) => Number.isFinite(n));
 };
 
