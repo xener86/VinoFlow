@@ -66,7 +66,26 @@ openssl rand -base64 48
 docker compose up -d
 ```
 
-VinoFlow is now running at **http://localhost:5001**. Create an account and you're good to go.
+VinoFlow is now running at **http://localhost:5001**. The first account can always be created (bootstrap); after that, sign-ups are closed unless `ALLOW_SIGNUP=true` (see [Accounts & household model](#accounts--household-model)).
+
+## Accounts & household model
+
+**VinoFlow is a shared household cellar, not a multi-tenant app.** Every account sees and edits the same wines, bottles, racks, spirits, tasting notes, journal and wishlist — there is no per-user isolation, by design. Only a few things are personal: sommelier feedback / taste profile, and who added a bottle.
+
+Consequences:
+
+- Anyone with an account has full read/write access to the whole cellar. Only create accounts for people you would hand the cellar keys to.
+- Sign-ups are **closed by default** (`ALLOW_SIGNUP=false`). The very first account of a fresh install is always allowed. To add a household member: set `ALLOW_SIGNUP=true`, `docker compose up -d`, let them sign up, then set it back to `false`.
+- Don't expose VinoFlow to the internet without HTTPS (reverse proxy) — and keep sign-ups closed if you do.
+
+## Security
+
+- **Sessions** — short-lived access token (15 min, JWT) + opaque refresh token (30 days, stored hashed in `refresh_tokens`, rotated on every use). Logout revokes the session; changing or resetting a password revokes every session of the account. Reusing an already-rotated refresh token revokes the whole session (theft detection).
+- **Passwords** — 10 characters minimum, bcrypt cost 12 (older hashes are upgraded on next login).
+- **Password reset** — "Mot de passe oublié ?" on the login page sends a single-use link valid for 1 hour (token stored hashed). The response is identical whether the email exists or not. Also: *Paramètres → Mon compte → Changer mon mot de passe*.
+- **Rate limiting** — `/api/auth/*`: 20 requests / 15 min / IP (refresh: 60). Costly AI routes (`/api/sommelier/*`, `enrich-aromas`, `refresh-peaks`, `bulk-set-peaks`, `extract-from-image`, `refresh-embeddings`): 60 requests / 15 min / user. If another reverse proxy sits in front of VinoFlow's nginx, set `TRUST_PROXY=2` so the real client IP is used.
+- **Headers** — `helmet` on the API, `nosniff` / `X-Frame-Options: DENY` / `Referrer-Policy` / minimal CSP on the frontend (nginx). Add HSTS on your TLS reverse proxy.
+- **AI keys in the browser** — keys typed in *Paramètres* are stored in the browser's `localStorage` (readable by any injected script) and sent to the backend in `x-vinoflow-*-key` headers as a fallback when the server has no key. Server env vars always take precedence. Prefer env vars, use keys with a spending cap, and set `ALLOW_CLIENT_AI_KEYS=false` to make the backend ignore browser keys.
 
 ## Configuration
 
@@ -83,12 +102,25 @@ Copy `.env.example` to `.env` and customize:
 | `JWT_SECRET` | Secret for JWT tokens — generate with `openssl rand -base64 48` | Yes |
 | `FRONTEND_URL` | Public URL of your frontend (used for CORS) | Yes |
 | `VINOFLOW_PORT` | Frontend port (default: 5001) | No |
+| `ALLOW_SIGNUP` | Allow new sign-ups (default `false`; the first account is always allowed) | No |
+| `TRUST_PROXY` | Number of reverse proxies in front of the backend (default `1` = the bundled nginx) | No |
+| `ALLOW_CLIENT_AI_KEYS` | Accept AI keys sent by the browser as a fallback (default `true`) | No |
+| `SWEEGO_API_KEY` | [Sweego](https://www.sweego.io/) API key for password-reset emails | No |
+| `MAIL_FROM` | Sender, on a domain verified in Sweego (`VinoFlow <cave@mail.example.com>`) | With Sweego |
+| `APP_URL` | Public URL used in email links (default: `FRONTEND_URL`) | No |
+| `BACKUP_HOUR` / `BACKUP_KEEP_DAILY` / `BACKUP_KEEP_WEEKLY` / `TZ` | Backup schedule & retention (default 3 h, 7, 4, Europe/Paris) | No |
+
+### Email (password reset)
+
+Password-reset emails are sent through the [Sweego](https://www.sweego.io/) API. Set `SWEEGO_API_KEY` and `MAIL_FROM` (an address on a domain verified in Sweego), plus `APP_URL` if the public URL differs from `FRONTEND_URL`.
+
+Without `SWEEGO_API_KEY`, nothing is sent: the reset link is written to the backend logs instead (`docker compose logs backend | grep "Lien de réinitialisation"`) — handy for a single-household install.
 
 ### AI Providers (Optional)
 
 The AI Sommelier works with **Google Gemini**, **Anthropic Claude**, or both. By default Gemini extracts criteria and Claude writes the argumentation; if only one provider is configured, VinoFlow falls back to it for every task.
 
-Set the keys either in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) or directly in the app's **Settings** page. Per-task overrides (`VINOFLOW_PROVIDER_*`) are documented in `.env.example`.
+Set the keys in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) — recommended — or in the app's **Settings** page (stored in the browser, see [Security](#security)). Per-task overrides (`VINOFLOW_PROVIDER_*`) are documented in `.env.example`.
 
 - Gemini: [Google AI Studio](https://aistudio.google.com/apikey)
 - Claude: [Anthropic Console](https://console.anthropic.com/)
@@ -106,7 +138,8 @@ Then register `node /path/to/VinoFlow/mcp-server/dist/index.js` as an MCP server
 | Variable | Description |
 |----------|-------------|
 | `VINOFLOW_API_URL` | Backend API URL (default `http://localhost:3100/api`) |
-| `VINOFLOW_AUTH_TOKEN` | A JWT from your VinoFlow session (`auth_token` in the browser's localStorage) — expires after 30 days |
+| `VINOFLOW_EMAIL` / `VINOFLOW_PASSWORD` | A household account. The MCP server logs in and renews its session automatically (recommended) |
+| `VINOFLOW_AUTH_TOKEN` | Legacy: a fixed access token. Access tokens now expire after 15 minutes, so use email/password instead |
 
 ### Reverse Proxy
 
@@ -122,23 +155,51 @@ docker compose up -d --build
 
 Your database is persisted in a Docker volume, so updates won't lose your data.
 
-## Backup & Restore
-
-### Backup
+SQL migrations in `db/migrations/` only run automatically on a **fresh** database. On an existing install, apply new ones by hand (they are idempotent):
 
 ```bash
-# Dump the database to a file (replace vinoflow with your POSTGRES_DB)
-docker compose exec -T db pg_dump -U vinoflow vinoflow > vinoflow-backup-$(date +%Y%m%d).sql
+docker compose exec -T db psql -U vinoflow vinoflow < db/migrations/004_auth_tokens.sql
+```
+
+> **Upgrading to the session/refresh-token release (migration 004):** apply the migration *before* restarting the backend, otherwise login fails. Everyone is logged out once (old 30-day tokens are rejected), and the MCP server must switch to `VINOFLOW_EMAIL` / `VINOFLOW_PASSWORD`.
+
+## Backup & Restore
+
+### Automatic backups
+
+The `backup` service dumps the database every day at `BACKUP_HOUR` (default 3 h, `TZ` default Europe/Paris) — and once at startup if today's dump is missing — into `./backups` on the host:
+
+```
+backups/
+  daily/   vinoflow-YYYYMMDD-HHMMSS.sql.gz   ← last 7 (BACKUP_KEEP_DAILY)
+  weekly/  vinoflow-YYYYMMDD-HHMMSS.sql.gz   ← Sunday copies, last 4 (BACKUP_KEEP_WEEKLY)
+```
+
+`./backups` lives next to the database on the same machine: copy it elsewhere too (NAS snapshot, rsync, restic…). Check it works with `docker compose logs backup` and `ls -lh backups/daily`.
+
+Manual dump at any time:
+
+```bash
+docker compose exec -T db pg_dump --clean --if-exists --no-owner -U vinoflow vinoflow | gzip > vinoflow-manual-$(date +%Y%m%d).sql.gz
 ```
 
 ### Restore
 
+Dumps contain `DROP … IF EXISTS` statements, so they restore over the existing database as well as into a fresh one:
+
 ```bash
-# Restore from a backup file
-cat vinoflow-backup-YYYYMMDD.sql | docker compose exec -T db psql -U vinoflow vinoflow
+# 1. Stop the app so nothing writes during the restore
+docker compose stop backend
+
+# 2. Restore (pick the dump you want)
+gunzip -c backups/daily/vinoflow-YYYYMMDD-HHMMSS.sql.gz \
+  | docker compose exec -T db psql -U vinoflow -d vinoflow -v ON_ERROR_STOP=1
+
+# 3. Restart
+docker compose start backend
 ```
 
-Schedule regular backups with cron if you care about your data. The Postgres volume is named `vinoflow_vinoflow-db` and can be backed up directly too.
+All sessions issued after the dump are lost with the restore: users simply log in again.
 
 ## Troubleshooting
 
@@ -154,7 +215,15 @@ Set it in your `.env` and restart: `docker compose up -d`.
 
 ### API calls return 401 Unauthorized
 
-Your session token is invalid or expired. Log out and back in.
+The app renews sessions automatically; a 401 that sends you back to the login page means the refresh token expired (30 days of inactivity) or was revoked (logout, password change). Log in again.
+
+### Login returns 500 after an update
+
+Migration `004_auth_tokens.sql` was not applied — see [Updating](#updating).
+
+### "Trop de tentatives" (HTTP 429)
+
+Rate limit hit (see [Security](#security)). Wait 15 minutes. If it happens to everyone at once behind your own reverse proxy, set `TRUST_PROXY=2`.
 
 ### API calls return 502 Bad Gateway
 

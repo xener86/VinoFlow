@@ -42,18 +42,18 @@ const lazy = {};
 /**
  * Resolve the API key for a provider from (in order):
  *   1. explicit value passed in
- *   2. per-request key (from frontend Settings via headers)
- *   3. environment variable
+ *   2. environment variable (configuration du foyer, prioritaire)
+ *   3. per-request key (from frontend Settings via headers) — fallback only,
+ *      ignored when ALLOW_CLIENT_AI_KEYS=false (see server.js)
  */
 export const resolveProviderKey = (provider, explicitKey) => {
   if (explicitKey) return explicitKey;
+  if (provider === 'claude' && process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+  if (provider === 'gemini' && process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
   // Per-request key from frontend (Settings → localStorage → headers)
   const requestKeys = getRequestKeys();
-  if (provider === 'claude' && requestKeys.claude) return requestKeys.claude;
-  if (provider === 'gemini' && requestKeys.gemini) return requestKeys.gemini;
-  // Fallback to environment variable
-  if (provider === 'claude') return process.env.ANTHROPIC_API_KEY;
-  if (provider === 'gemini') return process.env.GEMINI_API_KEY;
+  if (provider === 'claude') return requestKeys.claude || null;
+  if (provider === 'gemini') return requestKeys.gemini || null;
   return null;
 };
 

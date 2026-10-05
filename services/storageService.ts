@@ -1,5 +1,5 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
-import { customAuth } from './customAuth';
+import { customAuth, clearSession } from './customAuth';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
 
 const currentUserId = (): string | null => customAuth.getUser()?.id ?? null;
@@ -28,6 +28,18 @@ const getHeaders = (): Record<string, string> => {
   return headers;
 };
 
+// fetch() vers l'API avec refresh transparent : sur 401, on tente une fois de
+// renouveler la session (refresh token) puis on rejoue la requête. Si le
+// refresh échoue, le 401 remonte et handleResponse déconnecte.
+const apiFetch = async (url: string, init: RequestInit = {}): Promise<Response> => {
+  const response = await fetch(url, init);
+  if (response.status !== 401 || !localStorage.getItem('refresh_token')) return response;
+  if (!(await customAuth.refreshSession())) return response;
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${localStorage.getItem('auth_token')}`);
+  return fetch(url, { ...init, headers });
+};
+
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     // Token expired or invalid → purge session and bounce to /login.
@@ -35,9 +47,7 @@ const handleResponse = async (response: Response) => {
     // redirect happens regardless.
     if (response.status === 401) {
       try {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
+        clearSession();
       } catch {}
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.replace('/login?expired=1');
@@ -54,12 +64,12 @@ const handleResponse = async (response: Response) => {
 // --- WINE FUNCTIONS ---
 
 export const getWines = async (): Promise<Wine[]> => {
-  const response = await fetch(`${API_URL}/wines`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/wines`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const getBottles = async (): Promise<Bottle[]> => {
-  const response = await fetch(`${API_URL}/bottles`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/bottles`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
@@ -91,14 +101,14 @@ export const getInventory = async (): Promise<CellarWine[]> => {
 };
 
 export const getWineById = async (id: string): Promise<CellarWine | null> => {
-  const response = await fetch(`${API_URL}/wines/${id}`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/wines/${id}`, { headers: getHeaders() });
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new Error(`Failed to fetch wine: ${response.status} ${response.statusText}`);
   }
   const wine = await response.json();
 
-  const bottlesResponse = await fetch(`${API_URL}/bottles?wineId=${id}`, { headers: getHeaders() });
+  const bottlesResponse = await apiFetch(`${API_URL}/bottles?wineId=${id}`, { headers: getHeaders() });
   if (!bottlesResponse.ok) {
     throw new Error(`Failed to fetch bottles: ${bottlesResponse.status} ${bottlesResponse.statusText}`);
   }
@@ -122,7 +132,7 @@ export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?:
   if (existing) {
     await updateWine(wine.id, wine);
   } else {
-    const response = await fetch(`${API_URL}/wines`, {
+    const response = await apiFetch(`${API_URL}/wines`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(wine)
@@ -138,7 +148,7 @@ export const saveWine = async (wine: Wine, quantity: number = 1, purchasePrice?:
 };
 
 export const updateWine = async (id: string, updates: Partial<Wine>): Promise<void> => {
-  const response = await fetch(`${API_URL}/wines/${id}`, {
+  const response = await apiFetch(`${API_URL}/wines/${id}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(updates)
@@ -147,7 +157,7 @@ export const updateWine = async (id: string, updates: Partial<Wine>): Promise<vo
 };
 
 export const deleteWine = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/wines/${id}`, {
+  const response = await apiFetch(`${API_URL}/wines/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   });
@@ -160,7 +170,7 @@ export const updateAromaProfile = async (
   source: 'USER' | 'AI',
   confidence: 'HIGH' | 'MEDIUM' | 'LOW'
 ): Promise<void> => {
-  const response = await fetch(`${API_URL}/wines/${id}/aroma-profile`, {
+  const response = await apiFetch(`${API_URL}/wines/${id}/aroma-profile`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ aromaProfile, source, confidence }),
@@ -170,7 +180,7 @@ export const updateAromaProfile = async (
 
 // Sommelier v2 API
 export const sommelierPair = async (dish: string, context?: any, skipCache = false) => {
-  const response = await fetch(`${API_URL}/sommelier/pair`, {
+  const response = await apiFetch(`${API_URL}/sommelier/pair`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ dish, context, skipCache }),
@@ -186,7 +196,7 @@ export const sommelierFeedback = async (params: {
   criteria?: any;
   context?: any;
 }) => {
-  const response = await fetch(`${API_URL}/sommelier/feedback`, {
+  const response = await apiFetch(`${API_URL}/sommelier/feedback`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(params),
@@ -195,19 +205,19 @@ export const sommelierFeedback = async (params: {
 };
 
 export const getRemoteTasteProfile = async () => {
-  const response = await fetch(`${API_URL}/sommelier/taste-profile`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/sommelier/taste-profile`, { headers: getHeaders() });
   if (response.status === 401) return null;
   return handleResponse(response);
 };
 
 export const getAvailableAIProviders = async () => {
-  const response = await fetch(`${API_URL}/ai/providers`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/ai/providers`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 // Phase 3 - Enrichissement
 export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; useConsensus?: boolean; limit?: number } = {}) => {
-  const response = await fetch(`${API_URL}/wines/enrich-aromas`, {
+  const response = await apiFetch(`${API_URL}/wines/enrich-aromas`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(params),
@@ -216,12 +226,12 @@ export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; 
 };
 
 export const auditWines = async () => {
-  const response = await fetch(`${API_URL}/wines/audit`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/wines/audit`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const refreshAromaFromTastings = async (wineId: string) => {
-  const response = await fetch(`${API_URL}/wines/${wineId}/refresh-from-tastings`, {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/refresh-from-tastings`, {
     method: 'POST',
     headers: getHeaders(),
   });
@@ -230,7 +240,7 @@ export const refreshAromaFromTastings = async (wineId: string) => {
 
 // Phase 6.1 - OCR
 export const extractWineFromImage = async (base64: string, mimeType = 'image/jpeg') => {
-  const response = await fetch(`${API_URL}/wines/extract-from-image`, {
+  const response = await apiFetch(`${API_URL}/wines/extract-from-image`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ image: base64, mimeType }),
@@ -240,7 +250,7 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
 
 // Phase 7 - Modes de pairing avancés
 export const sommelierReversePair = async (wineId: string) => {
-  const response = await fetch(`${API_URL}/sommelier/reverse-pair`, {
+  const response = await apiFetch(`${API_URL}/sommelier/reverse-pair`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ wineId }),
@@ -249,7 +259,7 @@ export const sommelierReversePair = async (wineId: string) => {
 };
 
 export const sommelierMenu = async (dishes: string[]) => {
-  const response = await fetch(`${API_URL}/sommelier/menu`, {
+  const response = await apiFetch(`${API_URL}/sommelier/menu`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ dishes }),
@@ -258,7 +268,7 @@ export const sommelierMenu = async (dishes: string[]) => {
 };
 
 export const sommelierExplain = async (dish: string, wineId: string, criteria?: any) => {
-  const response = await fetch(`${API_URL}/sommelier/explain`, {
+  const response = await apiFetch(`${API_URL}/sommelier/explain`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ dish, wineId, criteria }),
@@ -268,14 +278,14 @@ export const sommelierExplain = async (dish: string, wineId: string, criteria?: 
 
 // Phase 8 - Proactive
 export const getDrinkBeforeAlerts = async (horizonMonths = 12) => {
-  const response = await fetch(`${API_URL}/sommelier/alerts/drink-before?horizonMonths=${horizonMonths}`, {
+  const response = await apiFetch(`${API_URL}/sommelier/alerts/drink-before?horizonMonths=${horizonMonths}`, {
     headers: getHeaders(),
   });
   return handleResponse(response);
 };
 
 export const getAnticipationForEvent = async (eventDate: string, limit = 5) => {
-  const response = await fetch(`${API_URL}/sommelier/anticipation`, {
+  const response = await apiFetch(`${API_URL}/sommelier/anticipation`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ eventDate, limit }),
@@ -284,13 +294,13 @@ export const getAnticipationForEvent = async (eventDate: string, limit = 5) => {
 };
 
 export const getPurchaseSuggestions = async () => {
-  const response = await fetch(`${API_URL}/sommelier/purchase-suggestions`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/sommelier/purchase-suggestions`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 // Phase 10 - Advanced
 export const sommelierVertical = async (producer: string) => {
-  const response = await fetch(`${API_URL}/sommelier/vertical`, {
+  const response = await apiFetch(`${API_URL}/sommelier/vertical`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ producer }),
@@ -299,7 +309,7 @@ export const sommelierVertical = async (producer: string) => {
 };
 
 export const sommelierCompare = async (dish: string, wineAId: string, wineBId: string) => {
-  const response = await fetch(`${API_URL}/sommelier/compare`, {
+  const response = await apiFetch(`${API_URL}/sommelier/compare`, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ dish, wineAId, wineBId }),
@@ -308,28 +318,28 @@ export const sommelierCompare = async (dish: string, wineAId: string, wineBId: s
 };
 
 export const sommelierBlind = async () => {
-  const response = await fetch(`${API_URL}/sommelier/blind`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/sommelier/blind`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 // Phase 11 - Wine lifecycle
 export const getAgingRecommendations = async () => {
-  const response = await fetch(`${API_URL}/wines/aging-recommendations`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/wines/aging-recommendations`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const findWineDuplicates = async () => {
-  const response = await fetch(`${API_URL}/wines/duplicates`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/wines/duplicates`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const getCellarProjection = async (yearsAhead = 5) => {
-  const response = await fetch(`${API_URL}/cellar/projection?yearsAhead=${yearsAhead}`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/cellar/projection?yearsAhead=${yearsAhead}`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const getCellarBudget = async (months = 12) => {
-  const response = await fetch(`${API_URL}/cellar/budget?months=${months}`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/cellar/budget?months=${months}`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
@@ -364,7 +374,7 @@ export const addBottles = async (
     };
     if (purchasePrice) bottle.purchasePrice = purchasePrice;
     promises.push(
-      fetch(`${API_URL}/bottles`, {
+      apiFetch(`${API_URL}/bottles`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(bottle)
@@ -400,7 +410,7 @@ export const consumeSpecificBottle = async (
   wineName: string = 'Vin inconnu',
   wineVintage?: number
 ): Promise<void> => {
-  const response = await fetch(`${API_URL}/bottles/${bottleId}`, {
+  const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify({
@@ -428,7 +438,7 @@ export const moveBottle = async (
   wineVintage?: number,
   wineId?: string
 ): Promise<void> => {
-  await fetch(`${API_URL}/bottles/${bottleId}`, {
+  await apiFetch(`${API_URL}/bottles/${bottleId}`, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify({ location: newLocation })
@@ -449,7 +459,7 @@ export const moveBottle = async (
 };
 
 export const deleteBottle = async (bottleId: string, wineId: string, wineName: string): Promise<void> => {
-    const response = await fetch(`${API_URL}/bottles/${bottleId}`, {
+    const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -473,7 +483,7 @@ export const giftBottle = async (
   wineName: string = 'Vin inconnu',
   wineVintage?: number
 ): Promise<void> => {
-    await fetch(`${API_URL}/bottles/${bottleId}`, {
+    await apiFetch(`${API_URL}/bottles/${bottleId}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -528,7 +538,7 @@ export const fillRackWithWine = async (rackId: string, wineId: string): Promise<
                     addedByUserId: currentUserId()
                 };
                 promises.push(
-                    fetch(`${API_URL}/bottles`, {
+                    apiFetch(`${API_URL}/bottles`, {
                         method: 'POST',
                         headers: getHeaders(),
                         body: JSON.stringify(bottle)
@@ -576,12 +586,12 @@ export const findNextAvailableSlot = async (): Promise<{ location: BottleLocatio
 // --- RACK FUNCTIONS ---
 
 export const getRacks = async (): Promise<Rack[]> => {
-  const response = await fetch(`${API_URL}/racks`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/racks`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const saveRack = async (rack: Rack): Promise<void> => {
-  const response = await fetch(`${API_URL}/racks`, {
+  const response = await apiFetch(`${API_URL}/racks`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(rack)
@@ -590,7 +600,7 @@ export const saveRack = async (rack: Rack): Promise<void> => {
 };
 
 export const updateRack = async (id: string, updates: Partial<Rack>): Promise<void> => {
-  const response = await fetch(`${API_URL}/racks/${id}`, {
+  const response = await apiFetch(`${API_URL}/racks/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(updates)
@@ -599,7 +609,7 @@ export const updateRack = async (id: string, updates: Partial<Rack>): Promise<vo
 };
 
 export const deleteRack = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/racks/${id}`, {
+  const response = await apiFetch(`${API_URL}/racks/${id}`, {
       method: 'DELETE',
       headers: getHeaders()
   });
@@ -626,7 +636,7 @@ export const reorderRack = async (id: string, direction: 'left' | 'right'): Prom
     sameTypeIds.forEach((origId, i) => swapMap.set(origId, swappedSameType[i]));
     const newOrder = allRacks.map(r => swapMap.has(r.id) ? swapMap.get(r.id)! : r.id);
 
-    await fetch(`${API_URL}/racks/reorder`, {
+    await apiFetch(`${API_URL}/racks/reorder`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ rackIds: newOrder })
@@ -636,12 +646,12 @@ export const reorderRack = async (id: string, direction: 'left' | 'right'): Prom
 // --- SPIRIT FUNCTIONS ---
 
 export const getSpirits = async (): Promise<Spirit[]> => {
-  const response = await fetch(`${API_URL}/spirits`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/spirits`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
 export const getSpiritById = async (id: string): Promise<Spirit | undefined> => {
-  const response = await fetch(`${API_URL}/spirits/${id}`, { headers: getHeaders() });
+  const response = await apiFetch(`${API_URL}/spirits/${id}`, { headers: getHeaders() });
   if (!response.ok) return undefined;
   return response.json();
 };
@@ -652,7 +662,7 @@ export const saveSpirit = async (spirit: Spirit): Promise<void> => {
   const method = existing ? 'PUT' : 'POST';
   const url = existing ? `${API_URL}/spirits/${spirit.id}` : `${API_URL}/spirits`;
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
       method,
       headers: getHeaders(),
       body: JSON.stringify(spirit)
@@ -661,7 +671,7 @@ export const saveSpirit = async (spirit: Spirit): Promise<void> => {
 };
 
 export const deleteSpirit = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/spirits/${id}`, {
+  const response = await apiFetch(`${API_URL}/spirits/${id}`, {
       method: 'DELETE',
       headers: getHeaders()
   });
@@ -671,7 +681,7 @@ export const deleteSpirit = async (id: string): Promise<void> => {
 // --- COCKTAIL FUNCTIONS ---
 
 export const getCocktails = async (): Promise<CocktailRecipe[]> => {
-    const response = await fetch(`${API_URL}/cocktails`, { headers: getHeaders() });
+    const response = await apiFetch(`${API_URL}/cocktails`, { headers: getHeaders() });
     if (!response.ok && response.status === 404) return []; // Endpoint might not exist yet
     return handleResponse(response) || [];
 };
@@ -680,7 +690,7 @@ export const saveCocktail = async (recipe: CocktailRecipe): Promise<void> => {
     // Si l'endpoint n'existe pas encore, on peut fallback sur localStorage ou ne rien faire
     // Supposons qu'il existe :
     try {
-        await fetch(`${API_URL}/cocktails`, {
+        await apiFetch(`${API_URL}/cocktails`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify(recipe)
@@ -697,12 +707,12 @@ export const saveCocktail = async (recipe: CocktailRecipe): Promise<void> => {
 // --- TASTING NOTES ---
 
 export const getTastingNotes = async (): Promise<any[]> => {
-    const response = await fetch(`${API_URL}/tasting-notes`, { headers: getHeaders() });
+    const response = await apiFetch(`${API_URL}/tasting-notes`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
 export const saveTastingNote = async (note: any): Promise<void> => {
-    await fetch(`${API_URL}/tasting-notes`, {
+    await apiFetch(`${API_URL}/tasting-notes`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(note)
@@ -710,7 +720,7 @@ export const saveTastingNote = async (note: any): Promise<void> => {
 };
 
 export const deleteTastingNote = async (id: string): Promise<void> => {
-    await fetch(`${API_URL}/tasting-notes/${id}`, {
+    await apiFetch(`${API_URL}/tasting-notes/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -719,12 +729,12 @@ export const deleteTastingNote = async (id: string): Promise<void> => {
 // --- JOURNAL / HISTORY ---
 
 export const getCellarJournal = async (): Promise<JournalEntry[]> => {
-    const response = await fetch(`${API_URL}/history`, { headers: getHeaders() });
+    const response = await apiFetch(`${API_URL}/history`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
 export const getWineHistory = async (wineId: string): Promise<JournalEntry[]> => {
-    const response = await fetch(`${API_URL}/history?wineId=${wineId}`, { headers: getHeaders() });
+    const response = await apiFetch(`${API_URL}/history?wineId=${wineId}`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
@@ -738,7 +748,7 @@ export const addJournalEntry = async (entry: Partial<JournalEntry>): Promise<voi
         ...entry
     } as JournalEntry;
 
-    await fetch(`${API_URL}/history`, {
+    await apiFetch(`${API_URL}/history`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(fullEntry)
@@ -754,7 +764,7 @@ export const findOrphanedBottles = async (): Promise<Bottle[]> => {
 };
 
 export const deleteBottleById = async (bottleId: string): Promise<void> => {
-    await fetch(`${API_URL}/bottles/${bottleId}`, {
+    await apiFetch(`${API_URL}/bottles/${bottleId}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -830,12 +840,12 @@ export const exportFullData = async (): Promise<string> => {
 // --- WISHLIST FUNCTIONS ---
 
 export const getWishlist = async (): Promise<WishlistItem[]> => {
-    const response = await fetch(`${API_URL}/wishlist`, { headers: getHeaders() });
+    const response = await apiFetch(`${API_URL}/wishlist`, { headers: getHeaders() });
     return handleResponse(response) || [];
 };
 
 export const addWishlistItem = async (item: Partial<WishlistItem>): Promise<WishlistItem> => {
-    const response = await fetch(`${API_URL}/wishlist`, {
+    const response = await apiFetch(`${API_URL}/wishlist`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(item)
@@ -844,7 +854,7 @@ export const addWishlistItem = async (item: Partial<WishlistItem>): Promise<Wish
 };
 
 export const deleteWishlistItem = async (id: string): Promise<void> => {
-    await fetch(`${API_URL}/wishlist/${id}`, {
+    await apiFetch(`${API_URL}/wishlist/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
     });
@@ -857,7 +867,7 @@ export const importFullData = async (jsonString: string): Promise<boolean> => {
     // Ceci est une opération lourde qui devrait être gérée par un endpoint /import côté serveur
     // pour éviter de faire 1000 fetch calls.
     // Si l'endpoint existe :
-    const response = await fetch(`${API_URL}/import`, {
+    const response = await apiFetch(`${API_URL}/import`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)

@@ -7,7 +7,9 @@
  *
  * Environment variables:
  *   VINOFLOW_API_URL   - Backend API URL (default: http://localhost:3100/api)
- *   VINOFLOW_AUTH_TOKEN - Auth token for the backend API
+ *   VINOFLOW_EMAIL / VINOFLOW_PASSWORD - Compte du foyer (recommandé : session
+ *                       renouvelée automatiquement)
+ *   VINOFLOW_AUTH_TOKEN - Ancien mode : jeton d'accès fixe (expire après 15 min)
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
