@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Loader2, Plus, Heart, Sparkles, ChefHat, MapPin,
-  Wine as WineIcon, Trash2,
+  Wine as WineIcon, Trash2, GlassWater,
 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
@@ -166,27 +166,45 @@ export const CockpitWineDetails: React.FC = () => {
           {wine.region && <span> · {wine.region}</span>}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mt-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>EN STOCK</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">EN STOCK</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">{wine.inventoryCount} <span className="text-base text-stone-500">btl</span></div>
           </div>
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>NOTE MOYENNE</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">NOTE MOYENNE</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">
               {avgRating !== null ? <>{avgRating.toFixed(1)} <span className="text-base text-stone-500">/ 5</span></> : <span className="text-stone-400">—</span>}
             </div>
           </div>
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>DÉGUSTATIONS</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">DÉGUSTATIONS</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">{wineNotes.length}</div>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-5">
-          <Button onClick={handleAddBottle}><Plus className="w-3.5 h-3.5" />Ajouter une bouteille</Button>
-          <Link to={`/tasting/${wine.id}`}>
-            <Button variant="outline"><WineIcon className="w-3.5 h-3.5" />Je viens de boire</Button>
+        {/* Actions rapides « à la cave » */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-5">
+          {activeBottles.length > 0 && (
+            <Button
+              className="col-span-2 sm:col-span-1"
+              onClick={() => {
+                // Une seule bouteille : on l'ouvre ; sinon on choisit laquelle dans la liste.
+                if (activeBottles.length === 1) handleConsume(activeBottles[0]);
+                else document.getElementById('bouteilles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <GlassWater className="w-3.5 h-3.5" />Ouvrir une bouteille
+            </Button>
+          )}
+          <Button variant={activeBottles.length > 0 ? 'outline' : 'default'} onClick={handleAddBottle}><Plus className="w-3.5 h-3.5" />Ajouter</Button>
+          {activeBottles.length > 0 && (
+            <Link to={`/plan?wine=${wine.id}`}>
+              <Button variant="outline" className="w-full"><MapPin className="w-3.5 h-3.5" />Où est-elle ?</Button>
+            </Link>
+          )}
+          <Link to={`/tasting/${wine.id}`} className={activeBottles.length > 0 ? 'col-span-2 sm:col-span-1' : ''}>
+            <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
           </Link>
         </div>
       </Card>
@@ -267,7 +285,7 @@ export const CockpitWineDetails: React.FC = () => {
         </Card>
 
         {/* ───── Bouteilles & emplacements ───── */}
-        <Card className="col-span-12 lg:col-span-7 p-6">
+        <Card id="bouteilles" className="col-span-12 lg:col-span-7 p-6 scroll-mt-20">
           <MonoLabel>◌ Bouteilles · {activeBottles.length}</MonoLabel>
           <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Emplacements</h3>
 
@@ -283,8 +301,8 @@ export const CockpitWineDetails: React.FC = () => {
                   locText = `${rack?.name || '?'} [${String.fromCharCode(65 + loc.y)}${loc.x + 1}]`;
                 }
                 return (
-                  <li key={b.id} className="flex items-center justify-between py-2 px-3 rounded bg-stone-50 text-sm">
-                    <div className="flex items-center gap-3">
+                  <li key={b.id} className="flex items-center justify-between gap-2 py-2 px-3 rounded bg-stone-50 text-sm">
+                    <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap min-w-0">
                       <MapPin className="w-3.5 h-3.5 text-stone-400" />
                       <span className="font-medium text-stone-700">{locText}</span>
                       {b.purchaseDate && (
@@ -295,9 +313,9 @@ export const CockpitWineDetails: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleConsume(b)}
-                      className="text-xs text-stone-500 hover:text-wine-700 px-2 py-1 rounded hover:bg-wine-50"
+                      className="shrink-0 text-xs text-stone-600 hover:text-wine-700 px-3 py-2 md:px-2 md:py-1 rounded border border-stone-200 md:border-0 hover:bg-wine-50"
                     >
-                      J'ai bu →
+                      Ouvrir →
                     </button>
                   </li>
                 );
