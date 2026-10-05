@@ -628,7 +628,7 @@ server.tool(
 
 server.tool(
     'refresh_peaks',
-    'Compute realistic drinking peak windows for wines via LLM, considering producer prestige, appellation level, vintage quality. Replaces the naive vintage+5 formula with per-wine intelligent windows (e.g., a Margaux Grand Cru 1983 has peak ~1995-2030+, not vintage+5..+10).',
+    'Queue wines for the sourced web-search enrichment cascade, which computes drinking peak windows (and aroma profiles) from cited sources: exact vintage, other vintage, producer, appellation, or generic rule. Runs in the background (1-2 min per wine); manual peaks (USER) are never overwritten.',
     {
         force: z.boolean().optional().describe('Recompute even for wines that already have a peak'),
         limit: z.number().optional().describe('Max wines to process (default 50)'),
@@ -636,7 +636,7 @@ server.tool(
     async ({ force, limit }) => {
         try {
             const result = await client.refreshPeaks(force || false, limit || 50);
-            return { content: [{ type: 'text' as const, text: `Peak windows: ${result.updated}/${result.processed} vins mis a jour. ${result.failed > 0 ? `${result.failed} echecs.` : ''}` }] };
+            return { content: [{ type: 'text' as const, text: `${result.queued} vin(s) mis en file d'enrichissement (moteur ${result.engine}). Les fenêtres d'apogée se mettent à jour en arrière-plan.` }] };
         } catch (e: any) {
             return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
         }
@@ -645,15 +645,14 @@ server.tool(
 
 server.tool(
     'enrich_wine_aromas',
-    'Enrich wines without aroma profile in batch. Useful after import or for wines added manually.',
+    'Queue wines without an aroma profile for the sourced web-search enrichment cascade (aromas + peak window, with cited sources). Runs in the background (1-2 min per wine).',
     {
-        use_consensus: z.boolean().optional().describe('Cross-reference Gemini + Claude for higher confidence (slower, more expensive)'),
-        limit: z.number().optional().describe('Max wines to process (default 50)'),
+        limit: z.number().optional().describe('Max wines to queue (default 50)'),
     },
-    async ({ use_consensus, limit }) => {
+    async ({ limit }) => {
         try {
-            const result = await client.enrichAromas(use_consensus || false, limit || 50);
-            return { content: [{ type: 'text' as const, text: `Enrichissement: ${result.enriched}/${result.processed} vins enrichis. ${result.failed > 0 ? `${result.failed} échecs.` : ''}` }] };
+            const result = await client.enrichAromas(limit || 50);
+            return { content: [{ type: 'text' as const, text: `${result.queued} vin(s) mis en file d'enrichissement (moteur ${result.engine}). Les profils se mettent à jour en arrière-plan.` }] };
         } catch (e: any) {
             return { content: [{ type: 'text' as const, text: `Error: ${e.message}` }], isError: true };
         }

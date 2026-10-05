@@ -1,26 +1,14 @@
 // Phase 5 — Embedding-based wine matching.
 //
-// Uses Gemini text-embedding-004 to compute a vector representation of each
-// wine's profile. Stored in the wines.embedding column (pgvector vector(768)).
-// Pairing then uses cosine similarity in SQL — O(1) regardless of cave size.
+// Vecteurs gemini-embedding-001 en 768 dimensions (tâche 'embedding'
+// d'aiService), stockés dans wines.embedding (pgvector vector(768)) avec le
+// modèle qui les a produits (wines.embedding_model). Les vecteurs d'un autre
+// modèle (ex. text-embedding-004) sont incompatibles : ils sont recalculés.
 //
 // Optional: pgvector extension must be installed (default in pgvector/pgvector
 // Docker image, or `CREATE EXTENSION vector` on a vanilla postgres).
 
-import { GoogleGenAI } from '@google/genai';
-import { resolveProviderKey } from '../services/aiService.js';
-
-let lazyClient = null;
-let lazyKey = null;
-const getClient = () => {
-  const key = resolveProviderKey('gemini');
-  if (!key) throw new Error('Gemini key required for embeddings');
-  if (!lazyClient || lazyKey !== key) {
-    lazyClient = new GoogleGenAI({ apiKey: key });
-    lazyKey = key;
-  }
-  return lazyClient;
-};
+import { embedTexts, getEmbeddingModel } from '../services/aiService.js';
 
 /**
  * Build the textual representation of a wine that gets embedded.
@@ -43,68 +31,61 @@ export const buildWineDocument = (wine) => {
   ].filter(Boolean).join(' | ');
 };
 
-/**
- * Compute an embedding vector for a piece of text.
- * Returns an array of 768 floats.
- */
-export const computeEmbedding = async (text) => {
-  const client = getClient();
-  const result = await client.models.embedContent({
-    model: 'text-embedding-004',
-    contents: text,
-  });
-  return result.embeddings[0].values;
-};
+const BATCH_SIZE = 50;
 
 /**
- * Update embeddings for wines that don't have one (or have been modified
- * since their embedding was computed).
- *
- * Returns { processed, updated, errors }.
+ * Calcule les embeddings manquants ou produits par un autre modèle.
+ * @param {{ limit?: number, all?: boolean }} options - all: recalcule tout
+ * Returns { processed, updated, errors, model }.
  */
 export const updateMissingEmbeddings = async (pool, options = {}) => {
   const limit = options.limit ?? 100;
+  const model = getEmbeddingModel();
   // Skip if pgvector not available — the column may not exist
   let hasColumn = true;
   try {
-    await pool.query(`SELECT embedding FROM wines LIMIT 1`);
+    await pool.query(`SELECT embedding, embedding_model FROM wines LIMIT 1`);
   } catch {
     hasColumn = false;
   }
   if (!hasColumn) {
-    return { processed: 0, updated: 0, errors: [], note: 'pgvector column not available — run migration 002 first' };
+    return { processed: 0, updated: 0, errors: [], note: 'pgvector column not available — migration 002 not applied' };
   }
 
   const result = await pool.query(`
     SELECT id, name, cuvee, producer, vintage, region, appellation, country, type,
            grape_varieties, aroma_profile, sensory_description, sensory_profile
       FROM wines
-     WHERE embedding IS NULL
+     WHERE $2::boolean OR embedding IS NULL OR embedding_model IS DISTINCT FROM $3
      ORDER BY updated_at DESC
      LIMIT $1
-  `, [limit]);
+  `, [limit, options.all === true, model]);
 
-  const updated = [];
+  let updated = 0;
   const errors = [];
 
-  for (const row of result.rows) {
+  for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
+    const rows = result.rows.slice(i, i + BATCH_SIZE);
     try {
-      // Reconstruct camelCase shape for buildWineDocument
-      const wine = {
+      const docs = rows.map((row) => buildWineDocument({
         ...row,
         grapeVarieties: row.grape_varieties,
         aromaProfile: row.aroma_profile,
         sensoryDescription: row.sensory_description,
         sensoryProfile: row.sensory_profile,
-      };
-      const doc = buildWineDocument(wine);
-      const vec = await computeEmbedding(doc);
-      await pool.query(`UPDATE wines SET embedding = $1 WHERE id = $2`, [`[${vec.join(',')}]`, row.id]);
-      updated.push(row.id);
+      }));
+      const vectors = await embedTexts(docs);
+      for (let j = 0; j < rows.length; j++) {
+        await pool.query(
+          `UPDATE wines SET embedding = $1, embedding_model = $2 WHERE id = $3`,
+          [`[${vectors[j].join(',')}]`, model, rows[j].id]
+        );
+        updated++;
+      }
     } catch (err) {
-      errors.push({ id: row.id, error: err.message });
+      rows.forEach((row) => errors.push({ id: row.id, error: err.message }));
     }
   }
 
-  return { processed: result.rows.length, updated: updated.length, errors };
+  return { processed: result.rows.length, updated, errors, model };
 };

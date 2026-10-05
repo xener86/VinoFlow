@@ -399,10 +399,10 @@ export async function auditWines(): Promise<{ count: number; wines: any[] }> {
     return fetchJSON('/wines/audit');
 }
 
-export async function enrichAromas(useConsensus = false, limit = 50): Promise<any> {
+export async function enrichAromas(limit = 50): Promise<any> {
     return fetchJSON('/wines/enrich-aromas', {
         method: 'POST',
-        body: JSON.stringify({ onlyMissing: true, useConsensus, limit }),
+        body: JSON.stringify({ onlyMissing: true, limit }),
     });
 }
 

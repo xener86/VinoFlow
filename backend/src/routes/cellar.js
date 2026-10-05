@@ -3,7 +3,8 @@ import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
 import { serializeWine } from '../utils/wine.js';
 import { loadInventory } from '../services/inventory.js';
-import { computePeak } from '../sommelier/peakCalculator.js';
+import { getSchedulerStatus } from '../enrichment/scheduler.js';
+import { enqueueWines } from './enrichment.js';
 import { computeBudget } from '../sommelier/budget.js';
 import { agingRecommendations, findDuplicates, cellarProjection } from '../sommelier/advanced.js';
 
@@ -48,58 +49,21 @@ router.get('/cellar/projection', async (req, res) => {
   }
 });
 
-// Phase per-wine peak — compute drinking peak windows in batch
+// Fenêtres d'apogée en lot : mises en file pour la cascade de recherche web
+// (enrichment/), qui calcule profil et apogée en une passe. Réponse immédiate.
 // Body: { onlyMissing: boolean, limit: number, force: boolean }
 router.post('/wines/refresh-peaks', async (req, res) => {
   try {
     const { onlyMissing = true, limit = 50, force = false } = req.body || {};
-
-    const filter = (onlyMissing && !force) ? `WHERE peak_start IS NULL OR peak_end IS NULL` : '';
-    const result = await pool.query(`SELECT * FROM wines ${filter} ORDER BY created_at DESC LIMIT $1`, [limit]);
-    const wines = convertKeysToCamelCase(result.rows);
-
-    const updated = [];
-    const failed = [];
-
-    for (const wine of wines) {
-      try {
-        const peak = await computePeak(wine);
-        if (!peak) continue;
-        await pool.query(`
-          UPDATE wines SET
-            peak_start = $1,
-            peak_end = $2,
-            peak_source = 'AI',
-            peak_confidence = $3,
-            peak_reasoning = $4,
-            peak_computed_at = now(),
-            updated_at = now()
-          WHERE id = $5
-        `, [peak.peakStart, peak.peakEnd, peak.confidence, peak.reasoning, wine.id]);
-        updated.push({
-          id: wine.id,
-          name: wine.name,
-          vintage: wine.vintage,
-          peak_start: peak.peakStart,
-          peak_end: peak.peakEnd,
-          confidence: peak.confidence,
-        });
-      } catch (err) {
-        console.error(`Peak failed for ${wine.id}:`, err.message);
-        failed.push({ id: wine.id, name: wine.name, error: err.message });
-      }
-    }
-
-    res.json({
-      processed: wines.length,
-      updated: updated.length,
-      failed: failed.length,
-      results: updated,
-      errors: failed,
-    });
+    if (!getSchedulerStatus().engine) return res.status(503).json({ error: 'Aucun moteur d\'enrichissement configuré' });
+    const where = (onlyMissing && !force)
+      ? "(w.peak_start IS NULL OR w.peak_end IS NULL) AND w.peak_source IS DISTINCT FROM 'USER'"
+      : "w.peak_source IS DISTINCT FROM 'USER'";
+    const queued = await enqueueWines(where, limit);
+    res.status(202).json({ queued, engine: getSchedulerStatus().engine });
   } catch (error) {
     console.error('Refresh peaks error:', error);
-    res.status(500).json({ error: 'Failed to refresh peaks', details: error.message });
+    res.status(500).json({ error: 'Failed to queue peak refresh', details: error.message });
   }
 });
 

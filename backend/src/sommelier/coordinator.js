@@ -7,6 +7,7 @@ import { rankWines } from './scoring.js';
 import { argueAndPick } from './llm2.js';
 import { critiquePicks } from './selfCritic.js';
 import { generateText, generateJson } from '../services/aiService.js';
+import { DISHES_SCHEMA } from './schemas.js';
 import {
   computeCaveHash,
   getCriteriaCache,
@@ -162,7 +163,7 @@ const applyConstraints = (wines, constraints) => {
 export const suggestDishesForWine = async (wine) => {
   const SYSTEM = `Tu es un sommelier. À partir d'un vin précis, suggère 5 plats qui s'accorderont magnifiquement avec, en variant les types (entrée, plat, dessert, fromage, casual). Pour chaque plat, explique en 1 phrase pourquoi.
 
-Réponds en JSON pur:
+Structure de la réponse:
 {
   "suggestions": [
     { "dish": "...", "type": "entrée|plat|dessert|fromage|casual", "reason": "..." }
@@ -170,7 +171,7 @@ Réponds en JSON pur:
   "global_advice": "Conseil sur le service du vin"
 }`;
   const user = `Vin: ${wine.producer || ''} ${wine.name || ''} ${wine.cuvee || ''} ${wine.vintage || ''}\nType: ${wine.type}\nRégion: ${wine.region || '?'}\nArômes: ${(wine.aromaProfile || []).join(', ') || '?'}\nProfil: corps ${wine.sensoryProfile?.body ?? '?'}, acidité ${wine.sensoryProfile?.acidity ?? '?'}, tanin ${wine.sensoryProfile?.tannin ?? '?'}`;
-  return generateJson('argue', { system: SYSTEM, user });
+  return generateJson('argue', { system: SYSTEM, user, schema: DISHES_SCHEMA });
 };
 
 /**
