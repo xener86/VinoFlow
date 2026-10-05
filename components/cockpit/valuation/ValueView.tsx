@@ -6,7 +6,8 @@ import { CellarValue, ValueMover } from '../../../types';
 import { PriceCatchup } from './PriceCatchup';
 
 const EUR = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-const pct = (x: number | null) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)} %`);
+const PCT = new Intl.NumberFormat('fr-FR', { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' });
+const pct = (x: number | null) => (x == null ? '—' : PCT.format(x));
 const MONTH = new Intl.DateTimeFormat('fr-FR', { month: 'short', year: '2-digit' });
 const monthLabel = (m: string) => MONTH.format(new Date(`${m}-01T12:00:00Z`));
 

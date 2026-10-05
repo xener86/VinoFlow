@@ -106,13 +106,19 @@ export const cellarValue = ({ bottles, valuations, wines, months = 24, now = new
     let invested = 0;
     let estimatedPurchase = 0;
     let value = 0;
+    let valued = 0;
     for (const b of bottles) {
       if (!inCellarAt(b, at)) continue;
       if (hasPrice(b)) invested += Number(b.purchasePrice);
       else estimatedPurchase += estimateFor(b) ?? 0;
-      value += coteAt(b.wineId, at) ?? 0;
+      const cote = coteAt(b.wineId, at);
+      if (cote != null) {
+        value += cote;
+        valued++;
+      }
     }
-    return { invested: round2(invested), estimatedPurchase: round2(estimatedPurchase), value: round2(value) };
+    // Aucune bouteille cotée à cette date : valeur inconnue (pas zéro) — la courbe ne commence qu'à la première cote.
+    return { invested: round2(invested), estimatedPurchase: round2(estimatedPurchase), value: valued > 0 ? round2(value) : null };
   };
 
   const series = monthPoints(now, months).map(({ month, at }) => ({ month, ...pointAt(at) }));
@@ -151,6 +157,7 @@ export const cellarValue = ({ bottles, valuations, wines, months = 24, now = new
     series,
     today: {
       ...pointAt(now),
+      value: pointAt(now).value ?? 0,
       gain: round2(gain),
       gainPct: costBase > 0 ? gain / costBase : null,
     },

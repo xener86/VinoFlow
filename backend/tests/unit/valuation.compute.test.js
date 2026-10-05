@@ -105,6 +105,10 @@ describe('cellarValue', () => {
     expect(r.series[0].month).toBe('2025-11');
   });
 
+  it('avant toute cote connue : valeur inconnue (null), pas zéro', () => {
+    expect(r.series.find((p) => p.month === '2025-11').value).toBeNull();
+  });
+
   it('investi, achat estimé et valeur à une date passée', () => {
     const mar = r.series.find((p) => p.month === '2026-03');
     expect(mar).toEqual({ month: '2026-03', invested: 40, estimatedPurchase: 50, value: 60 });

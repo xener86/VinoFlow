@@ -274,7 +274,8 @@ export interface WineEnrichment {
 }
 
 // ─── Valeur de la cave ───
-export interface CellarValuePoint { month: string; invested: number; value: number; estimatedPurchase: number; }
+/** `value` est null tant qu'aucune bouteille en cave n'a de cote à cette date. */
+export interface CellarValuePoint { month: string; invested: number; value: number | null; estimatedPurchase: number; }
 export interface ValueMover { wineId: string; name: string; vintage: number | null; price: number; avgPurchase: number; gainPerBottle: number; gainTotal: number; }
 export interface CellarValue {
   series: CellarValuePoint[];
