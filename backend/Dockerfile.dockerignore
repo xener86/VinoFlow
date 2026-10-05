@@ -9,3 +9,6 @@ backend/tests
 backend/scripts
 backend/*.tmp.*
 backend/vitest.config.js
+# Secrets du serveur (env_file sur le NAS) : jamais dans l'image
+backend/.env
+backend/.env.*
