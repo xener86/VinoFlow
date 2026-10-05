@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, getRacks } from '../services/storageService';
+import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory } from '../services/storageService';
 import { useAIConfig } from '../hooks/useAIConfig';
 import { AIConfig, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
@@ -209,9 +209,9 @@ export const Settings: React.FC = () => {
   const handleCsvExport = async () => {
     setIsExportingCsv(true);
     try {
-      const [wines, racks] = await Promise.all([getInventory(), getRacks()]);
+      const wines = await getInventory();
       const withStock = wines.filter(w => w.inventoryCount > 0);
-      exportWinesToCsv(withStock, racks);
+      exportWinesToCsv(withStock);
       toast.success(`${withStock.length} vin(s) exporté(s) en CSV`);
     } catch (e) {
       toast.error("L'export CSV a échoué : " + errMsg(e));
