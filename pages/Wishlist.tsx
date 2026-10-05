@@ -1,59 +1,91 @@
-import React, { useState } from 'react';
+// Cockpit — wishlist : vins repérés (salon, caviste…) à acheter plus tard.
+
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Plus, Trash2, ShoppingCart, Loader2 } from 'lucide-react';
 import { useWishlist } from '../hooks/useWishlist';
 import { addWishlistItem, deleteWishlistItem } from '../services/storageService';
 import { WishlistItem, WineType } from '../types';
-import { Heart, Plus, Trash2, ShoppingCart, X, Loader2, Wine as WineIcon } from 'lucide-react';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { Badge, Button, Card, EmptyState, Input, Modal, MonoLabel, Select, Skeleton, Textarea } from '../components/cockpit/primitives';
 
 const wineTypeLabels: Record<string, string> = {
-  RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Pétillant', DESSERT: 'Dessert', FORTIFIED: 'Fortifié'
+  RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Pétillant', DESSERT: 'Dessert', FORTIFIED: 'Fortifié',
 };
 
-const priorityLabels: Record<string, { label: string; color: string }> = {
-  HIGH: { label: 'Prioritaire', color: 'bg-red-100 text-red-700' },
-  MEDIUM: { label: 'Normal', color: 'bg-amber-100 text-amber-700' },
-  LOW: { label: 'Optionnel', color: 'bg-stone-100 text-stone-600' }
+const priorityMeta: Record<string, { label: string; tone: 'urgent' | 'warning' | 'neutral'; rank: number }> = {
+  HIGH: { label: 'Prioritaire', tone: 'urgent', rank: 0 },
+  MEDIUM: { label: 'Normal', tone: 'warning', rank: 1 },
+  LOW: { label: 'Optionnel', tone: 'neutral', rank: 2 },
+};
+
+const EMPTY_FORM = {
+  name: '', producer: '', region: '', appellation: '',
+  type: '' as string, vintage: '' as string,
+  estimatedPrice: '' as string, priority: 'MEDIUM',
+  notes: '', source: '',
 };
 
 export const Wishlist: React.FC = () => {
+  const toast = useToast();
+  const confirmAction = useConfirm();
   const navigate = useNavigate();
-  const { items, loading, refresh } = useWishlist();
+  const { items, loading, error, refresh } = useWishlist();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  // Form state
-  const [form, setForm] = useState({
-    name: '', producer: '', region: '', appellation: '',
-    type: '' as string, vintage: '' as string,
-    estimatedPrice: '' as string, priority: 'MEDIUM',
-    notes: '', source: ''
-  });
+  const sorted = useMemo(
+    () => [...items].sort((a, b) => (priorityMeta[a.priority || 'MEDIUM'].rank - priorityMeta[b.priority || 'MEDIUM'].rank)),
+    [items],
+  );
 
-  const handleSubmit = async () => {
-    if (!form.name.trim()) return;
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!form.name.trim() || saving) return;
     setSaving(true);
-    await addWishlistItem({
-      name: form.name,
-      producer: form.producer || undefined,
-      region: form.region || undefined,
-      appellation: form.appellation || undefined,
-      type: (form.type || undefined) as WineType | undefined,
-      vintage: form.vintage ? Number(form.vintage) : undefined,
-      estimatedPrice: form.estimatedPrice ? Number(form.estimatedPrice) : undefined,
-      priority: form.priority as 'HIGH' | 'MEDIUM' | 'LOW',
-      notes: form.notes || undefined,
-      source: form.source || undefined
-    });
-    setForm({ name: '', producer: '', region: '', appellation: '', type: '', vintage: '', estimatedPrice: '', priority: 'MEDIUM', notes: '', source: '' });
-    setShowForm(false);
-    setSaving(false);
-    refresh();
+    try {
+      await addWishlistItem({
+        name: form.name.trim(),
+        producer: form.producer || undefined,
+        region: form.region || undefined,
+        appellation: form.appellation || undefined,
+        type: (form.type || undefined) as WineType | undefined,
+        vintage: form.vintage ? Number(form.vintage) : undefined,
+        estimatedPrice: form.estimatedPrice ? Number(form.estimatedPrice) : undefined,
+        priority: form.priority as 'HIGH' | 'MEDIUM' | 'LOW',
+        notes: form.notes || undefined,
+        source: form.source || undefined,
+      });
+      toast.success(`« ${form.name.trim()} » ajouté à la wishlist`);
+      setForm(EMPTY_FORM);
+      setShowForm(false);
+      refresh();
+    } catch (err: any) {
+      toast.error(err?.message ? `Ajout impossible : ${err.message}` : 'Ajout impossible');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer de la wishlist ?')) return;
-    await deleteWishlistItem(id);
-    refresh();
+  const handleDelete = async (item: WishlistItem) => {
+    if (!(await confirmAction({
+      title: 'Retirer de la wishlist ?',
+      message: <>« {item.name} » sera supprimé de la liste.</>,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    }))) return;
+    setDeletingId(item.id);
+    try {
+      await deleteWishlistItem(item.id);
+      toast.success('Retiré de la wishlist');
+      refresh();
+    } catch (err: any) {
+      toast.error(err?.message ? `Suppression impossible : ${err.message}` : 'Suppression impossible');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleBuy = (item: WishlistItem) => {
@@ -66,154 +98,144 @@ export const Wishlist: React.FC = () => {
     navigate(`/add-wine?${params.toString()}`);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <Loader2 className="animate-spin text-wine-600" size={48} />
-    </div>
-  );
+  const set = (key: keyof typeof EMPTY_FORM, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-serif text-stone-800 flex items-center gap-3">
-          <Heart size={28} className="text-wine-600" /> Wishlist
-        </h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-wine-600 hover:bg-wine-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium shadow-lg shadow-wine-900/20 transition-colors"
-        >
-          {showForm ? <X size={16} /> : <Plus size={16} />}
-          {showForm ? 'Fermer' : 'Ajouter'}
-        </button>
+    <div className="max-w-3xl mx-auto">
+      {/* En-tête */}
+      <div className="mb-5 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <MonoLabel>VINOFLOW · ACHATS</MonoLabel>
+          <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Wishlist</h1>
+          <div className="text-[12px] text-stone-500 mt-0.5">
+            {loading ? 'Chargement…' : `${items.length} vin${items.length > 1 ? 's' : ''} repéré${items.length > 1 ? 's' : ''}`}
+          </div>
+        </div>
+        <Button onClick={() => setShowForm(true)} className="shrink-0">
+          <Plus className="w-4 h-4" /> Ajouter
+        </Button>
       </div>
 
-      {/* Add Form */}
-      {showForm && (
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-4 shadow-sm animate-slide-up">
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="text" placeholder="Nom du vin *" value={form.name}
-              onChange={(e) => setForm({...form, name: e.target.value})}
-              className="col-span-2 bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none focus:ring-2 focus:ring-wine-600"
-            />
-            <input
-              type="text" placeholder="Producteur" value={form.producer}
-              onChange={(e) => setForm({...form, producer: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <input
-              type="text" placeholder="Région" value={form.region}
-              onChange={(e) => setForm({...form, region: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <input
-              type="text" placeholder="Appellation" value={form.appellation}
-              onChange={(e) => setForm({...form, appellation: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <select
-              value={form.type} onChange={(e) => setForm({...form, type: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-700 outline-none"
-            >
-              <option value="">Type (optionnel)</option>
-              {Object.entries(wineTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <input
-              type="number" placeholder="Millésime" value={form.vintage}
-              onChange={(e) => setForm({...form, vintage: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <input
-              type="number" placeholder="Prix estimé (€)" step="0.5" value={form.estimatedPrice}
-              onChange={(e) => setForm({...form, estimatedPrice: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <select
-              value={form.priority} onChange={(e) => setForm({...form, priority: e.target.value})}
-              className="bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-700 outline-none"
-            >
-              <option value="HIGH">Prioritaire</option>
-              <option value="MEDIUM">Normal</option>
-              <option value="LOW">Optionnel</option>
-            </select>
-            <input
-              type="text" placeholder="Source (salon, caviste...)" value={form.source}
-              onChange={(e) => setForm({...form, source: e.target.value})}
-              className="col-span-2 bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none"
-            />
-            <textarea
-              placeholder="Notes" value={form.notes} rows={2}
-              onChange={(e) => setForm({...form, notes: e.target.value})}
-              className="col-span-2 bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-sm text-stone-900 outline-none resize-none"
-            />
-          </div>
-          <button
-            onClick={handleSubmit}
-            disabled={!form.name.trim() || saving}
-            className="w-full bg-wine-600 hover:bg-wine-700 disabled:opacity-50 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 shadow-lg shadow-wine-900/20 transition-colors"
-          >
-            {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            Ajouter à la wishlist
-          </button>
+      {loading && items.length === 0 ? (
+        <div className="space-y-3">
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-28 w-full" />
         </div>
+      ) : error && items.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="Impossible de charger la wishlist"
+            action={<Button variant="outline" onClick={refresh}>Réessayer</Button>}
+          />
+        </Card>
+      ) : items.length === 0 ? (
+        <Card>
+          <EmptyState
+            title="Votre wishlist est vide"
+            hint="Notez les vins repérés en salon, chez le caviste…"
+            action={<Button onClick={() => setShowForm(true)}><Plus className="w-4 h-4" /> Ajouter un vin</Button>}
+          />
+        </Card>
+      ) : (
+        <ul className="space-y-3">
+          {sorted.map((item) => {
+            const prio = priorityMeta[item.priority || 'MEDIUM'] || priorityMeta.MEDIUM;
+            const meta = [item.producer, item.vintage, item.appellation || item.region].filter(Boolean);
+            return (
+              <li key={item.id}>
+                <Card className="p-4 md:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge tone={prio.tone} className="uppercase tracking-widest">{prio.label}</Badge>
+                        {item.type && <Badge tone="neutral" className="uppercase tracking-widest">{wineTypeLabels[item.type] || item.type}</Badge>}
+                        {item.source && <span className="mono text-[10px] tracking-widest uppercase text-stone-400 truncate">· {item.source}</span>}
+                      </div>
+                      <h2 className="serif text-lg text-stone-900 leading-tight mt-1.5 break-words">{item.name}</h2>
+                      {meta.length > 0 && (
+                        <div className="text-[12.5px] text-stone-500 mt-0.5">{meta.join(' · ')}</div>
+                      )}
+                      {item.notes && (
+                        <p className="serif-it text-[13px] text-stone-600 mt-2 border-l-2 border-stone-200 pl-2.5 whitespace-pre-line">{item.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0">
+                      {item.estimatedPrice != null && item.estimatedPrice > 0 && (
+                        <span className="mono text-sm text-stone-800 tabular-nums mr-auto sm:mr-0">~{item.estimatedPrice} €</span>
+                      )}
+                      <Button size="sm" onClick={() => handleBuy(item)}>
+                        <ShoppingCart className="w-3.5 h-3.5" /> Acheter
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDelete(item)}
+                        disabled={deletingId === item.id}
+                        aria-label={`Retirer ${item.name} de la wishlist`}
+                        className="text-stone-400 hover:text-wine-700"
+                      >
+                        {deletingId === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      {/* Wishlist Items */}
-      <div className="space-y-4">
-        {items.map(item => {
-          const prio = priorityLabels[item.priority || 'MEDIUM'];
-          return (
-            <div key={item.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase ${prio.color}`}>{prio.label}</span>
-                    {item.type && (
-                      <span className="text-[10px] font-bold tracking-widest px-2 py-0.5 rounded-full uppercase bg-stone-100 text-stone-600">
-                        {wineTypeLabels[item.type] || item.type}
-                      </span>
-                    )}
-                    {item.source && (
-                      <span className="text-[10px] text-stone-400 italic">{item.source}</span>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-serif text-stone-800 truncate">{item.name}</h3>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500 mt-1">
-                    {item.producer && <span>{item.producer}</span>}
-                    {item.vintage && <span>{item.vintage}</span>}
-                    {item.region && <span>{item.region}</span>}
-                    {item.appellation && <span className="italic">{item.appellation}</span>}
-                    {item.estimatedPrice && <span className="text-amber-600 font-medium">~{item.estimatedPrice}{'\u20AC'}</span>}
-                  </div>
-                  {item.notes && <p className="text-xs text-stone-500 mt-2 italic border-l-2 border-stone-200 pl-2">{item.notes}</p>}
-                </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  <button
-                    onClick={() => handleBuy(item)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
-                  >
-                    <ShoppingCart size={12} /> Acheter
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="text-stone-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {items.length === 0 && (
-          <div className="text-center py-20 text-stone-500 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center gap-3">
-            <Heart size={40} className="opacity-30" />
-            <p className="text-sm">Votre wishlist est vide.</p>
-            <p className="text-xs text-stone-400">Notez les vins repérés en salon, chez le caviste...</p>
-          </div>
-        )}
-      </div>
+      {/* Formulaire d'ajout */}
+      <Modal
+        open={showForm}
+        onClose={() => { if (!saving) setShowForm(false); }}
+        title="Ajouter à la wishlist"
+        subtitle="Un vin repéré, à acheter plus tard"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowForm(false)} disabled={saving}>Annuler</Button>
+            <Button type="submit" form="wishlist-form" disabled={!form.name.trim() || saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Ajouter
+            </Button>
+          </>
+        }
+      >
+        <form id="wishlist-form" onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input
+            wrapperClassName="sm:col-span-2"
+            label="Nom du vin *"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            autoFocus
+            required
+          />
+          <Input label="Producteur" value={form.producer} onChange={(e) => set('producer', e.target.value)} />
+          <Input label="Millésime" type="number" inputMode="numeric" value={form.vintage} onChange={(e) => set('vintage', e.target.value)} />
+          <Input label="Région" value={form.region} onChange={(e) => set('region', e.target.value)} />
+          <Input label="Appellation" value={form.appellation} onChange={(e) => set('appellation', e.target.value)} />
+          <Select label="Couleur" value={form.type} onChange={(e) => set('type', e.target.value)}>
+            <option value="">—</option>
+            {Object.entries(wineTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </Select>
+          <Select label="Priorité" value={form.priority} onChange={(e) => set('priority', e.target.value)}>
+            <option value="HIGH">Prioritaire</option>
+            <option value="MEDIUM">Normal</option>
+            <option value="LOW">Optionnel</option>
+          </Select>
+          <Input label="Prix estimé (€)" type="number" inputMode="decimal" step="0.5" value={form.estimatedPrice} onChange={(e) => set('estimatedPrice', e.target.value)} />
+          <Input label="Source" placeholder="Salon, caviste…" value={form.source} onChange={(e) => set('source', e.target.value)} />
+          <Textarea
+            wrapperClassName="sm:col-span-2"
+            label="Notes"
+            rows={2}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            className="resize-none"
+          />
+        </form>
+      </Modal>
     </div>
   );
 };

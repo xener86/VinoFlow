@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Loader2, Plus, Heart, Sparkles, ChefHat, MapPin,
-  Wine as WineIcon, Trash2,
+  Wine as WineIcon, Trash2, GlassWater,
 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
@@ -19,6 +19,8 @@ import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
 import { Card, MonoLabel, Button, Badge } from '../components/cockpit/primitives';
 import { JournalEntry, Bottle } from '../types';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { ProvenancePanel, ProvenanceBadge } from '../components/cockpit/ProvenancePanel';
 
 const typeLabel = (type: string) => {
   switch (type) {
@@ -45,6 +47,8 @@ const typeAccent = (type: string) => {
 export const CockpitWineDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirmAction = useConfirm();
   const { wines, loading: loadingWines, refresh: refreshWines } = useWines();
   const { notes: allTastingNotes, refresh: refreshNotes } = useTastingNotes();
   const { racks } = useRacks();
@@ -65,14 +69,24 @@ export const CockpitWineDetails: React.FC = () => {
 
   const handleAddBottle = async () => {
     if (!wine) return;
-    await addBottles(wine.id, 1, 'Non trié', wine.name, wine.vintage);
+    try {
+      await addBottles(wine.id, 1, 'Non trié', wine.name, wine.vintage);
+      toast.success('Bouteille ajoutée (zone d’attente)');
+    } catch {
+      toast.error('L’ajout a échoué.');
+    }
     refreshWines();
   };
 
   const handleConsume = async (bottle: Bottle) => {
     if (!wine) return;
-    if (!confirm(`Consommer cette bouteille de ${wine.name} ?`)) return;
-    await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+    if (!(await confirmAction({ title: `Ouvrir une bouteille de ${wine.name} ?`, message: 'Elle sera retirée du stock et notée dans le journal.', confirmLabel: 'Ouvrir' }))) return;
+    try {
+      await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+      toast.success('Bouteille ouverte — santé !', { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
+    } catch {
+      toast.error('La bouteille n’a pas pu être retirée du stock.');
+    }
     refreshWines();
   };
 
@@ -114,20 +128,20 @@ export const CockpitWineDetails: React.FC = () => {
       </Link>
 
       {/* Hero */}
-      <Card className="p-6 md:p-8 mb-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
+      <Card className="p-5 md:p-8 mb-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded ${typeAccent(wine.type)}`}>
               {typeLabel(wine.type)}
             </span>
             {wine.appellation && (
               <span className="mono text-[10px] tracking-widest text-stone-500 uppercase">{wine.appellation}</span>
             )}
-            <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded ${peakStyles.bg} ${peakStyles.text}`}>
+            <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded whitespace-nowrap ${peakStyles.bg} ${peakStyles.text}`}>
               {peak.status} · {peak.peakStart}–{peak.peakEnd}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleToggleFavorite}
               className={`p-2 rounded-md border border-stone-200 transition-colors ${wine.isFavorite ? 'bg-wine-50 text-wine-700' : 'text-stone-400 hover:text-wine-700'}`}
@@ -152,27 +166,45 @@ export const CockpitWineDetails: React.FC = () => {
           {wine.region && <span> · {wine.region}</span>}
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mt-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-6">
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>EN STOCK</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">EN STOCK</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">{wine.inventoryCount} <span className="text-base text-stone-500">btl</span></div>
           </div>
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>NOTE MOYENNE</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">NOTE MOYENNE</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">
               {avgRating !== null ? <>{avgRating.toFixed(1)} <span className="text-base text-stone-500">/ 5</span></> : <span className="text-stone-400">—</span>}
             </div>
           </div>
           <div className="bg-stone-50 rounded-md p-3">
-            <MonoLabel>DÉGUSTATIONS</MonoLabel>
+            <MonoLabel className="!tracking-wider sm:!tracking-widest">DÉGUSTATIONS</MonoLabel>
             <div className="serif text-2xl text-stone-900 mt-1">{wineNotes.length}</div>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-5">
-          <Button onClick={handleAddBottle}><Plus className="w-3.5 h-3.5" />Ajouter une bouteille</Button>
-          <Link to={`/tasting/${wine.id}`}>
-            <Button variant="outline"><WineIcon className="w-3.5 h-3.5" />Je viens de boire</Button>
+        {/* Actions rapides « à la cave » */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-5">
+          {activeBottles.length > 0 && (
+            <Button
+              className="col-span-2 sm:col-span-1"
+              onClick={() => {
+                // Une seule bouteille : on l'ouvre ; sinon on choisit laquelle dans la liste.
+                if (activeBottles.length === 1) handleConsume(activeBottles[0]);
+                else document.getElementById('bouteilles')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              <GlassWater className="w-3.5 h-3.5" />Ouvrir une bouteille
+            </Button>
+          )}
+          <Button variant={activeBottles.length > 0 ? 'outline' : 'default'} onClick={handleAddBottle} className={activeBottles.length > 0 ? '' : 'col-span-2 sm:col-span-1'}><Plus className="w-3.5 h-3.5" />Ajouter</Button>
+          {activeBottles.length > 0 && (
+            <Link to={`/plan?wine=${wine.id}`}>
+              <Button variant="outline" className="w-full"><MapPin className="w-3.5 h-3.5" />Où est-elle ?</Button>
+            </Link>
+          )}
+          <Link to={`/tasting/${wine.id}`} className="col-span-2 sm:col-span-1">
+            <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
           </Link>
         </div>
       </Card>
@@ -185,10 +217,13 @@ export const CockpitWineDetails: React.FC = () => {
               <MonoLabel>◌ Profil sensoriel</MonoLabel>
               <h3 className="serif-it text-xl text-stone-900 mt-0.5">Caractère</h3>
             </div>
-            <AromaConfidenceBadge
-              source={(wine as any).aromaSource}
-              confidence={(wine as any).aromaConfidence}
-            />
+            <div className="flex items-center gap-1.5">
+              <AromaConfidenceBadge
+                source={wine.aromaSource}
+                confidence={wine.aromaConfidence}
+              />
+              <ProvenanceBadge basis={wine.enrichmentBasis} />
+            </div>
           </div>
 
           {wine.sensoryDescription && (
@@ -250,7 +285,7 @@ export const CockpitWineDetails: React.FC = () => {
         </Card>
 
         {/* ───── Bouteilles & emplacements ───── */}
-        <Card className="col-span-12 lg:col-span-7 p-6">
+        <Card id="bouteilles" className="col-span-12 lg:col-span-7 p-6 scroll-mt-20">
           <MonoLabel>◌ Bouteilles · {activeBottles.length}</MonoLabel>
           <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Emplacements</h3>
 
@@ -266,8 +301,8 @@ export const CockpitWineDetails: React.FC = () => {
                   locText = `${rack?.name || '?'} [${String.fromCharCode(65 + loc.y)}${loc.x + 1}]`;
                 }
                 return (
-                  <li key={b.id} className="flex items-center justify-between py-2 px-3 rounded bg-stone-50 text-sm">
-                    <div className="flex items-center gap-3">
+                  <li key={b.id} className="flex items-center justify-between gap-2 py-2 px-3 rounded bg-stone-50 text-sm">
+                    <div className="flex items-center gap-x-3 gap-y-0.5 flex-wrap min-w-0">
                       <MapPin className="w-3.5 h-3.5 text-stone-400" />
                       <span className="font-medium text-stone-700">{locText}</span>
                       {b.purchaseDate && (
@@ -278,9 +313,9 @@ export const CockpitWineDetails: React.FC = () => {
                     </div>
                     <button
                       onClick={() => handleConsume(b)}
-                      className="text-xs text-stone-500 hover:text-wine-700 px-2 py-1 rounded hover:bg-wine-50"
+                      className="shrink-0 text-xs text-stone-600 hover:text-wine-700 px-3 py-2 md:px-2 md:py-1 rounded border border-stone-200 md:border-0 hover:bg-wine-50"
                     >
-                      J'ai bu →
+                      Ouvrir →
                     </button>
                   </li>
                 );
@@ -320,6 +355,9 @@ export const CockpitWineDetails: React.FC = () => {
             </div>
           )}
         </Card>
+
+        {/* ───── Provenance IA ───── */}
+        <ProvenancePanel wineId={wine.id} onChanged={refreshWines} className="col-span-12" />
 
         {/* ───── Histoire / récit producteur ───── */}
         {wine.producerHistory && (

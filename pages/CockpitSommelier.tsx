@@ -1,14 +1,23 @@
 // Cockpit-style sommelier page.
-// Left sidebar: ambient context (date, weather, cave, peak count) + proactive prompts.
-// Right pane: the existing SommelierV2 component (3-perspective pairing).
+// Onglets pilotés par ?outil= : « Accord » (défaut, SommelierV2 + colonne de
+// contexte, compatible ?q= / ?mode=PAIRING&q=) puis un onglet par outil avancé
+// (pages/SommelierTools.tsx).
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { getDrinkBeforeAlerts } from '../services/storageService';
 import { SommelierV2 } from '../components/SommelierV2';
-import { MonoLabel, Card } from '../components/cockpit/primitives';
+import { MonoLabel, Card, Tabs } from '../components/cockpit/primitives';
+import { SOMMELIER_TOOLS, SommelierToolKey, SommelierToolPanel, isSommelierToolKey } from './SommelierTools';
+
+type TabKey = 'accord' | SommelierToolKey;
+
+const TAB_ITEMS: { key: TabKey; label: string; icon: React.FC<{ className?: string }> }[] = [
+  { key: 'accord', label: 'Accord', icon: Sparkles },
+  ...SOMMELIER_TOOLS.map(t => ({ key: t.key as TabKey, label: t.label, icon: t.icon })),
+];
 
 interface ProactivePrompt {
   ctx: string;
@@ -24,7 +33,10 @@ const formatNow = () => {
 };
 
 export const CockpitSommelier: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const outil = searchParams.get('outil');
+  const tab: TabKey = isSommelierToolKey(outil) ? outil : 'accord';
+  const setTab = (k: TabKey) => setSearchParams(k === 'accord' ? {} : { outil: k });
   const { wines } = useWines();
   const [drinkBefore, setDrinkBefore] = useState<any[]>([]);
   const [now, setNow] = useState(formatNow());
@@ -74,64 +86,87 @@ export const CockpitSommelier: React.FC = () => {
 
   const initialDish = searchParams.get('q') || '';
 
+  const activeTool = SOMMELIER_TOOLS.find(t => t.key === tab);
+
   return (
     <div>
       {/* ───── Page header ───── */}
-      <div className="mb-5">
+      <div className="mb-4">
         <MonoLabel>VINOFLOW · CONSEIL</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Sommelier</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">3 perspectives · Safe · Personnel · Audacieux</div>
+        <div className="text-[12px] text-stone-500 mt-0.5">
+          {activeTool ? activeTool.subtitle : '3 perspectives · Sûr · Personnel · Audacieux'}
+        </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* ───── Sidebar context + proactive prompts ───── */}
-        <aside className="col-span-12 lg:col-span-3 space-y-4">
-          <Card className="p-4">
-            <MonoLabel>◌ Contexte</MonoLabel>
-            <div className="mt-3 space-y-2 text-[12px]">
-              <ContextRow label="Date" value={now} />
-              <ContextRow label="Cave" value={`${totalBottles} btl`} />
-              <ContextRow label="En pic ce mois" value={`${inPeak} vins`} accent={inPeak > 0} />
-              <ContextRow label="En fin de fenêtre" value={`${drinkBefore.length} vins`} accent={drinkBefore.length > 0} />
-            </div>
-          </Card>
+      <Tabs<TabKey>
+        items={TAB_ITEMS}
+        value={tab}
+        onChange={setTab}
+        aria-label="Outils du sommelier"
+        className="mb-4"
+      />
 
-          <Card className="p-4">
-            <MonoLabel>◌ Suggestions proactives</MonoLabel>
-            <div className="mt-3 space-y-1.5">
-              {prompts.map((p, i) => (
-                <a
-                  key={i}
-                  href={`?mode=PAIRING&q=${encodeURIComponent(p.q)}`}
-                  className="block w-full text-left p-2 rounded hover:bg-stone-50 transition group"
-                >
-                  <div className="mono text-[9px] tracking-widest text-stone-500 group-hover:text-wine-700 mb-0.5 uppercase">
-                    {p.ctx}
-                  </div>
-                  <div className="text-[12.5px] text-stone-800 leading-snug">{p.q}</div>
-                </a>
-              ))}
-            </div>
-          </Card>
+      {tab === 'accord' ? (
+        <div className="grid grid-cols-12 gap-4">
+          {/* ───── Main pane: Sommelier V2 (en premier sur mobile) ───── */}
+          <main className="col-span-12 lg:col-span-9 lg:order-2 min-w-0">
+            <Card className="p-4 md:p-6">
+              <SommelierV2 inventory={wines} initialDish={initialDish} key={initialDish} />
+            </Card>
+          </main>
 
-          <Card className="p-4">
-            <MonoLabel>◌ Modes avancés</MonoLabel>
-            <div className="mt-3 text-[12.5px] text-stone-700">
-              Verticale, mode aveugle, decision assistant, OCR étiquette…
-            </div>
-            <a href="/sommelier-tools" className="mt-3 inline-flex items-center gap-1 mono text-[10px] tracking-widest text-wine-700 hover:text-wine-800">
-              <Sparkles className="w-3 h-3" /> BOÎTE À OUTILS →
-            </a>
-          </Card>
-        </aside>
+          {/* ───── Sidebar context + proactive prompts ───── */}
+          <aside className="col-span-12 lg:col-span-3 lg:order-1 space-y-4">
+            <Card className="p-4">
+              <MonoLabel>◌ Contexte</MonoLabel>
+              <div className="mt-3 space-y-2 text-[12px]">
+                <ContextRow label="Date" value={now} />
+                <ContextRow label="Cave" value={`${totalBottles} btl`} />
+                <ContextRow label="En pic ce mois" value={`${inPeak} vins`} accent={inPeak > 0} />
+                <ContextRow label="En fin de fenêtre" value={`${drinkBefore.length} vins`} accent={drinkBefore.length > 0} />
+              </div>
+            </Card>
 
-        {/* ───── Main pane: Sommelier V2 ───── */}
-        <main className="col-span-12 lg:col-span-9">
-          <Card className="p-6">
-            <SommelierV2 inventory={wines} initialDish={initialDish} key={initialDish} />
-          </Card>
-        </main>
-      </div>
+            <Card className="p-4">
+              <MonoLabel>◌ Suggestions proactives</MonoLabel>
+              <div className="mt-3 space-y-1.5">
+                {prompts.map((p, i) => (
+                  <Link
+                    key={i}
+                    to={`/sommelier?q=${encodeURIComponent(p.q)}`}
+                    className="block w-full text-left p-2 rounded hover:bg-stone-50 transition group"
+                  >
+                    <div className="mono text-[9px] tracking-widest text-stone-500 group-hover:text-wine-700 mb-0.5 uppercase">
+                      {p.ctx}
+                    </div>
+                    <div className="text-[12.5px] text-stone-800 leading-snug">{p.q}</div>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <MonoLabel>◌ Modes avancés</MonoLabel>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {SOMMELIER_TOOLS.map(t => (
+                  <Link
+                    key={t.key}
+                    to={`/sommelier?outil=${t.key}`}
+                    className="inline-flex items-center gap-1 h-9 md:h-7 px-2.5 rounded-full border border-stone-200 bg-white text-xs text-stone-700 hover:bg-stone-50 hover:text-wine-700"
+                  >
+                    <t.icon className="w-3 h-3" /> {t.label}
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          </aside>
+        </div>
+      ) : (
+        <Card className="p-4 md:p-6 max-w-3xl">
+          <SommelierToolPanel tool={tab as SommelierToolKey} wines={wines} key={tab} />
+        </Card>
+      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { FeedbackProvider } from './components/cockpit/feedback';
 import { CockpitLayout } from './components/cockpit/CockpitLayout';
 import { Login } from './pages/Login';
 // Eager: the home page (most-used + LCP)
@@ -22,10 +23,6 @@ const Settings           = lazy(() => import('./pages/Settings').then(m => ({ de
 const Wishlist           = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
 const CockpitCellarJournal = lazy(() => import('./pages/CockpitCellarJournal').then(m => ({ default: m.CockpitCellarJournal })));
 const RegionMap          = lazy(() => import('./pages/RegionMap').then(m => ({ default: m.RegionMap })));
-const CellarMap          = lazy(() => import('./pages/CellarMap').then(m => ({ default: m.CellarMap })));
-const CompareWines       = lazy(() => import('./pages/CompareWines').then(m => ({ default: m.CompareWines })));
-const DrinkNow           = lazy(() => import('./pages/DrinkNow').then(m => ({ default: m.DrinkNow })));
-const Analytics          = lazy(() => import('./pages/Analytics').then(m => ({ default: m.Analytics })));
 const EditWine           = lazy(() => import('./pages/EditWine').then(m => ({ default: m.EditWine })));
 const Bar                = lazy(() => import('./pages/Bar').then(m => ({ default: m.Bar })));
 const SpiritDetails      = lazy(() => import('./pages/SpiritDetails').then(m => ({ default: m.SpiritDetails })));
@@ -70,8 +67,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/wine/:id" element={<Suspense fallback={<PageLoader />}><CockpitWineDetails /></Suspense>} />
         <Route path="/wine/:id/edit" element={<Suspense fallback={<PageLoader />}><EditWine /></Suspense>} />
         <Route path="/plan" element={<Suspense fallback={<PageLoader />}><CockpitPlan /></Suspense>} />
-        <Route path="/cellar-map" element={<Suspense fallback={<PageLoader />}><CellarMap /></Suspense>} />
-        <Route path="/analytics" element={<Suspense fallback={<PageLoader />}><Analytics /></Suspense>} />
+        {/* Anciennes pages fusionnées : redirections pour les favoris */}
+        <Route path="/cellar-map" element={<Navigate to="/plan" replace />} />
+        <Route path="/analytics" element={<Navigate to="/insights" replace />} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
         <Route path="/sommelier" element={<Suspense fallback={<PageLoader />}><CockpitSommelier /></Suspense>} />
         <Route path="/bar" element={<Suspense fallback={<PageLoader />}><Bar /></Suspense>} />
@@ -81,8 +79,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/tasting/:wineId" element={<Suspense fallback={<PageLoader />}><CockpitTasting /></Suspense>} />
         <Route path="/journal" element={<Suspense fallback={<PageLoader />}><CockpitCellarJournal /></Suspense>} />
         <Route path="/wishlist" element={<Suspense fallback={<PageLoader />}><Wishlist /></Suspense>} />
-        <Route path="/compare" element={<Suspense fallback={<PageLoader />}><CompareWines /></Suspense>} />
-        <Route path="/drink-now" element={<Suspense fallback={<PageLoader />}><DrinkNow /></Suspense>} />
+        <Route path="/compare" element={<Navigate to="/cave" replace />} />
+        <Route path="/drink-now" element={<Navigate to="/insights" replace />} />
         <Route path="/regions" element={<Suspense fallback={<PageLoader />}><RegionMap /></Suspense>} />
         <Route path="/insights" element={<Suspense fallback={<PageLoader />}><CockpitInsights /></Suspense>} />
         <Route path="/sommelier-tools" element={<Suspense fallback={<PageLoader />}><SommelierTools /></Suspense>} />
@@ -99,7 +97,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <FeedbackProvider>
+            <AppRoutes />
+          </FeedbackProvider>
         </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>

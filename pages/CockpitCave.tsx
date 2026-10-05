@@ -5,11 +5,12 @@
 
 import React, { useMemo, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, MoreHorizontal, List, Map, TrendingUp } from 'lucide-react';
+import { Plus, MoreHorizontal, List, Map, TrendingUp, Columns3 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { getPeakWindow } from '../utils/peakWindow';
-import { Card, Badge, MonoLabel, Button } from '../components/cockpit/primitives';
+import { Card, Badge, MonoLabel, Button, Tabs, EmptyState, Modal } from '../components/cockpit/primitives';
+import { WineComparison } from '../components/cockpit/WineComparison';
 import { CellarWine } from '../types';
 
 const CockpitPlan = lazy(() => import('./CockpitPlan').then(m => ({ default: m.CockpitPlan })));
@@ -62,6 +63,7 @@ const CaveList: React.FC = () => {
   const [filterRegion, setFilterRegion] = useState<string>('all');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [comparing, setComparing] = useState(false);
 
   const inStock = wines.filter(w => (w.inventoryCount || 0) > 0);
 
@@ -148,17 +150,19 @@ const CaveList: React.FC = () => {
   return (
     <Card className="overflow-hidden">
       {/* Toolbar */}
-      <header className="px-5 py-4 border-b border-stone-200 flex flex-wrap items-center gap-3 bg-stone-50/40">
+      <header className="px-4 md:px-5 py-4 border-b border-stone-200 flex flex-wrap items-center gap-3 bg-stone-50/40">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Filtrer… (nom, producteur, région, millésime)"
-          className="h-9 px-3 rounded-md border border-stone-300 bg-white text-sm w-72 outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600"
+          aria-label="Filtrer la cave"
+          className="h-10 md:h-9 px-3 rounded-md border border-stone-300 bg-white text-sm w-full md:w-72 outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600"
         />
         <select
           value={filterColor}
           onChange={e => setFilterColor(e.target.value as any)}
-          className="h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700"
+          aria-label="Couleur"
+          className="h-10 md:h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700"
         >
           <option value="all">Toutes couleurs</option>
           <option value="RED">Rouge</option>
@@ -169,7 +173,8 @@ const CaveList: React.FC = () => {
         <select
           value={filterRegion}
           onChange={e => setFilterRegion(e.target.value)}
-          className="h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700 max-w-[180px]"
+          aria-label="Région"
+          className="h-10 md:h-9 rounded-md border border-stone-300 bg-white text-sm px-2 text-stone-700 max-w-[180px]"
         >
           {regions.map(r => <option key={r} value={r}>{r === 'all' ? 'Toutes régions' : r}</option>)}
         </select>
@@ -180,29 +185,91 @@ const CaveList: React.FC = () => {
         </Link>
       </header>
 
-      {/* Bulk actions strip */}
+      {/* Barre de sélection : comparer 2 ou 3 vins */}
       {selected.size > 0 && (
-        <div className="bg-stone-900 text-white px-5 h-12 flex items-center gap-3">
+        <div className="bg-stone-900 text-white px-4 md:px-5 min-h-12 py-2 flex items-center gap-3 fixed md:static inset-x-0 bottom-16 z-40 shadow-lg md:shadow-none">
           <span className="mono text-[11px] tracking-widest">{selected.size} SÉLECTIONNÉ{selected.size > 1 ? 'S' : ''}</span>
-          <button onClick={() => setSelected(new Set())} className="mono text-[10px] tracking-widest text-stone-400 hover:text-white">
-            DÉSÉLECTIONNER
+          <button onClick={() => setSelected(new Set())} className="mono text-[10px] tracking-widest text-stone-400 hover:text-white py-2">
+            EFFACER
           </button>
           <div className="flex-1" />
-          <span className="text-xs text-stone-500 italic">Actions bulk — bientôt</span>
+          {selected.size > 3 && <span className="hidden sm:inline text-xs text-stone-400">3 vins maximum pour comparer</span>}
+          <button
+            onClick={() => setComparing(true)}
+            disabled={selected.size < 2 || selected.size > 3}
+            title={selected.size < 2 ? 'Sélectionne 2 ou 3 vins' : selected.size > 3 ? '3 vins maximum' : undefined}
+            className="h-9 px-3 rounded-md bg-white text-stone-900 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <Columns3 className="w-3.5 h-3.5" />Comparer
+          </button>
         </div>
       )}
+
+      <Modal
+        open={comparing}
+        onClose={() => setComparing(false)}
+        title="Comparer"
+        subtitle={`${selected.size} vins côte à côte`}
+        size="lg"
+      >
+        <WineComparison wines={wines.filter(w => selected.has(w.id))} />
+      </Modal>
 
       {/* Table */}
       {loading ? (
         <div className="px-5 py-8 text-sm text-stone-500 italic">Chargement de la cave…</div>
       ) : filtered.length === 0 ? (
-        <div className="px-5 py-8 text-sm text-stone-500 italic">Aucun vin trouvé.</div>
+        <EmptyState title="Aucun vin ne correspond." hint="Ajuster les filtres" />
       ) : (
-        <table className="w-full text-sm">
+        <>
+        {/* Mobile : cartes */}
+        <ul className="md:hidden divide-y divide-stone-100">
+          {filtered.map(w => {
+            const days = peakDays(w);
+            const rating = ratings[w.id];
+            return (
+              <li key={w.id} className={`flex items-center ${selected.has(w.id) ? 'bg-wine-50/40' : ''}`}>
+                <label className="pl-4 pr-1 self-stretch flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(w.id)}
+                    onChange={() => toggleOne(w.id)}
+                    aria-label={`Sélectionner ${w.name}`}
+                    className="w-5 h-5 accent-wine-700"
+                  />
+                </label>
+                <Link to={`/wine/${w.id}`} className="flex-1 min-w-0 flex items-center gap-3 pl-2 pr-4 py-3 active:bg-stone-50">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colorDot(w.type)}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="serif-it text-stone-900 truncate">{w.name}</div>
+                    <div className="mono text-[10px] tracking-widest text-stone-500 uppercase truncate">
+                      {[w.producer, w.vintage, w.region].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="mono text-xs text-stone-700">×{w.inventoryCount}</span>
+                    <div className="flex items-center gap-1.5">
+                      {rating ? <span className="serif text-xs text-wine-700">{rating.toFixed(1)}</span> : null}
+                      <Badge tone={peakTone(days)}>
+                        {days < 0 ? 'PASSÉ' : days < 365 ? `${days} J` : `${Math.round(days / 365)} A`}
+                      </Badge>
+                    </div>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Espace pour la barre de sélection fixe (mobile) */}
+        {selected.size > 0 && <div className="h-16 md:hidden" aria-hidden="true" />}
+
+        {/* Desktop : tableau */}
+        <table className="hidden md:table w-full text-sm">
           <thead>
             <tr className="border-b border-stone-200">
               <th className="w-10 px-5 py-2">
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-wine-700" />
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Tout sélectionner" className="accent-wine-700" />
               </th>
               <HeaderBtn k="name">VIN</HeaderBtn>
               <HeaderBtn k="region">RÉGION</HeaderBtn>
@@ -229,6 +296,7 @@ const CaveList: React.FC = () => {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleOne(w.id)}
+                      aria-label={`Sélectionner ${w.name}`}
                       className="accent-wine-700"
                     />
                   </td>
@@ -255,7 +323,7 @@ const CaveList: React.FC = () => {
                     )}
                   </td>
                   <td className="text-right px-5">
-                    <Link to={`/wine/${w.id}`} className="text-stone-400 hover:text-wine-700 opacity-0 group-hover:opacity-100">
+                    <Link to={`/wine/${w.id}`} aria-label={`Fiche de ${w.name}`} className="text-stone-400 hover:text-wine-700 opacity-0 group-hover:opacity-100 focus-visible:opacity-100">
                       <MoreHorizontal className="w-4 h-4 inline" />
                     </Link>
                   </td>
@@ -264,6 +332,7 @@ const CaveList: React.FC = () => {
             })}
           </tbody>
         </table>
+        </>
       )}
 
       <div className="px-5 py-2 border-t border-stone-200 mono text-[10px] text-stone-500 flex justify-between bg-stone-50/40">
@@ -273,23 +342,6 @@ const CaveList: React.FC = () => {
     </Card>
   );
 };
-
-// ────────────────────────────────────────────
-// Tab switcher
-// ────────────────────────────────────────────
-const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.FC<any>; children: React.ReactNode }> = ({ active, onClick, icon: Icon, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 h-9 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
-      active
-        ? 'bg-white shadow-sm text-stone-900'
-        : 'text-stone-600 hover:text-stone-900'
-    }`}
-  >
-    <Icon className="w-3.5 h-3.5" />
-    {children}
-  </button>
-);
 
 // ────────────────────────────────────────────
 // Page
@@ -327,11 +379,16 @@ export const CockpitCave: React.FC = () => {
             {inStock.length} vins en stock · {total} bouteilles
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md">
-          <TabButton active={tab === 'liste'} onClick={() => switchTab('liste')} icon={List}>Liste</TabButton>
-          <TabButton active={tab === 'plan'} onClick={() => switchTab('plan')} icon={Map}>Plan</TabButton>
-          <TabButton active={tab === 'insights'} onClick={() => switchTab('insights')} icon={TrendingUp}>Insights</TabButton>
-        </div>
+        <Tabs<Tab>
+          aria-label="Vue de la cave"
+          value={tab}
+          onChange={switchTab}
+          items={[
+            { key: 'liste', label: 'Liste', icon: List },
+            { key: 'plan', label: 'Plan', icon: Map },
+            { key: 'insights', label: 'Insights', icon: TrendingUp },
+          ]}
+        />
       </div>
 
       {tab === 'liste' && <CaveList />}

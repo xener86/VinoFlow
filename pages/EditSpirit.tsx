@@ -1,185 +1,184 @@
+// Édition d'un spiritueux (port Cockpit) : identité + détails de dégustation.
+
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { saveSpirit } from '../services/storageService';
-import { useSpirits } from '../hooks/useSpirits'; // ✅ Import du Hook
+import { useSpirits } from '../hooks/useSpirits';
 import { Spirit, SpiritType } from '../types';
-import { Save, ArrowLeft, Loader2 } from 'lucide-react';
+import { Button, Card, MonoLabel, Input, Select, Textarea } from '../components/cockpit/primitives';
+import { useToast } from '../components/cockpit/feedback';
+import { SPIRIT_LABELS } from '../components/bar/spiritMeta';
+
+const parseList = (raw: string) => raw.split(',').map(s => s.trim()).filter(Boolean);
 
 export const EditSpirit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  // ✅ Utilisation du Hook pour récupérer la liste (async)
+  const toast = useToast();
+
   const { spirits, loading, refresh } = useSpirits();
-  
-  // État local pour le formulaire
+
+  // État local du formulaire (initialisé une seule fois à partir du hook)
   const [spirit, setSpirit] = useState<Spirit | null>(null);
+  const [aromaText, setAromaText] = useState('');
+  const [notFound, setNotFound] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // ✅ Effet pour trouver le spiritueux une fois les données chargées
   useEffect(() => {
-    if (!loading && id) {
-        const found = spirits.find(s => s.id === id);
-        if (found) {
-            // On clone l'objet pour éviter de muter directement le cache du hook
-            setSpirit({ ...found });
-        } else {
-            // Si pas trouvé après chargement, redirection
-            navigate('/bar');
-        }
+    if (loading || !id || spirit) return;
+    const found = spirits.find(s => s.id === id);
+    if (found) {
+      setSpirit({ ...found });
+      setAromaText((found.aromaProfile || []).join(', '));
+    } else {
+      setNotFound(true);
     }
-  }, [id, loading, spirits, navigate]);
+  }, [id, loading, spirits, spirit]);
 
-  // ✅ Sauvegarde Asynchrone
+  const update = <K extends keyof Spirit>(key: K, value: Spirit[K]) =>
+    setSpirit(prev => (prev ? { ...prev, [key]: value } : prev));
+
   const handleSave = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (spirit) {
-          await saveSpirit(spirit); // Await de la sauvegarde
-          await refresh(); // Rafraîchissement des données globales
-          navigate(`/spirit/${spirit.id}`);
-      }
+    e.preventDefault();
+    if (!spirit || saving) return;
+    if (!spirit.name.trim()) {
+      toast.error('Le nom est obligatoire.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveSpirit({ ...spirit, name: spirit.name.trim(), aromaProfile: parseList(aromaText) });
+      await refresh();
+      toast.success('Modifications enregistrées.');
+      navigate(`/spirit/${spirit.id}`);
+    } catch {
+      toast.error("L'enregistrement a échoué. Veuillez réessayer.");
+      setSaving(false);
+    }
   };
 
-  // Loader pendant le chargement des données
-  if (loading || !spirit) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-stone-50">
-              <Loader2 className="animate-spin text-amber-600" size={32} />
-          </div>
-      );
+  if (notFound) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <h1 className="serif text-2xl text-stone-900 mb-2">Spiritueux introuvable</h1>
+        <p className="text-stone-500 mb-4">Cette bouteille n'existe plus dans le bar.</p>
+        <Button onClick={() => navigate('/bar')}>Retour au bar</Button>
+      </div>
+    );
+  }
+
+  if (!spirit) {
+    return (
+      <div className="flex items-center gap-2 text-stone-500 py-12">
+        <Loader2 className="animate-spin w-4 h-4" /> Chargement…
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 animate-fade-in">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-            <button 
-                onClick={() => navigate(-1)} 
-                className="p-2 bg-white rounded-full text-stone-400 hover:text-stone-800 border border-stone-200 shadow-sm"
+    <div className="max-w-3xl mx-auto pb-10">
+      <Link to={`/spirit/${spirit.id}`} className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-wine-700 mb-4 min-h-10">
+        <ArrowLeft className="w-4 h-4" /> Retour à la fiche
+      </Link>
+
+      <div className="mb-5">
+        <MonoLabel>VINOFLOW · BAR</MonoLabel>
+        <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Modifier le spiritueux</h1>
+        <div className="text-[12px] text-stone-500 mt-0.5 truncate">{spirit.name}</div>
+      </div>
+
+      <form onSubmit={handleSave} className="space-y-5">
+        <Card className="p-5 md:p-6">
+          <MonoLabel className="block mb-4">Identité</MonoLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              wrapperClassName="sm:col-span-2"
+              label="Nom"
+              required
+              value={spirit.name}
+              onChange={e => update('name', e.target.value)}
+            />
+            <Input
+              label="Distillerie"
+              value={spirit.distillery}
+              onChange={e => update('distillery', e.target.value)}
+            />
+            <Select
+              label="Catégorie"
+              value={spirit.category}
+              onChange={e => update('category', e.target.value as SpiritType)}
             >
-                <ArrowLeft size={20} />
-            </button>
-            <h2 className="text-2xl font-serif text-stone-900">Éditer le Spiritueux</h2>
+              {Object.values(SpiritType).map(type => (
+                <option key={type} value={type}>{SPIRIT_LABELS[type]}</option>
+              ))}
+            </Select>
+            <Input
+              label="Région"
+              value={spirit.region || ''}
+              onChange={e => update('region', e.target.value)}
+            />
+            <Input
+              label="Pays"
+              value={spirit.country || ''}
+              onChange={e => update('country', e.target.value)}
+            />
+            <Input
+              label="Âge"
+              value={spirit.age || ''}
+              onChange={e => update('age', e.target.value)}
+              placeholder="ex : 12 ans"
+            />
+            <Input
+              label="Degré (% vol.)"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0}
+              max={100}
+              value={spirit.abv ?? ''}
+              onChange={e => update('abv', Number(e.target.value))}
+            />
+          </div>
+        </Card>
+
+        <Card className="p-5 md:p-6">
+          <MonoLabel className="block mb-4">Détails</MonoLabel>
+          <div className="space-y-4">
+            <Textarea
+              label="Description"
+              rows={3}
+              value={spirit.description || ''}
+              onChange={e => update('description', e.target.value)}
+              className="resize-y"
+            />
+            <Textarea
+              label="Notes de dégustation"
+              rows={3}
+              value={spirit.tastingNotes || ''}
+              onChange={e => update('tastingNotes', e.target.value)}
+              className="resize-y"
+            />
+            <Input
+              label="Profil aromatique"
+              hint="Séparés par des virgules"
+              value={aromaText}
+              onChange={e => setAromaText(e.target.value)}
+              placeholder="ex : vanille, fruits secs, tourbe"
+            />
+          </div>
+        </Card>
+
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <Button type="button" variant="outline" size="lg" onClick={() => navigate(`/spirit/${spirit.id}`)} disabled={saving}>
+            Annuler
+          </Button>
+          <Button type="submit" size="lg" disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </Button>
         </div>
-
-        <form onSubmit={handleSave} className="space-y-6">
-            
-            {/* Identity */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800">Identité</h3>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                        <label className="text-xs text-stone-500 uppercase">Nom</label>
-                        <input 
-                            type="text" 
-                            value={spirit.name}
-                            onChange={e => setSpirit({...spirit, name: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">Distillerie</label>
-                        <input 
-                            type="text" 
-                            value={spirit.distillery}
-                            onChange={e => setSpirit({...spirit, distillery: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">Catégorie</label>
-                        <select 
-                            value={spirit.category}
-                            onChange={e => setSpirit({...spirit, category: e.target.value as SpiritType})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        >
-                            {Object.values(SpiritType).map(type => (
-                                <option key={type} value={type}>{type}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">Région</label>
-                        <input 
-                            type="text" 
-                            value={spirit.region || ''}
-                            onChange={e => setSpirit({...spirit, region: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">Pays</label>
-                        <input 
-                            type="text" 
-                            value={spirit.country || ''}
-                            onChange={e => setSpirit({...spirit, country: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">Âge</label>
-                        <input 
-                            type="text" 
-                            value={spirit.age || ''}
-                            onChange={e => setSpirit({...spirit, age: e.target.value})}
-                            placeholder="ex: 16 Year"
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs text-stone-500 uppercase">ABV (%)</label>
-                        <input 
-                            type="number" 
-                            step="0.1"
-                            value={spirit.abv}
-                            onChange={e => setSpirit({...spirit, abv: Number(e.target.value)})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Details */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-                <h3 className="text-lg font-serif text-stone-800">Détails</h3>
-                
-                <div>
-                    <label className="text-xs text-stone-500 uppercase">Description</label>
-                    <textarea 
-                        value={spirit.description}
-                        onChange={e => setSpirit({...spirit, description: e.target.value})}
-                        rows={3}
-                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none resize-none"
-                    />
-                </div>
-
-                <div>
-                    <label className="text-xs text-stone-500 uppercase">Notes de Dégustation</label>
-                    <textarea 
-                        value={spirit.tastingNotes}
-                        onChange={e => setSpirit({...spirit, tastingNotes: e.target.value})}
-                        rows={3}
-                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none resize-none"
-                    />
-                </div>
-
-                <div>
-                    <label className="text-xs text-stone-500 uppercase">Profil Aromatique (séparés par virgule)</label>
-                    <input 
-                        type="text" 
-                        value={spirit.aromaProfile.join(', ')}
-                        onChange={e => setSpirit({...spirit, aromaProfile: e.target.value.split(',').map(s => s.trim())})}
-                        className="w-full bg-stone-50 border border-stone-200 rounded p-3 text-stone-900 focus:border-amber-500 outline-none"
-                    />
-                </div>
-            </div>
-
-            <button 
-                type="submit" 
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30"
-            >
-                <Save size={20} /> Enregistrer les modifications
-            </button>
-        </form>
+      </form>
     </div>
   );
 };

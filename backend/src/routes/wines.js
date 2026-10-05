@@ -93,6 +93,9 @@ const WRITABLE_FIELDS = {
   aiConfidence: 'ai_confidence', isFavorite: 'is_favorite', sensoryProfile: 'sensory_profile',
 };
 
+// « null » / « undefined » en texte (IA, formulaires) → vraie valeur NULL.
+const clean = (value) => (typeof value === 'string' && ['null', 'undefined', 'nan'].includes(value.trim().toLowerCase()) ? null : value);
+
 router.post('/wines', async (req, res) => {
   try {
     const wine = req.body;
@@ -101,7 +104,7 @@ router.post('/wines', async (req, res) => {
       INSERT INTO wines (${keys.map((k) => WRITABLE_FIELDS[k]).join(', ')})
       VALUES (${keys.map((_, i) => `$${i + 1}`).join(', ')})
       RETURNING *
-    `, keys.map((k) => wine[k]));
+    `, keys.map((k) => clean(wine[k])));
     res.status(201).json(serializeWine(result.rows[0]));
   } catch (error) {
     console.error('Error creating wine:', error);
@@ -124,7 +127,7 @@ router.put('/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
         ${keys.map((k, i) => `${WRITABLE_FIELDS[k]} = $${i + 1}`).join(', ')}, updated_at = NOW()
       WHERE id = $${keys.length + 1}
       RETURNING *
-    `, [...keys.map((k) => wine[k]), id]);
+    `, [...keys.map((k) => clean(wine[k])), id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Wine not found' });

@@ -40,7 +40,7 @@ export const CockpitLayout: React.FC<CockpitLayoutProps> = ({ children }) => {
       <TopStrip />
       <div className="flex">
         {/* Sidebar visible only on md+ screens (tablet/desktop) */}
-        <div className="hidden md:block">
+        <div className="hidden md:block sticky top-0 h-screen self-start">
           <Sidebar
             totalWines={totalBottles}
             wishlistCount={wishlist?.length ?? 0}
@@ -54,11 +54,11 @@ export const CockpitLayout: React.FC<CockpitLayoutProps> = ({ children }) => {
             <div className="flex-1" />
             <button
               onClick={() => setPaletteOpen(true)}
-              className="h-9 px-3 rounded-md border border-stone-300 bg-white hover:bg-stone-50 flex items-center gap-2 text-sm text-stone-700"
+              className="h-10 md:h-9 min-w-10 justify-center px-3 rounded-md border border-stone-300 bg-white hover:bg-stone-50 flex items-center gap-2 text-sm text-stone-700"
               aria-label="Recherche universelle"
             >
               <Search className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Cherche</span>
+              <span className="hidden md:inline">Rechercher</span>
               <span className="hidden md:inline mono text-[10px] text-stone-500 px-1.5 py-0.5 rounded border border-stone-300 ml-1.5">⌘K</span>
             </button>
             <Link

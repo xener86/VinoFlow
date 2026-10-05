@@ -43,8 +43,6 @@ interface AIAdapter {
     enrichWine(name: string, vintage: number, hint?: string, imageBase64?: string): Promise<Partial<Wine> | null>;
     enrichSpirit(name: string, hint?: string): Promise<Partial<Spirit> | null>;
     createCustomCocktail(ingredients: string[], query: string): Promise<Partial<CocktailRecipe> | null>;
-    generateEducationalContent(itemName: string): Promise<string>;
-    optimizeCellarStorage(boxWines: any[], shelfWines: any[]): Promise<{bottleId: string, reason: string}[]>;
 }
 
 // --- GEMINI ADAPTER (SDK) ---
@@ -168,33 +166,6 @@ CONSIGNES :
         return null;
     }
 
-    async generateEducationalContent(itemName: string): Promise<string> {
-        const r = await this.client.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `Tu es œnologue passionné. Raconte UNE anecdote surprenante sur "${itemName}" en français.
-Contraintes : 2-4 phrases maximum. Ton conversationnel et engageant. Inclus un fait peu connu si possible.`,
-            config: { temperature: 0.7 }
-        });
-        return r.text || "";
-    }
-
-    async optimizeCellarStorage(boxWines: any[], shelfWines: any[]) {
-        if (boxWines.length === 0) return [];
-        const prompt = `Tu es caviste professionnel. Optimise le rangement de cette cave.
-
-VINS EN CARTON (à ranger en priorité) : ${JSON.stringify(boxWines.map(w => ({id: w.id, name: w.name, vintage: w.vintage, type: w.type})))}
-VINS DÉJÀ EN ÉTAGÈRE : ${JSON.stringify(shelfWines.map(w => ({id: w.id, name: w.name, vintage: w.vintage, type: w.type})))}
-
-Suggère quels vins déplacer du carton vers l'étagère en priorité. Critères :
-- Vins proches de leur apogée en premier
-- Vins de garde longue peuvent rester en carton
-- Raison courte (1 phrase) pour chaque suggestion`;
-        const schema = {
-            type: Type.ARRAY,
-            items: { type: Type.OBJECT, properties: { bottleId: { type: Type.STRING }, reason: { type: Type.STRING } }, required: ["bottleId"] }
-        } as Schema;
-        return this.generateJSON(prompt, schema) || [];
-    }
 }
 
 // --- REST ADAPTER (OpenAI / Mistral) ---
@@ -267,17 +238,6 @@ RÈGLES : Si tu n'es pas certain d'une info, mets null. Le champ "confidence" (H
         return null;
     }
 
-    async generateEducationalContent(itemName: string) {
-        return this.call([{ role: "system", content: "Tu es œnologue passionné. Raconte UNE anecdote surprenante en 2-4 phrases. Ton conversationnel. Inclus un fait peu connu si possible." }, { role: "user", content: `Anecdote sur "${itemName}"` }], false);
-    }
-
-    async optimizeCellarStorage(boxWines: any[], shelfWines: any[]) {
-        const system = "Tu es caviste professionnel. Suggère quels vins déplacer du carton vers l'étagère. Priorité aux vins proches de l'apogée. Raison courte (1 phrase). JSON Array [{bottleId, reason}].";
-        const user = `Carton: ${JSON.stringify(boxWines.map(w=>({id:w.id,name:w.name,vintage:w.vintage,type:w.type})))}. Étagère: ${JSON.stringify(shelfWines.map(w=>({id:w.id,name:w.name,vintage:w.vintage,type:w.type})))}`;
-        const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
-        if (Array.isArray(res)) return res;
-        return [];
-    }
 }
 
 // --- FACTORY ---
@@ -299,5 +259,3 @@ const getAiProvider = (): AIAdapter => {
 export const enrichWineData = (n: string, v: number, h?: string, img?: string) => getAiProvider().enrichWine(n, v, h, img);
 export const enrichSpiritData = (n: string, h?: string) => getAiProvider().enrichSpirit(n, h);
 export const createCustomCocktail = (i: string[], q: string) => getAiProvider().createCustomCocktail(i, q);
-export const generateEducationalContent = (i: string) => getAiProvider().generateEducationalContent(i);
-export const optimizeCellarStorage = (b: any[], s: any[]) => getAiProvider().optimizeCellarStorage(b, s);

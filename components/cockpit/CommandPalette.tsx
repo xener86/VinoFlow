@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Sparkles, List, TrendingUp, Plus, Wine as WineIcon, Heart, BookOpen,
-  Globe, Settings as SettingsIcon, LayoutDashboard, Wand2,
+  Globe, Settings as SettingsIcon, LayoutDashboard, Wand2, Martini, Map,
 } from 'lucide-react';
 import { useWines } from '../../hooks/useWines';
 
@@ -45,7 +45,9 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
       { id: 'nav:cave', label: 'Cave', icon: List, group: 'navigation', exec: () => navigate('/cave') },
       { id: 'nav:somm', label: 'Sommelier', icon: Sparkles, group: 'navigation', exec: () => navigate('/sommelier') },
       { id: 'nav:insights', label: 'Insights', icon: TrendingUp, group: 'navigation', exec: () => navigate('/insights') },
-      { id: 'nav:tools', label: 'Outils sommelier', icon: Wand2, group: 'navigation', exec: () => navigate('/sommelier-tools') },
+      { id: 'nav:tools', label: 'Outils sommelier', icon: Wand2, group: 'navigation', exec: () => navigate('/sommelier?outil=menu') },
+      { id: 'nav:bar', label: 'Bar & spiritueux', icon: Martini, group: 'navigation', exec: () => navigate('/bar') },
+      { id: 'nav:plan', label: 'Plan de cave', icon: Map, group: 'navigation', exec: () => navigate('/plan') },
       { id: 'nav:wishlist', label: 'Wishlist', icon: Heart, group: 'navigation', exec: () => navigate('/wishlist') },
       { id: 'nav:journal', label: 'Journal', icon: BookOpen, group: 'navigation', exec: () => navigate('/journal') },
       { id: 'nav:regions', label: 'Régions', icon: Globe, group: 'navigation', exec: () => navigate('/regions') },

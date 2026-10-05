@@ -5,7 +5,7 @@
 //   - Per-type detail rendering (IN: source · OUT: note italic · MOVE: from→to · GIFT: recipient · NOTE: citation)
 //   - Undo on OUT < 24h (optimistic local-only — no server route exists yet)
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Download, ArrowRight } from 'lucide-react';
 import { useJournal } from '../hooks/useJournal';
@@ -206,7 +206,7 @@ const Sparkline: React.FC<{ data: { IN: number; OUT: number }[]; width: number; 
     data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(d[key])}`).join(' ');
 
   return (
-    <svg width={width} height={height} className="block">
+    <svg viewBox={`0 0 ${width} ${height}`} className="block w-full h-auto overflow-visible">
       <line x1={padX} x2={width - padX} y1={padY + h} y2={padY + h} stroke="#e7e5e4" strokeDasharray="2 3" />
       <path d={path('OUT')} fill="none" stroke="#7f1d1d" strokeWidth="1.5" />
       <path d={path('IN')}  fill="none" stroke="#3f6b4e" strokeWidth="1.5" />
@@ -236,10 +236,10 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Type chips */}
-      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1">
+      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1 max-w-full overflow-x-auto">
         <button
           onClick={() => setTypes([])}
-          className={`px-2.5 h-7 rounded text-xs transition ${
+          className={`px-2.5 h-8 md:h-7 shrink-0 rounded text-xs transition ${
             types.length === 0
               ? 'bg-stone-900 text-white'
               : 'text-stone-600 hover:text-stone-900'
@@ -254,7 +254,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
             <button
               key={t}
               onClick={() => toggle(t)}
-              className={`px-2.5 h-7 rounded text-xs flex items-center gap-1.5 transition ${
+              className={`px-2.5 h-8 md:h-7 shrink-0 rounded text-xs flex items-center gap-1.5 transition ${
                 on
                   ? 'bg-stone-900 text-white'
                   : 'text-stone-600 hover:text-stone-900'
@@ -268,7 +268,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
       </div>
 
       {/* Period chips */}
-      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1">
+      <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-md p-1 max-w-full overflow-x-auto">
         {([
           { k: 'month', l: 'Ce mois' }, { k: '3m', l: '3 mois' },
           { k: '12m', l: '12 mois' }, { k: 'all', l: 'Tout' },
@@ -276,7 +276,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
           <button
             key={p.k}
             onClick={() => setPeriod(p.k)}
-            className={`px-2.5 h-7 rounded text-xs transition ${
+            className={`px-2.5 h-8 md:h-7 shrink-0 rounded text-xs transition ${
               period === p.k
                 ? 'bg-stone-900 text-white'
                 : 'text-stone-600 hover:text-stone-900'
@@ -288,7 +288,7 @@ const FilterBar: React.FC<FilterBarProps> = ({ types, setTypes, period, setPerio
       </div>
 
       {/* Search */}
-      <div className="flex-1 min-w-[260px]">
+      <div className="flex-1 min-w-full sm:min-w-[260px]">
         <div className="relative">
           <input
             value={q}
@@ -354,15 +354,19 @@ const fmtTime = (iso: string): string => {
 // ────────────────────────────────────────────
 // Timeline
 // ────────────────────────────────────────────
+const PAGE_SIZE = 50;
+
 const Timeline: React.FC<{
   entries: JournalEntry[];
   winesById: Record<string, any>;
   now: Date;
   onUndo: (id: string) => void;
 }> = ({ entries, winesById, now, onUndo }) => {
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  useEffect(() => setLimit(PAGE_SIZE), [entries]);
   const groups = useMemo(() => {
     const g: { k: string; label: string; sub: string; items: JournalEntry[] }[] = [];
-    for (const e of entries) {
+    for (const e of entries.slice(0, limit)) {
       const k = dayKey(e.date, now);
       let group = g.find(x => x.k === k.k);
       if (!group) { group = { ...k, items: [] }; g.push(group); }
@@ -383,6 +387,12 @@ const Timeline: React.FC<{
       if (b.k === '__unknown__') return -1;
       return 0;
     });
+  }, [entries, now, limit]);
+  // Total par jour sur toute la sélection (la pagination peut couper un jour).
+  const dayTotals = useMemo(() => {
+    const t: Record<string, number> = {};
+    for (const e of entries) { const k = dayKey(e.date, now).k; t[k] = (t[k] || 0) + 1; }
+    return t;
   }, [entries, now]);
 
   if (groups.length === 0) {
@@ -399,12 +409,12 @@ const Timeline: React.FC<{
       {groups.map(g => (
         <div key={g.k}>
           {/* Day header */}
-          <div className="flex items-baseline gap-3 pl-[88px] py-3 flex-wrap">
+          <div className="flex items-baseline gap-3 pl-0 md:pl-[88px] py-3 flex-wrap">
             <div className="serif text-stone-900 text-lg">{g.label}</div>
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">{g.sub}</div>
             <div className="flex-1 ml-2 border-t border-dashed border-stone-200 self-center" />
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">
-              {g.items.length} évènement{g.items.length > 1 ? 's' : ''}
+              {dayTotals[g.k]} évènement{dayTotals[g.k] > 1 ? 's' : ''}
             </div>
           </div>
           {g.items.map(e => (
@@ -412,6 +422,19 @@ const Timeline: React.FC<{
           ))}
         </div>
       ))}
+      {entries.length > limit && (
+        <div className="flex flex-col items-center gap-2 pt-4 pb-8">
+          <button
+            onClick={() => setLimit(l => l + PAGE_SIZE)}
+            className="h-11 md:h-9 px-5 rounded-md border border-stone-300 bg-white hover:bg-stone-50 text-sm text-stone-700"
+          >
+            Afficher plus
+          </button>
+          <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">
+            {limit} / {entries.length} évènements
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -431,9 +454,9 @@ const EventRow: React.FC<{
   const appellation = wine?.appellation || wine?.region;
 
   return (
-    <div className="flex gap-4 group">
-      {/* Time gutter */}
-      <div className="w-14 pt-3.5 shrink-0 text-right">
+    <div className="flex gap-2 md:gap-4 group">
+      {/* Time gutter (masqué sur mobile : l'heure passe dans la carte) */}
+      <div className="hidden md:block w-14 pt-3.5 shrink-0 text-right">
         <div className="mono text-[11px] text-stone-400">{fmtTime(entry.date)}</div>
       </div>
 
@@ -445,7 +468,7 @@ const EventRow: React.FC<{
 
       {/* Card */}
       <div className="flex-1 min-w-0 pb-5">
-        <div className="rounded-md border border-stone-200 bg-white px-4 py-3 hover:border-stone-300 transition-colors">
+        <div className="rounded-md border border-stone-200 bg-white px-3 md:px-4 py-3 hover:border-stone-300 transition-colors">
           <div className="flex items-start gap-3">
             {/* Type icon */}
             <div className={`shrink-0 w-9 h-9 rounded-md ${m.bg} flex items-center justify-center mono text-base ${m.fg} leading-none`}>
@@ -456,6 +479,7 @@ const EventRow: React.FC<{
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`mono text-[10px] tracking-widest ${m.fg}`}>{m.label.toUpperCase()}</span>
+                <span className="md:hidden mono text-[10px] text-stone-400">{fmtTime(entry.date)}</span>
                 {appellation && <>
                   <span className="text-stone-300">·</span>
                   <span className="mono text-[10px] tracking-widest text-stone-400 uppercase truncate">{appellation}</span>
@@ -478,7 +502,7 @@ const EventRow: React.FC<{
               {canUndo && (
                 <button
                   onClick={() => onUndo(entry.id)}
-                  className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700 uppercase opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700 uppercase py-2 md:py-0 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                   title="Retire l'événement de la liste (local uniquement)"
                 >
                   Annuler
@@ -487,7 +511,7 @@ const EventRow: React.FC<{
               {entry.wineId && (
                 <Link
                   to={`/wine/${entry.wineId}`}
-                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 uppercase inline-flex items-center gap-1"
+                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 uppercase inline-flex items-center gap-1 py-2 md:py-0"
                 >
                   Voir vin <ArrowRight className="w-2.5 h-2.5" />
                 </Link>

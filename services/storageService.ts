@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -198,6 +198,27 @@ export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; 
   return handleResponse(response);
 };
 
+// Enrichissement sourcé (cascade) : provenance, relance, homonymes, annulation
+export const getWineEnrichment = async (wineId: string): Promise<WineEnrichment> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/enrichment`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const requestWineEnrichment = async (wineId: string) => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/enrich`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+export const chooseEnrichmentCandidate = async (wineId: string, choice: { candidateIndex?: number; hint?: string }) => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/enrichment/choose`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(choice) });
+  return handleResponse(response);
+};
+
+export const revertWineEnrichment = async (wineId: string, logId: number) => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/enrichment/revert/${logId}`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
 export const auditWines = async () => {
   const response = await apiFetch(`${API_URL}/wines/audit`, { headers: getHeaders() });
   return handleResponse(response);
@@ -359,16 +380,15 @@ export const consumeSpecificBottle = async (
       })
   });
 
-  if (response.ok) {
-      await addJournalEntry({
-          type: 'OUT',
-          wineId,
-          wineName,
-          wineVintage,
-          quantity: 1,
-          description: `Consommation - ${wineName} ${wineVintage || ''}`
-      });
-  }
+  await handleResponse(response);
+  await addJournalEntry({
+      type: 'OUT',
+      wineId,
+      wineName,
+      wineVintage,
+      quantity: 1,
+      description: `Consommation - ${wineName} ${wineVintage || ''}`
+  });
 };
 
 export const moveBottle = async (

@@ -1,439 +1,332 @@
+// Fiche spiritueux (port Cockpit) : en-tête + chiffres clés, onglets
+// Informations / Dégustation, bascule « collection prestige », suppression.
+
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Edit, Trash2, Gem, Martini, Loader2, Sparkles } from 'lucide-react';
 import { deleteSpirit, saveSpirit } from '../services/storageService';
-import { useSpirits } from '../hooks/useSpirits'; // ✅ Import du Hook
+import { useSpirits } from '../hooks/useSpirits';
 import { Spirit } from '../types';
-import { ArrowLeft, Edit, Trash2, Percent, Droplets, Clock, Sparkles, Wine, GlassWater, Gem, Martini, Flame, Loader2 } from 'lucide-react';
+import { Button, Badge, Card, MonoLabel, Tabs, EmptyState } from '../components/cockpit/primitives';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { spiritLabel, spiritDot, levelTone } from '../components/bar/spiritMeta';
+
+type Tab = 'info' | 'tasting';
+
+const SectionCard: React.FC<{ label: string; className?: string; children: React.ReactNode }> = ({ label, className = '', children }) => (
+  <Card className={`p-5 ${className}`}>
+    <MonoLabel className="block mb-3">{label}</MonoLabel>
+    {children}
+  </Card>
+);
+
+const Stat: React.FC<{ label: string; value: React.ReactNode; children?: React.ReactNode }> = ({ label, value, children }) => (
+  <div className="rounded-md border border-stone-200 bg-stone-50/60 px-3 py-2.5 min-w-0">
+    <MonoLabel>{label}</MonoLabel>
+    <div className="serif text-xl text-stone-900 mt-0.5 truncate">{value}</div>
+    {children}
+  </div>
+);
+
+const SERVING = [
+  { title: 'Pur', text: 'À température ambiante pour apprécier tous les arômes.' },
+  { title: 'Sur glace', text: 'Pour adoucir et rafraîchir.' },
+  { title: 'En cocktail', text: 'Base idéale pour des créations mixologiques.' },
+];
 
 export const SpiritDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  // ✅ Utilisation du Hook pour récupérer la liste
-  const { spirits, loading, refresh } = useSpirits();
-  
-  const [spirit, setSpirit] = useState<Spirit | null>(null);
-  const [activeTab, setActiveTab] = useState<'INFO' | 'TASTING'>('INFO');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const toast = useToast();
+  const confirmAction = useConfirm();
 
-  // ✅ Effet pour trouver le spiritueux une fois les données chargées
+  const { spirits, loading, refresh } = useSpirits();
+
+  const [spirit, setSpirit] = useState<Spirit | null>(null);
+  const [ready, setReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('info');
+  const [savingLuxury, setSavingLuxury] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     if (!loading && id) {
-        const found = spirits.find(s => s.id === id);
-        if (found) {
-            setSpirit(found);
-        } else {
-            navigate('/bar');
-        }
+      setSpirit(spirits.find(s => s.id === id) ?? null);
+      setReady(true);
     }
-  }, [id, spirits, loading, navigate]);
+  }, [id, spirits, loading]);
 
-  // ✅ Suppression Asynchrone
   const handleDelete = async () => {
-    if (spirit) {
-      await deleteSpirit(spirit.id); // Await
-      await refresh(); // Refresh global list
+    if (!spirit) return;
+    const ok = await confirmAction({
+      title: `Supprimer ${spirit.name} ?`,
+      message: 'Cette action est irréversible.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await deleteSpirit(spirit.id);
+      await refresh();
+      toast.success(`${spirit.name} supprimé du bar.`);
       navigate('/bar');
+    } catch {
+      toast.error('La suppression a échoué.');
+      setDeleting(false);
     }
   };
 
-  // ✅ Modification Asynchrone (Toggle Luxury)
   const toggleLuxury = async () => {
-    if (spirit) {
-      const updated = { ...spirit, isLuxury: !spirit.isLuxury };
-      // Optimistic update pour réactivité immédiate
-      setSpirit(updated); 
-      
+    if (!spirit || savingLuxury) return;
+    const previous = spirit;
+    const updated = { ...spirit, isLuxury: !spirit.isLuxury };
+    setSpirit(updated); // mise à jour optimiste
+    setSavingLuxury(true);
+    try {
       await saveSpirit(updated);
-      await refresh(); 
+      toast.success(updated.isLuxury
+        ? 'Rangé dans la collection prestige — exclu des cocktails IA.'
+        : 'Disponible pour les cocktails.');
+      await refresh();
+    } catch {
+      setSpirit(previous);
+      toast.error("La modification n'a pas pu être enregistrée.");
+    } finally {
+      setSavingLuxury(false);
     }
   };
 
-  // Gestion du loading
-  if (loading || !spirit) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-stone-50">
-              <Loader2 className="animate-spin text-amber-600" size={32} />
-          </div>
-      );
+  if (!ready) {
+    return (
+      <div className="flex items-center gap-2 text-stone-500 py-12">
+        <Loader2 className="animate-spin w-4 h-4" /> Chargement…
+      </div>
+    );
   }
 
-  // Mapping des champs (support rétrocompatible des anciens noms si nécessaire)
-  const alcoholContent = (spirit as any).alcoholContent ?? (spirit as any).abv;
-  const volume = (spirit as any).volume ?? (spirit as any).format;
-  const quantity = (spirit as any).quantity ?? (spirit as any).inventoryLevel;
-  const isInventoryPercentage = (spirit as any).quantity === undefined && (spirit as any).inventoryLevel !== undefined;
-  
+  if (!spirit) {
+    return (
+      <div className="max-w-2xl mx-auto py-12">
+        <h1 className="serif text-2xl text-stone-900 mb-2">Spiritueux introuvable</h1>
+        <p className="text-stone-500 mb-4">Cette bouteille n'existe plus dans le bar.</p>
+        <Button onClick={() => navigate('/bar')}>Retour au bar</Button>
+      </div>
+    );
+  }
+
+  // Champs rétrocompatibles (anciens noms éventuels côté données)
+  const s = spirit as any;
+  const alcoholContent = s.alcoholContent ?? s.abv;
+  const volume = s.volume ?? s.format;
+  const quantity = s.quantity ?? s.inventoryLevel;
+  const isInventoryPercentage = s.quantity === undefined && s.inventoryLevel !== undefined;
   const formattedQuantity = (() => {
-    if (quantity === undefined) return undefined;
-    if (typeof quantity === 'number') {
-      const value = quantity > 0 ? quantity : 0;
-      return `${value}${isInventoryPercentage ? '%' : ''}`;
-    }
+    if (quantity === undefined || quantity === null) return undefined;
+    if (typeof quantity === 'number') return `${Math.max(0, quantity)}${isInventoryPercentage ? '%' : ''}`;
     return quantity;
   })();
-
-  const origin =
-    (spirit as any).origin ??
-    [(spirit as any).region, (spirit as any).country].filter(Boolean).join(' • ');
-  const barrelType = (spirit as any).barrelType ?? (spirit as any).caskType;
-  const aromas = (spirit as any).aromas ?? (spirit as any).aromaProfile;
-  const notes = (spirit as any).notes;
-  const finish = (spirit as any).finish;
-  const brand = (spirit as any).brand ?? spirit.distillery;
+  const origin = s.origin ?? [s.region, s.country].filter(Boolean).join(' · ');
+  const barrelType = s.barrelType ?? s.caskType;
+  const aromas: string[] = (s.aromas ?? s.aromaProfile ?? []).filter(Boolean);
+  const notes = s.notes;
+  const finish = s.finish;
+  const brand = s.brand ?? spirit.distillery;
+  const hasTasting = !!spirit.tastingNotes || aromas.length > 0 || !!finish;
 
   return (
-    <div className="pb-32 animate-fade-in">
-      {/* Header / Hero */}
-      <div className="relative mb-6">
-        <div className="absolute top-0 left-0 right-0 flex justify-between z-10">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="p-2 text-stone-400 hover:text-stone-800 bg-white/80 rounded-full backdrop-blur-sm shadow-sm border border-stone-200"
-          >
-            <ArrowLeft size={24} />
-          </button>
-          <button 
-            onClick={() => navigate(`/spirit/${spirit.id}/edit`)}
-            className="p-2 text-stone-400 hover:text-stone-800 bg-white/80 rounded-full backdrop-blur-sm shadow-sm border border-stone-200"
-          >
-            <Edit size={20} />
-          </button>
-        </div>
-        
-        <div className="pt-10 flex flex-col items-center text-center">
-          <div className="px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 bg-amber-50 text-amber-700 border border-amber-100">
-            {spirit.category}
-          </div>
-          <h1 className="text-4xl font-serif text-stone-900 mb-2 leading-tight">{spirit.name}</h1>
-          
-          {/* Badges Collection / Disponibilité */}
-          <div className="flex gap-2 mb-2">
-            <button
-              onClick={toggleLuxury}
-              className={`px-3 py-1 rounded-full text-xs font-medium tracking-wide transition-all ${
-                spirit.isLuxury
-                  ? 'bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1.5'
-                  : 'bg-green-50 text-green-700 border border-green-200 flex items-center gap-1.5'
-              }`}
-            >
-              {spirit.isLuxury ? (
-                <>
-                  <Gem size={12} />
-                  <span>Collection Prestige</span>
-                </>
-              ) : (
-                <>
-                  <Martini size={12} />
-                  <span>Disponible pour cocktails</span>
-                </>
-              )}
-            </button>
-          </div>
+    <div className="max-w-5xl mx-auto pb-10">
+      <Link to="/bar" className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-wine-700 mb-4 min-h-10">
+        <ArrowLeft className="w-4 h-4" /> Retour au bar
+      </Link>
 
-          <p className="text-stone-600 text-lg">{brand}</p>
-          {origin && (
-            <p className="text-stone-500 text-sm">{origin}</p>
+      {/* Hero */}
+      <Card className="p-5 md:p-8 mb-5">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="inline-flex items-center gap-1.5 mono text-[10px] tracking-widest uppercase text-stone-600">
+            <span className={`w-2.5 h-2.5 rounded-full ${spiritDot(spirit.category)}`} />
+            {spiritLabel(spirit.category)}
+          </span>
+          {spirit.enrichedByAi && <Badge tone="neutral"><Sparkles className="w-3 h-3 mr-1" />ENRICHI PAR IA</Badge>}
+          {spirit.isLuxury && <Badge tone="rare">PRESTIGE</Badge>}
+        </div>
+
+        <h1 className="serif-it text-3xl md:text-4xl text-stone-900 leading-tight break-words">{spirit.name}</h1>
+        <div className="text-stone-600 mt-1">{brand}</div>
+        {origin && <div className="mono text-[11px] tracking-widest text-stone-500 uppercase mt-1">{origin}</div>}
+
+        {/* Chiffres clés */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mt-5">
+          {alcoholContent !== undefined && alcoholContent !== null && <Stat label="Alcool" value={`${alcoholContent}%`} />}
+          {volume !== undefined && volume !== null && <Stat label="Volume" value={`${volume} ml`} />}
+          {formattedQuantity !== undefined && (
+            <Stat label="Niveau" value={formattedQuantity}>
+              {isInventoryPercentage && typeof quantity === 'number' && (
+                <div className="mt-2 h-1.5 rounded-full bg-stone-200 overflow-hidden">
+                  <div className={`h-full ${levelTone(quantity)}`} style={{ width: `${Math.max(0, Math.min(100, quantity))}%` }} />
+                </div>
+              )}
+            </Stat>
+          )}
+          {spirit.age && <Stat label="Âge" value={spirit.age} />}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap items-center gap-2 mt-5 pt-5 border-t border-stone-100">
+          <Button
+            variant={spirit.isLuxury ? 'subtle' : 'outline'}
+            onClick={toggleLuxury}
+            disabled={savingLuxury}
+            aria-pressed={spirit.isLuxury}
+            title="Les bouteilles de prestige sont exclues des cocktails générés par l'IA"
+          >
+            {savingLuxury
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : spirit.isLuxury ? <Gem className="w-4 h-4 text-amber-600" /> : <Martini className="w-4 h-4" />}
+            {spirit.isLuxury ? 'Collection prestige' : 'Disponible pour cocktails'}
+          </Button>
+          <div className="flex-1" />
+          <Link
+            to={`/spirit/${spirit.id}/edit`}
+            className="inline-flex items-center justify-center gap-1.5 font-medium rounded-md h-10 md:h-9 px-3.5 text-sm border border-stone-300 bg-white hover:bg-stone-50 text-stone-700"
+          >
+            <Edit className="w-4 h-4" />Modifier
+          </Link>
+          <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            Supprimer
+          </Button>
+        </div>
+      </Card>
+
+      <Tabs<Tab>
+        aria-label="Sections de la fiche"
+        className="mb-5"
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'info', label: 'Informations' },
+          { key: 'tasting', label: 'Dégustation' },
+        ]}
+      />
+
+      {activeTab === 'info' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fade-in">
+          {spirit.description && (
+            <SectionCard label="Description" className="md:col-span-2">
+              <p className="text-stone-700 leading-relaxed">{spirit.description}</p>
+            </SectionCard>
+          )}
+
+          {(spirit.distillery || barrelType) && (
+            <SectionCard label="Production">
+              <dl className="space-y-3 text-sm">
+                {spirit.distillery && (
+                  <div>
+                    <dt className="text-stone-500 text-xs">Distillerie</dt>
+                    <dd className="text-stone-900">{spirit.distillery}</dd>
+                  </div>
+                )}
+                {barrelType && (
+                  <div>
+                    <dt className="text-stone-500 text-xs">Type de fût</dt>
+                    <dd className="text-stone-900">{barrelType}</dd>
+                  </div>
+                )}
+              </dl>
+            </SectionCard>
+          )}
+
+          {spirit.culinaryPairings?.length > 0 && (
+            <SectionCard label="Accords culinaires">
+              <ul className="space-y-1.5 text-sm text-stone-700">
+                {spirit.culinaryPairings.map((p, i) => (
+                  <li key={i} className="flex gap-2"><span className="text-wine-700">·</span>{p}</li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+
+          {spirit.producerHistory && (
+            <SectionCard label="Histoire du producteur" className="md:col-span-2">
+              <p className="text-stone-700 leading-relaxed">{spirit.producerHistory}</p>
+            </SectionCard>
+          )}
+
+          {notes && (
+            <SectionCard label="Notes personnelles" className="md:col-span-2 bg-amber-50/40">
+              <p className="serif-it text-stone-800 leading-relaxed">« {notes} »</p>
+            </SectionCard>
+          )}
+
+          {!spirit.description && !spirit.distillery && !barrelType && !spirit.producerHistory && !notes && !(spirit.culinaryPairings?.length > 0) && (
+            <Card className="md:col-span-2">
+              <EmptyState
+                title="Pas encore d'informations."
+                hint="Complétez la fiche"
+                action={<Button variant="outline" onClick={() => navigate(`/spirit/${spirit.id}/edit`)}><Edit className="w-4 h-4" />Modifier</Button>}
+              />
+            </Card>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Tabs */}
-      <div className="flex p-1 bg-stone-100 rounded-xl mb-6 border border-stone-200">
-        <button 
-          onClick={() => setActiveTab('INFO')}
-          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${
-            activeTab === 'INFO' 
-              ? 'bg-white text-stone-900 shadow-sm' 
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          Informations
-        </button>
-        <button 
-          onClick={() => setActiveTab('TASTING')}
-          className={`flex-1 py-3 text-sm font-medium rounded-lg transition-all ${
-            activeTab === 'TASTING' 
-              ? 'bg-white text-stone-900 shadow-sm' 
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          Dégustation
-        </button>
-      </div>
+      {activeTab === 'tasting' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fade-in">
+          {spirit.tastingNotes && (
+            <SectionCard label="Notes de dégustation" className="md:col-span-2">
+              <p className="text-stone-800 leading-relaxed md:text-lg">{spirit.tastingNotes}</p>
+            </SectionCard>
+          )}
 
-      {/* Content */}
-      <div className="space-y-6">
-        
-        {/* TAB: INFO */}
-        {activeTab === 'INFO' && (
-          <div className="space-y-6 animate-fade-in">
-            
-            {/* Description */}
-            {spirit.description && (
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-                <h3 className="font-serif text-lg text-stone-900 mb-3">Description</h3>
-                <p className="text-stone-700 leading-relaxed">
-                  {spirit.description}
-                </p>
+          {aromas.length > 0 && (
+            <SectionCard label="Profil aromatique">
+              <div className="flex flex-wrap gap-1.5">
+                {aromas.map((aroma, i) => (
+                  <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-stone-100 text-stone-700">{aroma}</span>
+                ))}
               </div>
-            )}
+            </SectionCard>
+          )}
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              {alcoholContent !== undefined && (
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-amber-600">
-                      <Percent size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-stone-900">{alcoholContent}%</p>
-                      <p className="text-xs text-stone-500">Alcool</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {volume !== undefined && (
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-blue-600">
-                      <Droplets size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-stone-900">{volume}ml</p>
-                      <p className="text-xs text-stone-500">Volume</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+          {finish && (
+            <SectionCard label="Finale">
+              <p className="text-stone-700 leading-relaxed">{finish}</p>
+            </SectionCard>
+          )}
 
-              {formattedQuantity !== undefined && (
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-wine-600">
-                      <Wine size={20} />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-stone-900">{formattedQuantity}</p>
-                      <p className="text-xs text-stone-500">Stock</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+          {spirit.suggestedCocktails?.length > 0 && (
+            <SectionCard label="Cocktails suggérés">
+              <ul className="space-y-1.5 text-sm text-stone-700">
+                {spirit.suggestedCocktails.map((c, i) => (
+                  <li key={i} className="flex gap-2"><Martini className="w-3.5 h-3.5 text-stone-400 mt-0.5 shrink-0" />{c}</li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
 
-              {spirit.age && (
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center text-orange-600">
-                      <Clock size={20} />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-stone-900">{spirit.age}</p>
-                      <p className="text-xs text-stone-500">Âge</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Détails Grid */}
-            {(spirit.distillery || barrelType) && (
-              <div className="grid gap-4">
-                {spirit.distillery && (
-                  <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                    <div className="flex items-center gap-2 text-stone-500 mb-2">
-                      <Flame size={16} />
-                      <span className="text-xs uppercase font-bold">Distillerie</span>
-                    </div>
-                    <p className="text-stone-800 text-sm">{spirit.distillery}</p>
-                  </div>
-                )}
-
-                {barrelType && (
-                  <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                    <div className="flex items-center gap-2 text-stone-500 mb-2">
-                      <Wine size={16} />
-                      <span className="text-xs uppercase font-bold">Type de Fût</span>
-                    </div>
-                    <p className="text-stone-800">{barrelType}</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Histoire du Producteur */}
-            {spirit.producerHistory && (
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-                  <GlassWater size={120} />
-                </div>
-                <div className="relative z-10">
-                  <h3 className="font-serif text-xl text-stone-900 mb-4">Histoire du Producteur</h3>
-                  <div className="prose prose-invert prose-stone max-w-none">
-                    <p className="text-stone-700 leading-relaxed">
-                      {spirit.producerHistory}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Notes Personnelles */}
-            {notes && (
-              <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200">
-                <h3 className="font-serif text-lg text-amber-900 mb-3">Notes Personnelles</h3>
-                <p className="text-amber-800 leading-relaxed italic">
-                  "{notes}"
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: TASTING */}
-        {activeTab === 'TASTING' && (
-          <div className="space-y-6 animate-fade-in">
-            
-            {/* Tasting Notes */}
-            {spirit.tastingNotes && (
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-wine-600">
-                  <Sparkles size={18} />
-                  <h3 className="font-serif text-lg text-stone-900">Notes de Dégustation</h3>
-                </div>
-                <p className="text-stone-700 leading-relaxed text-lg">
-                  {spirit.tastingNotes}
-                </p>
-              </div>
-            )}
-
-            {/* Aromas */}
-            {aromas && aromas.length > 0 && (
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-                <h3 className="font-serif text-lg text-stone-900 mb-4">Profil Aromatique</h3>
-                <div className="flex flex-wrap gap-2">
-                  {aromas.map((aroma: string, i: number) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1.5 bg-stone-100 text-stone-700 rounded-lg text-sm border border-stone-200"
-                    >
-                      {aroma}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Finish */}
-            {finish && (
-              <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-200">
-                <h3 className="font-serif text-lg text-orange-900 mb-3">Finale</h3>
-                <p className="text-orange-800 leading-relaxed">
-                  {finish}
-                </p>
-              </div>
-            )}
-
-            {/* Suggestions de Cocktails */}
-            {spirit.suggestedCocktails && spirit.suggestedCocktails.length > 0 && (
-              <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-indigo-600">
-                  <Martini size={18} />
-                  <h3 className="font-serif text-lg text-stone-900">Suggestions de Cocktails</h3>
-                </div>
-                <ul className="space-y-3">
-                  {spirit.suggestedCocktails.map((cocktail, i) => (
-                    <li key={i} className="flex items-start gap-3 text-stone-700">
-                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500/50"></span>
-                      {cocktail}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Serving Suggestions */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
-              <h3 className="font-serif text-lg text-stone-900 mb-4">Suggestions de Service</h3>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-wine-500 mt-2"></div>
+          <SectionCard label="Suggestions de service">
+            <ul className="space-y-3">
+              {SERVING.map(item => (
+                <li key={item.title} className="flex gap-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-wine-700 mt-2 shrink-0" />
                   <div>
-                    <p className="font-medium text-stone-800">Neat (Pur)</p>
-                    <p className="text-sm text-stone-600">À température ambiante pour apprécier tous les arômes</p>
+                    <div className="text-sm font-medium text-stone-800">{item.title}</div>
+                    <div className="text-sm text-stone-600">{item.text}</div>
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-wine-500 mt-2"></div>
-                  <div>
-                    <p className="font-medium text-stone-800">Sur Glace</p>
-                    <p className="text-sm text-stone-600">Pour adoucir et rafraîchir</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-wine-500 mt-2"></div>
-                  <div>
-                    <p className="font-medium text-stone-800">Cocktails</p>
-                    <p className="text-sm text-stone-600">Base idéale pour des créations mixologiques</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+                </li>
+              ))}
+            </ul>
+          </SectionCard>
 
-            {/* Empty State */}
-            {!spirit.tastingNotes && (!aromas || aromas.length === 0) && !finish && (
-              <div className="bg-stone-50 p-12 rounded-2xl border-2 border-dashed border-stone-300 text-center">
-                <GlassWater size={48} className="mx-auto mb-4 text-stone-400" />
-                <h3 className="font-serif text-xl text-stone-600 mb-2">
-                  Aucune note de dégustation
-                </h3>
-                <p className="text-stone-500 text-sm">
-                  Éditez ce spiritueux pour ajouter vos impressions
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div 
-            className="absolute inset-0 bg-stone-900/50 backdrop-blur-sm" 
-            onClick={() => setShowDeleteModal(false)} 
-          />
-          <div className="bg-white border border-stone-200 w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl animate-fade-in-up">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-red-100 rounded-full">
-                <Trash2 size={24} className="text-red-600" />
-              </div>
-              <h3 className="text-xl font-serif text-stone-900">Supprimer ce spiritueux ?</h3>
-            </div>
-            
-            <p className="text-sm text-stone-600 mb-6">
-              Êtes-vous sûr de vouloir supprimer <span className="font-semibold text-stone-900">{spirit.name}</span> ? 
-              Cette action est irréversible.
-            </p>
-
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-3 rounded-lg border border-stone-300 text-stone-600 hover:bg-stone-100 transition-colors font-medium"
-              >
-                Annuler
-              </button>
-              <button 
-                onClick={handleDelete}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-bold transition-colors"
-              >
-                Supprimer
-              </button>
-            </div>
-          </div>
+          {!hasTasting && (
+            <Card className="md:col-span-2">
+              <EmptyState
+                title="Aucune note de dégustation."
+                hint="Modifiez ce spiritueux pour ajouter vos impressions"
+                action={<Button variant="outline" onClick={() => navigate(`/spirit/${spirit.id}/edit`)}><Edit className="w-4 h-4" />Modifier</Button>}
+              />
+            </Card>
+          )}
         </div>
       )}
     </div>

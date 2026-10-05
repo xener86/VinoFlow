@@ -166,7 +166,8 @@ export const CockpitTasting: React.FC = () => {
             max={10}
             value={rating}
             onChange={e => setRating(parseInt(e.target.value))}
-            className="w-full accent-wine-700"
+            aria-label="Note globale sur 10"
+            className="w-full h-8 accent-wine-700"
           />
           <div className="flex justify-between text-[10px] text-stone-400 mono mt-1">
             <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
