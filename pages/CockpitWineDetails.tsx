@@ -128,20 +128,20 @@ export const CockpitWineDetails: React.FC = () => {
       </Link>
 
       {/* Hero */}
-      <Card className="p-6 md:p-8 mb-5">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2">
+      <Card className="p-5 md:p-8 mb-5">
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-2 min-w-0">
             <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded ${typeAccent(wine.type)}`}>
               {typeLabel(wine.type)}
             </span>
             {wine.appellation && (
               <span className="mono text-[10px] tracking-widest text-stone-500 uppercase">{wine.appellation}</span>
             )}
-            <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded ${peakStyles.bg} ${peakStyles.text}`}>
+            <span className={`mono text-[10px] tracking-widest px-2 py-0.5 rounded whitespace-nowrap ${peakStyles.bg} ${peakStyles.text}`}>
               {peak.status} · {peak.peakStart}–{peak.peakEnd}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleToggleFavorite}
               className={`p-2 rounded-md border border-stone-200 transition-colors ${wine.isFavorite ? 'bg-wine-50 text-wine-700' : 'text-stone-400 hover:text-wine-700'}`}
