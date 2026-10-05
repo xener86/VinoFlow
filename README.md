@@ -124,6 +124,21 @@ Set the keys in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) — recommended �
 
 Every AI call is logged (task, model, tokens, latency, success, estimated cost) to the backend logs and the `ai_calls` table — `GET /api/ai/usage?days=30` sums it up per task and model.
 
+### Wine enrichment (sourced web search)
+
+Each wine's aroma profile and drinking window are researched on the web through a cascade, from most to least precise: **EXACT** (this cuvée, this vintage) → **AUTRE_MILLESIME** (same cuvée, another vintage) → **PRODUCTEUR** (house style) → **APPELLATION** → **RÈGLES** (deterministic formula). Confidence comes from the level actually reached, never from the model's self-assessment:
+
+- every source is a quoted excerpt that the server **re-downloads and checks** on the cited page; a level without a verified source is downgraded (a translated or paraphrased quote doesn't count);
+- your data comes first: manual values (source USER) are never overwritten, tasting-note aromas (TASTING) are kept, purchase price helps at the appellation level;
+- at the EXACT level, wrong card fields (colour, cuvée name, appellation, region, grapes) are corrected automatically — every change is logged and can be reverted (`POST /api/wines/:id/enrichment/revert/:logId`);
+- homonyms (several « Domaine Richard »…) are not guessed: candidates are stored and you pick one (`POST /api/wines/:id/enrichment/choose`);
+- one search serves every vintage of a cuvée (`wine_knowledge` table);
+- the API exposes `enrichmentBasis`, `enrichmentSources`, `enrichedAt`, `enrichmentStatus` on each wine, and `GET /api/wines/:id/enrichment` (label, sources, history) for the UI.
+
+**Engine.** Enrichment runs on your **Claude subscription** through Claude Code, bundled in the backend image (pinned version, no auto-update) — same setup as a headless `claude -p`. Create a token on your computer with `claude setup-token` (valid one year) and set `CLAUDE_CODE_OAUTH_TOKEN` in `.env`. Without it, enrichment falls back to the Anthropic API (`ANTHROPIC_API_KEY`, pay-as-you-go). Expect 30 s to 2 min per wine.
+
+**Monitoring.** The backend enriches new wines and re-checks existing ones on its own: monthly for appellation/rule-based cards, quarterly for producer/other-vintage cards, yearly for exact ones — at most `ENRICH_DAILY_LIMIT` (default 30) wines a day, in-stock wines only. `GET /api/enrichment/status` shows the queue; *Paramètres → Enrichir les vins sans profil* (or `POST /api/enrichment/run`) queues a batch, `POST /api/wines/:id/enrich` a single wine.
+
 After upgrading from a version that used `text-embedding-004`, recompute embeddings (old vectors are incompatible): `docker compose exec backend npm run embeddings:refresh -- --all`.
 
 - Gemini: [Google AI Studio](https://aistudio.google.com/apikey)

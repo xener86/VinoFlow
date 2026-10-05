@@ -60,11 +60,12 @@ const TASK_DEFAULTS = {
     provider: 'claude', model: MODELS.CLAUDE_HAIKU, maxTokens: 2048,
     fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
   },
-  // Enrichissement (profil aromatique, fenêtre d'apogée) avec recherche web.
+  // Enrichissement d'une fiche (profil aromatique + fenêtre d'apogée en une
+  // seule passe de recherche web). Moteur principal : Claude Code sur
+  // l'abonnement (enrichment/engines.js) ; cette tâche sert au repli par l'API.
   // Pas de repli Gemini : sans recherche, le modèle inventerait — la cascade
   // retombe alors sur les niveaux déterministes.
-  'enrich-aromas': { provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 16000, effort: 'medium' },
-  'enrich-peak': { provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 16000, effort: 'medium' },
+  'enrich-wine': { provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 16000, effort: 'medium' },
   // Lecture d'étiquette (vision)
   ocr: {
     provider: 'gemini', model: MODELS.GEMINI_FLASH, maxTokens: 2048,
@@ -171,7 +172,8 @@ let logTableWarned = false;
 
 /** Journalise un appel IA (logs + table ai_calls, sans jamais bloquer ni échouer). */
 export const logAiCall = (entry) => {
-  const cost = estimateCost(entry);
+  // Claude Code tourne sur l'abonnement : pas de coût à l'usage.
+  const cost = entry.provider === 'claude-code' ? 0 : estimateCost(entry);
   const line = { ...entry, costUsd: cost === null ? null : Number(cost.toFixed(6)) };
   if (process.env.NODE_ENV !== 'test') console.log(`[ai] ${JSON.stringify(line)}`);
   pool.query(

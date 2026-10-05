@@ -189,7 +189,7 @@ export const getAvailableAIProviders = async () => {
 };
 
 // Phase 3 - Enrichissement
-export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; useConsensus?: boolean; limit?: number } = {}) => {
+export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; limit?: number } = {}) => {
   const response = await apiFetch(`${API_URL}/wines/enrich-aromas`, {
     method: 'POST',
     headers: getHeaders(),

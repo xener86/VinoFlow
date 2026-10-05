@@ -37,6 +37,11 @@ services:
       - TRUST_PROXY=${TRUST_PROXY:-1}
       - APP_URL=${APP_URL:-}
       - SWEEGO_API_KEY=${SWEEGO_API_KEY:-}
+      # Enrichissement des fiches par Claude Code sur l'abonnement (claude setup-token)
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+      - ENRICH_ENGINE=${ENRICH_ENGINE:-auto}
+      - ENRICH_DAILY_LIMIT=${ENRICH_DAILY_LIMIT:-30}
+      - ENRICH_TICK_MINUTES=${ENRICH_TICK_MINUTES:-60}
       - MAIL_FROM=${MAIL_FROM:-}
       - NODE_ENV=production
     networks:
@@ -45,7 +50,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3100/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5

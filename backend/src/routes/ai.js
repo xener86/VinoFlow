@@ -3,7 +3,9 @@ import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
 import { serializeWine } from '../utils/wine.js';
 import { isProviderConfigured, getTaskDefaults } from '../services/aiService.js';
-import { enrichWine, aromasFromTastingNotes } from '../sommelier/enrich.js';
+import { aromasFromTastingNotes } from '../sommelier/enrich.js';
+import { getSchedulerStatus } from '../enrichment/scheduler.js';
+import { enqueueWines } from './enrichment.js';
 import { extractFromLabel } from '../sommelier/ocr.js';
 import { updateMissingEmbeddings } from '../sommelier/embeddings.js';
 
@@ -76,57 +78,19 @@ router.get('/ai/providers', async (req, res) => {
   });
 });
 
-// Phase 3.1 - Enrich aromas in batch (vins sans profil)
+// Lot d'enrichissement (profil aromatique + apogée) des vins sans profil :
+// mis en file pour la cascade de recherche web (enrichment/), réponse immédiate.
 // Body: { onlyMissing: boolean, limit: number }
 router.post('/wines/enrich-aromas', async (req, res) => {
   try {
     const { onlyMissing = true, limit = 50 } = req.body || {};
-
-    const filter = onlyMissing
-      ? `WHERE aroma_profile IS NULL OR array_length(aroma_profile, 1) IS NULL OR array_length(aroma_profile, 1) < 3 OR aroma_source IS NULL`
-      : '';
-    const result = await pool.query(`SELECT * FROM wines ${filter} ORDER BY created_at DESC LIMIT $1`, [limit]);
-    const wines = convertKeysToCamelCase(result.rows);
-
-    const enriched = [];
-    const failed = [];
-
-    for (const wine of wines) {
-      try {
-        const profile = await enrichWine(wine);
-        await pool.query(`
-          UPDATE wines SET
-            aroma_profile = $1,
-            aroma_source = $2,
-            aroma_confidence = $3,
-            aroma_provider = $4,
-            aroma_verified_at = CASE WHEN $2 = 'CONSENSUS' THEN now() ELSE aroma_verified_at END,
-            updated_at = now()
-          WHERE id = $5
-        `, [
-          profile.aromas,
-          profile.source,
-          profile.confidence,
-          (profile.providers || []).join(',') || 'gemini',
-          wine.id,
-        ]);
-        enriched.push({ id: wine.id, name: wine.name, aromas: profile.aromas, confidence: profile.confidence });
-      } catch (err) {
-        console.error(`Enrich failed for ${wine.id}:`, err.message);
-        failed.push({ id: wine.id, name: wine.name, error: err.message });
-      }
-    }
-
-    res.json({
-      processed: wines.length,
-      enriched: enriched.length,
-      failed: failed.length,
-      results: enriched,
-      errors: failed,
-    });
+    if (!getSchedulerStatus().engine) return res.status(503).json({ error: 'Aucun moteur d\'enrichissement configuré' });
+    const where = onlyMissing ? "(w.aroma_profile IS NULL OR cardinality(w.aroma_profile) < 3) AND w.aroma_source IS DISTINCT FROM 'USER'" : 'true';
+    const queued = await enqueueWines(where, limit);
+    res.status(202).json({ queued, engine: getSchedulerStatus().engine });
   } catch (error) {
-    console.error('Batch enrich error:', error);
-    res.status(500).json({ error: 'Failed to enrich aromas', details: error.message });
+    console.error('Enrich aromas error:', error);
+    res.status(500).json({ error: 'Failed to queue enrichment', details: error.message });
   }
 });
 

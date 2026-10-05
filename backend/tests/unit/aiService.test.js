@@ -49,7 +49,7 @@ describe('resolveTask', () => {
     expect(ai.resolveTask('extract-criteria')).toMatchObject({ provider: 'claude', model: 'claude-haiku-4-5', maxTokens: 2048 });
     expect(ai.resolveTask('argue')).toMatchObject({ provider: 'claude', model: 'claude-sonnet-5-5', effort: 'low' });
     expect(ai.resolveTask('critique').model).toBe('claude-haiku-4-5');
-    expect(ai.resolveTask('enrich-aromas')).toMatchObject({ model: 'claude-sonnet-5-5', fallback: null });
+    expect(ai.resolveTask('enrich-wine')).toMatchObject({ model: 'claude-sonnet-5-5', fallback: null });
     expect(ai.resolveTask('ocr')).toMatchObject({ provider: 'gemini', model: 'gemini-3.8-flash', fallback: { provider: 'claude', model: 'claude-sonnet-5-5' } });
     expect(ai.resolveTask('embedding').model).toBe('gemini-embedding-001');
     expect(() => ai.resolveTask('nope')).toThrow(/Unknown task/);
@@ -141,7 +141,7 @@ describe('generateStructured', () => {
     anthropic.betaCreate
       .mockResolvedValueOnce({ stop_reason: 'pause_turn', content: [{ type: 'server_tool_use', name: 'web_search', input: { query: 'q' } }], usage: { input_tokens: 1, output_tokens: 1 } })
       .mockResolvedValueOnce(claudeReply('{"ok":false}'));
-    const r = await ai.generateStructured('enrich-aromas', { user: 'U', schema: SCHEMA, tools: [{ type: 'web_search_20260209', name: 'web_search' }] });
+    const r = await ai.generateStructured('enrich-wine', { user: 'U', schema: SCHEMA, tools: [{ type: 'web_search_20260209', name: 'web_search' }] });
     expect(r.data).toEqual({ ok: false });
     expect(anthropic.betaCreate).toHaveBeenCalledTimes(2);
     expect(anthropic.betaCreate.mock.calls[1][0].messages.at(-1).role).toBe('assistant');
@@ -167,10 +167,10 @@ describe('generateStructured', () => {
 
   it('pas de repli pour l’enrichissement ; sans clé, erreur explicite', async () => {
     anthropic.betaCreate.mockRejectedValue(new Error('boom'));
-    await expect(ai.generateJson('enrich-peak', { user: 'U', schema: SCHEMA })).rejects.toThrow('boom');
+    await expect(ai.generateJson('enrich-wine', { user: 'U', schema: SCHEMA })).rejects.toThrow('boom');
     expect(gemini.generateContent).not.toHaveBeenCalled();
     vi.stubEnv('ANTHROPIC_API_KEY', '');
-    await expect(ai.generateJson('enrich-peak', { user: 'U', schema: SCHEMA })).rejects.toThrow(/No Anthropic API key/);
+    await expect(ai.generateJson('enrich-wine', { user: 'U', schema: SCHEMA })).rejects.toThrow(/No Anthropic API key/);
   });
 });
 

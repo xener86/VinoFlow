@@ -82,15 +82,15 @@ export const Settings: React.FC = () => {
 
   // Phase 3 - Batch enrichment
   const [enriching, setEnriching] = useState(false);
-  const [enrichResult, setEnrichResult] = useState<{ enriched: number; failed: number; processed: number } | null>(null);
+  const [enrichResult, setEnrichResult] = useState<{ queued: number; engine: string } | null>(null);
   const [auditing, setAuditing] = useState(false);
   const [auditResult, setAuditResult] = useState<{ count: number; wines: any[] } | null>(null);
 
-  const handleEnrich = async (useConsensus: boolean) => {
+  const handleEnrich = async () => {
       setEnriching(true);
       setEnrichResult(null);
       try {
-          const r = await enrichAromaProfilesBatch({ onlyMissing: true, useConsensus, limit: 50 });
+          const r = await enrichAromaProfilesBatch({ onlyMissing: true, limit: 50 });
           setEnrichResult(r);
       } catch (e: any) {
           alert('Échec : ' + (e.message || 'erreur'));
@@ -345,29 +345,23 @@ export const Settings: React.FC = () => {
         <Section title="Sommelier — Enrichissement de la cave" icon={Wand2}>
             <div className="space-y-4">
                 <p className="text-sm text-stone-500">
-                    Génère le profil aromatique IA des vins qui n'en ont pas encore (ou avec un profil pauvre). Recommandé après l'import d'une cave existante.
+                    Recherche sur le web le profil aromatique et la fenêtre d'apogée des vins qui n'en ont pas encore, avec les sources citées.
+                    Chaque fiche indique sur quoi elle repose (cette cuvée et ce millésime, un autre millésime, le producteur, l'appellation ou une règle générique).
+                    Les fiches sont ensuite revérifiées automatiquement.
                 </p>
                 <div className="flex flex-wrap gap-2">
                     <button
-                        onClick={() => handleEnrich(false)}
+                        onClick={handleEnrich}
                         disabled={enriching}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
                     >
                         {enriching ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                        Enrichir (rapide)
-                    </button>
-                    <button
-                        onClick={() => handleEnrich(true)}
-                        disabled={enriching}
-                        className="bg-stone-200 hover:bg-stone-300 text-stone-900 py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
-                        title="Croise Gemini + Claude pour augmenter la confiance (plus lent, plus coûteux)"
-                    >
-                        Enrichir avec consensus 2 IA
+                        Enrichir les vins sans profil
                     </button>
                 </div>
                 {enrichResult && (
                     <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-sm text-green-700">
-                        ✓ {enrichResult.enriched} vins enrichis sur {enrichResult.processed} traités. {enrichResult.failed > 0 && ` ${enrichResult.failed} échecs.`}
+                        ✓ {enrichResult.queued} vin(s) mis en file. Comptez 1 à 2 minutes par vin ; les fiches se mettent à jour au fil de l'eau.
                     </div>
                 )}
 

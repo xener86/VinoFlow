@@ -18,6 +18,7 @@ import wishlistRouter from './routes/wishlist.js';
 import sommelierRouter from './routes/sommelier.js';
 import cellarRouter from './routes/cellar.js';
 import aiRouter from './routes/ai.js';
+import enrichmentRouter from './routes/enrichment.js';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use(
     '/api/wines/bulk-set-peaks',
     '/api/wines/extract-from-image',
     '/api/wines/refresh-embeddings',
+    '/api/enrichment/run',
   ],
   aiLimiter
 );
@@ -68,5 +70,6 @@ app.use('/api', wishlistRouter);
 app.use('/api', sommelierRouter);
 app.use('/api', cellarRouter);
 app.use('/api', aiRouter);
+app.use('/api', enrichmentRouter);
 
 export default app;

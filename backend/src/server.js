@@ -4,6 +4,7 @@ import app from './app.js';
 import { pool } from './db.js';
 import { runMigrations } from './migrations.js';
 import { prewarmCommonDishes } from './sommelier/prewarm.js';
+import { startScheduler } from './enrichment/scheduler.js';
 
 const port = process.env.PORT || 3100;
 
@@ -30,4 +31,7 @@ app.listen(port, () => {
   console.log(`🍷 VinoFlow Backend running on port ${port}`);
   // Run pre-warming in background after server is up
   setTimeout(() => { prewarmCommonDishes().catch(() => {}); }, 5000);
+  // Surveillance des fiches : enrichissement des nouveaux vins et revérification
+  // périodique (mensuelle / trimestrielle / annuelle selon le niveau atteint).
+  startScheduler();
 });
