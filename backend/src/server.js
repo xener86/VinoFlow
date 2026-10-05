@@ -5,6 +5,7 @@ import 'dotenv/config';
 import { ALLOW_CLIENT_AI_KEYS, FRONTEND_URL } from './config.js';
 import { pool } from './db.js';
 import { convertKeysToCamelCase } from './utils/case.js';
+import { loadInventory } from './services/inventory.js';
 import { authenticate } from './middleware/auth.js';
 import { aiLimiter } from './middleware/rateLimits.js';
 import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from './sommelier/coordinator.js';
@@ -116,21 +117,6 @@ app.use('/api', historyRouter);
 app.use('/api', wishlistRouter);
 
 // ========== SOMMELIER V2 ENDPOINTS ==========
-
-// Helper: load full inventory for a user
-const loadInventory = async () => {
-  const result = await pool.query(`
-    SELECT
-      w.*,
-      COALESCE(
-        (SELECT count(*) FROM bottles b WHERE b.wine_id = w.id AND b.is_consumed = false),
-        0
-      )::int AS inventory_count
-    FROM wines w
-    ORDER BY w.created_at DESC
-  `);
-  return convertKeysToCamelCase(result.rows);
-};
 
 // Run the full pairing pipeline (LLM1 → rules → score → LLM2)
 app.post('/api/sommelier/pair', async (req, res) => {
