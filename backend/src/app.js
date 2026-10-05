@@ -19,6 +19,7 @@ import sommelierRouter from './routes/sommelier.js';
 import cellarRouter from './routes/cellar.js';
 import aiRouter from './routes/ai.js';
 import enrichmentRouter from './routes/enrichment.js';
+import cocktailsRouter from './routes/cocktails.js';
 
 const app = express();
 
@@ -71,5 +72,6 @@ app.use('/api', sommelierRouter);
 app.use('/api', cellarRouter);
 app.use('/api', aiRouter);
 app.use('/api', enrichmentRouter);
+app.use('/api', cocktailsRouter);
 
 export default app;
