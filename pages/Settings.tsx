@@ -4,6 +4,7 @@ import { useAIConfig } from '../hooks/useAIConfig';
 import { AIConfig, Bottle, CsvImportPlan } from '../types';
 import { CsvImportPreview } from '../components/cockpit/CsvImportPreview';
 import { exportWinesToCsv } from '../utils/exportCsv';
+import { decodeCsvBytes } from '../utils/decodeCsv';
 import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
@@ -264,7 +265,7 @@ export const Settings: React.FC = () => {
     if (!file) return;
     setCsvBusy(true);
     try {
-      await runCsvPreview(file.name, await file.text());
+      await runCsvPreview(file.name, decodeCsvBytes(await file.arrayBuffer()));
     } finally {
       setCsvBusy(false);
     }

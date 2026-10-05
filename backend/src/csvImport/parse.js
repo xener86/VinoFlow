@@ -30,7 +30,9 @@ const parseRecords = (text, delimiter) => {
       if (c === '"') {
         if (text[i + 1] === '"') { cell += '"'; i += 1; } else quoted = false;
       } else cell += c;
-    } else if (c === '"') quoted = true;
+    // Un guillemet n'ouvre une cellule entre guillemets qu'en début de cellule
+    // (comme Excel) ; ailleurs, c'est un caractère ordinaire (« 12" »).
+    } else if (c === '"' && cell === '') quoted = true;
     else if (c === delimiter) { row.push(cell); cell = ''; }
     else if (c === '\n' || c === '\r') {
       if (c === '\r' && text[i + 1] === '\n') i += 1;
@@ -40,6 +42,8 @@ const parseRecords = (text, delimiter) => {
       cell = '';
     } else cell += c;
   }
+  // Sans ce contrôle, tout ce qui suit le guillemet disparaîtrait sans erreur.
+  if (quoted) throw new CsvFormatError(`Guillemet non fermé à partir de la ligne ${records.length + 1} : vérifie cette cellule.`);
   if (cell !== '' || row.length > 0) { row.push(cell); records.push(row); }
   return records;
 };

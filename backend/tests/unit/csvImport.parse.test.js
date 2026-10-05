@@ -32,6 +32,14 @@ describe('parseCsv', () => {
     expect(parseCsv(' A ; B \n a ; b ')).toEqual({ headers: ['A', 'B'], rows: [{ line: 2, cells: ['a', 'b'] }] });
   });
 
+  it('guillemet au milieu d’une cellule : caractère ordinaire, les lignes suivantes sont lues', () => {
+    expect(parseCsv('A;B\n;Vin 5";Dom\n;Vin 6;Dom\n;Vin 7;Dom').rows.map((r) => r.cells[1])).toEqual(['Vin 5"', 'Vin 6', 'Vin 7']);
+  });
+
+  it('guillemet ouvrant jamais fermé : fichier refusé avec la ligne', () => {
+    expect(() => parseCsv('A;B\n1;x\n2;"début\n3;y')).toThrow(/guillemet.*ligne 3/i);
+  });
+
   it('fichier vide refusé', () => {
     expect(() => parseCsv('﻿  \r\n')).toThrow(CsvFormatError);
   });
