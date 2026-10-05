@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from 'vitest';
 import { hasDb, pool, resetData } from './helpers.js';
 import { valueWine, saveManualValuation, getValuations } from '../../src/valuation/service.js';
+import { scheduleDue, requestValuation, _resetValuationState, _setValuer, getValuationQueueStatus } from '../../src/valuation/scheduler.js';
 
 // Moteur et pages simulés : orchestration, vérification des citations, écriture en base.
 const PAGES = {
@@ -83,5 +84,49 @@ describe.skipIf(!hasDb)('passe « cote »', () => {
       runner: runnerReturning(found([{ price_eur: 32.5, format_ml: 750, seller: 'Caviste', url: 'https://caviste.example/alpha-2019', quote: 'Prix : 32,50 € TTC' }])),
     });
     expect(r.price).toBe(65);
+  });
+});
+describe.skipIf(!hasDb)('file des cotes', () => {
+  const calls = [];
+  beforeEach(async () => {
+    await resetData();
+    _resetValuationState();
+    calls.length = 0;
+    _setValuer(async (wineId) => { calls.push(wineId); return { ok: true, status: 'OK' }; });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  const addWine = async (name, { bottles = 1, nextCheck = null } = {}) => {
+    const { rows } = await pool.query('INSERT INTO wines (name, vintage, type, valuation_next_check_at) VALUES ($1, 2019, $2, $3) RETURNING id', [name, 'RED', nextCheck]);
+    for (let i = 0; i < bottles; i++) await pool.query('INSERT INTO bottles (wine_id) VALUES ($1)', [rows[0].id]);
+    return rows[0].id;
+  };
+  const drain = async () => { for (let i = 0; i < 50 && (getValuationQueueStatus().running || getValuationQueueStatus().queue.length); i++) await new Promise((r) => setTimeout(r, 10)); };
+
+  it('met en file les vins en stock jamais cotés ou échus, dans la limite du jour', async () => {
+    vi.stubEnv('VALUATION_DAILY_LIMIT', '2');
+    await addWine('A');
+    await addWine('B', { nextCheck: '2026-01-01T00:00:00Z' });
+    await addWine('C', { nextCheck: '2099-01-01T00:00:00Z' }); // pas encore échu
+    await addWine('D', { bottles: 0 });                            // sans stock
+    await addWine('E');
+    expect(await scheduleDue()).toBe(2);
+    await drain();
+    expect(calls).toHaveLength(2);
+    expect(await scheduleDue()).toBe(0); // plafond atteint
+  });
+
+  it('une demande manuelle passe en tête et hors plafond', async () => {
+    vi.stubEnv('VALUATION_DAILY_LIMIT', '0');
+    const id = await addWine('Manuel', { nextCheck: '2099-01-01T00:00:00Z' });
+    requestValuation(id, 'manual');
+    await drain();
+    expect(calls).toEqual([id]);
+  });
+
+  it('une cote USER de moins de 3 mois exclut le vin de la planification', async () => {
+    const id = await addWine('Saisi');
+    await pool.query("INSERT INTO wine_valuations (wine_id, price_eur, basis, valued_at) VALUES ($1, 40, 'USER', now() - interval '10 days')", [id]);
+    expect(await scheduleDue()).toBe(0);
   });
 });
