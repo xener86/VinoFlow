@@ -1,12 +1,20 @@
 import express from 'express';
 import cors from 'cors';
-import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'node:crypto';
 import helmet from 'helmet';
-import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import 'dotenv/config';
+import {
+  JWT_SECRET, ACCESS_TOKEN_TTL, ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_DAYS,
+  REFRESH_REUSE_GRACE_MS, RESET_TOKEN_TTL_MINUTES, PASSWORD_MIN_LENGTH,
+  PASSWORD_MAX_LENGTH, BCRYPT_COST, ALLOW_SIGNUP, ALLOW_CLIENT_AI_KEYS,
+  FRONTEND_URL, APP_URL,
+} from './config.js';
+import { pool, withTransaction } from './db.js';
+import { convertKeysToCamelCase } from './utils/case.js';
+import { authenticate } from './middleware/auth.js';
+import { authLimiter, refreshLimiter, aiLimiter } from './middleware/rateLimits.js';
 import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from './sommelier/coordinator.js';
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from './sommelier/tasteProfile.js';
 import { isProviderConfigured, getTaskDefaults, runWithRequestKeys } from './services/aiService.js';
@@ -32,42 +40,8 @@ import {
   cellarProjection,
 } from './sommelier/advanced.js';
 
-const { Pool } = pg;
 const app = express();
 const port = process.env.PORT || 3100;
-
-// Fail-fast: JWT_SECRET is mandatory. No silent fallback.
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change_me') {
-  console.error('❌ JWT_SECRET is missing or insecure. Set JWT_SECRET to a long random string in your .env file.');
-  process.exit(1);
-}
-const JWT_SECRET = process.env.JWT_SECRET;
-
-// ========== Security settings ==========
-// Modèle : VinoFlow est une cave de FOYER partagée. Tous les comptes voient et
-// modifient les mêmes vins, bouteilles, casiers… (pas de multi-tenant). La
-// sécurité repose donc sur le contrôle de QUI peut avoir un compte.
-const ACCESS_TOKEN_TTL = '15m';
-const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
-const REFRESH_TOKEN_TTL_DAYS = 30;
-// Deux onglets qui rafraîchissent en même temps présentent le même refresh
-// token : on tolère ce cas sur une courte fenêtre au lieu d'y voir un vol.
-const REFRESH_REUSE_GRACE_MS = 60 * 1000;
-const RESET_TOKEN_TTL_MINUTES = 60;
-const PASSWORD_MIN_LENGTH = 10;
-const PASSWORD_MAX_LENGTH = 200;
-const BCRYPT_COST = 12;
-// Inscriptions fermées par défaut. Le tout premier compte reste toujours
-// possible (bootstrap d'une installation neuve).
-const ALLOW_SIGNUP = process.env.ALLOW_SIGNUP === 'true';
-// Clés IA envoyées par le navigateur (en-têtes x-vinoflow-*-key) : acceptées
-// en secours des variables d'environnement, sauf si désactivé.
-const ALLOW_CLIENT_AI_KEYS = process.env.ALLOW_CLIENT_AI_KEYS !== 'false';
-
-// CORS: restrict to the frontend origin. Defaults to localhost for dev.
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5001';
-// Public URL used in emails (password reset links).
-const APP_URL = (process.env.APP_URL || FRONTEND_URL).replace(/\/+$/, '');
 
 // nginx (frontend container) sits in front of the backend: trust exactly one
 // hop so req.ip is the real client IP (rate limiting). Set TRUST_PROXY=2 if
@@ -78,63 +52,6 @@ app.use(helmet({ strictTransportSecurity: false }));
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 
-// Auth middleware: verifies JWT and attaches req.user
-const authenticate = (req, res, next) => {
-  const header = req.headers.authorization;
-  const token = header && header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ msg: 'Unauthorized' });
-  try {
-    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    // Les anciens JWT 30 j (sans typ) sont refusés : reconnexion obligatoire.
-    if (payload.typ !== 'access') throw new Error('legacy token');
-    req.user = payload;
-    next();
-  } catch {
-    return res.status(401).json({ msg: 'Invalid or expired token' });
-  }
-};
-
-// ========== Rate limiting ==========
-const rateLimitHandler = (req, res, next, options) =>
-  res.status(options.statusCode).json({ msg: 'Trop de tentatives, réessayez dans quelques minutes.' });
-
-// Strict: login, signup, forgot/reset, change password (par IP).
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  handler: rateLimitHandler,
-});
-
-// Refresh / logout: appelés automatiquement par chaque onglet ouvert.
-const refreshLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  handler: rateLimitHandler,
-});
-
-// Routes IA coûteuses : par utilisateur (monté après authenticate).
-const aiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  keyGenerator: (req) => req.user?.userId || ipKeyGenerator(req.ip),
-  // Les lectures GET /api/sommelier/* n'appellent pas de LLM (alertes, profil
-  // de goût…) : elles ne sont pas comptées.
-  skip: (req) => req.method === 'GET' && req.baseUrl === '/api/sommelier',
-  handler: (req, res, next, options) =>
-    res.status(options.statusCode).json({ msg: 'Limite de requêtes IA atteinte, réessayez dans quelques minutes.' }),
-});
-
-// PostgreSQL connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
 // Test database connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
@@ -143,20 +60,6 @@ pool.query('SELECT NOW()', (err, res) => {
     console.log('✅ Database connected:', res.rows[0].now);
   }
 });
-
-// Helper functions
-const toCamelCase = (str) => str.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-
-const convertKeysToCamelCase = (obj) => {
-  if (Array.isArray(obj)) return obj.map(convertKeysToCamelCase);
-  if (obj !== null && typeof obj === 'object') {
-    return Object.keys(obj).reduce((acc, key) => {
-      acc[toCamelCase(key)] = convertKeysToCamelCase(obj[key]);
-      return acc;
-    }, {});
-  }
-  return obj;
-};
 
 // Health check
 app.get('/health', (req, res) => {
@@ -216,20 +119,6 @@ const createSession = async (db, user, req) => {
 const revokeAllRefreshTokens = (db, userId) =>
   db.query('UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
 
-const withTransaction = async (fn) => {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
-};
 
 // Public: lets the login page know whether to show the signup form.
 app.get('/api/auth/config', refreshLimiter, async (req, res) => {
