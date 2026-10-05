@@ -8,8 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Loader2, Plus, Minus, Check } from 'lucide-react';
-import { saveWine, addBottles, requestWineEnrichment } from '../services/storageService';
-import { enrichWineData } from '../services/geminiService';
+import { saveWine, addBottles, requestWineEnrichment, identifyWine } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
 import { CellarWine, Wine, WineType } from '../types';
 import { Card, MonoLabel, Button, Skeleton, Badge, Input } from '../components/cockpit/primitives';
@@ -98,7 +97,7 @@ export const CockpitAddWine: React.FC = () => {
       setThinking(true);
       try {
         const { name, vintage } = parseFreeText(text);
-        const result = await enrichWineData(name, vintage || new Date().getFullYear(), text);
+        const result = await identifyWine(name, vintage || undefined, text);
         if (result) {
           setAnalysis({ ...result, name: result.name || name, vintage: result.vintage || vintage || undefined });
           if (result.type && !type) setType(result.type as WineType);
@@ -107,7 +106,7 @@ export const CockpitAddWine: React.FC = () => {
           setAnalysis(null);
         }
       } catch {
-        // Pas de clé IA côté navigateur : on passe en saisie manuelle.
+        // IA indisponible côté serveur (pas de clé, limite atteinte) : saisie manuelle.
         setAiUnavailable(true);
         setAnalysis(null);
       } finally {

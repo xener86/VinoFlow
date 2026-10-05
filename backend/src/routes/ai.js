@@ -8,6 +8,7 @@ import { getSchedulerStatus } from '../enrichment/scheduler.js';
 import { enqueueWines } from './enrichment.js';
 import { extractFromLabel } from '../sommelier/ocr.js';
 import { updateMissingEmbeddings } from '../sommelier/embeddings.js';
+import { identifyWine, enrichSpirit, createCocktail } from '../services/assistant.js';
 
 const router = Router();
 
@@ -36,6 +37,43 @@ router.post('/wines/extract-from-image', async (req, res) => {
   } catch (error) {
     console.error('OCR error:', error);
     res.status(500).json({ error: 'Failed to extract from image', details: error.message });
+  }
+});
+
+// Assistant de saisie (ex-geminiService côté navigateur).
+// Body: { name, vintage?, hint? }
+router.post('/ai/identify-wine', async (req, res) => {
+  const { name, vintage, hint } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  try {
+    res.json(await identifyWine({ name, vintage: parseInt(vintage) || null, hint }));
+  } catch (error) {
+    console.error('identify-wine error:', error);
+    res.status(502).json({ error: 'Identification IA indisponible', details: error.message });
+  }
+});
+
+// Body: { name, hint? }
+router.post('/ai/enrich-spirit', async (req, res) => {
+  const { name, hint } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'name required' });
+  try {
+    res.json(await enrichSpirit({ name, hint }));
+  } catch (error) {
+    console.error('enrich-spirit error:', error);
+    res.status(502).json({ error: 'Fiche IA indisponible', details: error.message });
+  }
+});
+
+// Body: { ingredients: string[], query }
+router.post('/ai/cocktail', async (req, res) => {
+  const { ingredients, query } = req.body || {};
+  if (!query?.trim()) return res.status(400).json({ error: 'query required' });
+  try {
+    res.json(await createCocktail({ ingredients, query }));
+  } catch (error) {
+    console.error('cocktail error:', error);
+    res.status(502).json({ error: 'Barman IA indisponible', details: error.message });
   }
 });
 

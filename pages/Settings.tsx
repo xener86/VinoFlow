@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, getRacks } from '../services/storageService';
 import { useAIConfig } from '../hooks/useAIConfig';
-import { AIConfig, AIProvider, Bottle } from '../types';
+import { AIConfig, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
 import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
@@ -86,17 +86,8 @@ const ChangePasswordForm: React.FC = () => {
   );
 };
 
-const PROVIDERS: { key: AIProvider; label: string }[] = [
-  { key: 'GEMINI', label: 'Google Gemini' },
-  { key: 'OPENAI', label: 'OpenAI' },
-  { key: 'MISTRAL', label: 'Mistral AI' },
-  { key: 'CLAUDE', label: 'Claude' },
-];
-
 const KEY_FIELDS: { key: keyof AIConfig['keys']; label: string; placeholder: string }[] = [
   { key: 'gemini', label: 'Clé API Google Gemini', placeholder: 'AIza…' },
-  { key: 'openai', label: 'Clé API OpenAI', placeholder: 'sk-…' },
-  { key: 'mistral', label: 'Clé API Mistral (La Plateforme)', placeholder: 'clé…' },
   { key: 'claude', label: 'Clé API Claude (Anthropic)', placeholder: 'sk-ant-…' },
 ];
 
@@ -287,7 +278,7 @@ export const Settings: React.FC = () => {
             <div className="space-y-5">
               {backendProviders && (
                 <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
-                  <MonoLabel>Serveur · sommelier</MonoLabel>
+                  <MonoLabel>Serveur</MonoLabel>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Badge tone={backendProviders.providers.claude ? 'success' : 'neutral'}>
                       Claude · {backendProviders.providers.claude ? 'configuré' : 'ANTHROPIC_API_KEY manquante'}
@@ -297,36 +288,13 @@ export const Settings: React.FC = () => {
                     </Badge>
                   </div>
                   <p className="mt-2 text-xs text-stone-500">
-                    Ces clés se règlent dans le fichier <code className="mono">.env</code> du serveur ; ce sont elles que le sommelier utilise en priorité.
+                    Ces clés se règlent dans le fichier <code className="mono">.env</code> du serveur ; ce sont elles que toutes les fonctions IA utilisent en priorité.
                   </p>
                 </div>
               )}
 
-              <div>
-                <div className="mono text-[10px] tracking-widest text-stone-500 uppercase mb-1.5">Fournisseur côté navigateur</div>
-                <div role="radiogroup" aria-label="Fournisseur IA" className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {PROVIDERS.map(p => {
-                    const active = localConfig.provider === p.key;
-                    return (
-                      <button
-                        key={p.key}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        onClick={() => setLocalConfig({ ...localConfig, provider: p.key })}
-                        className={`h-11 md:h-9 rounded-md border text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-wine-600/40 ${
-                          active ? 'bg-wine-700 border-wine-700 text-white' : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-50'
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
               <Notice tone="warning">
-                Ces clés restent dans ce navigateur (localStorage) : elles servent aux fonctions IA exécutées côté navigateur et, en secours, au sommelier si le serveur n'a pas de clé.
+                Clés de secours : toutes les fonctions IA s'exécutent sur le serveur, qui n'utilise ces clés que s'il n'a pas les siennes. Elles sont stockées dans ce navigateur (localStorage).
                 Elles sont lisibles par tout script injecté dans la page : préférez les variables d'environnement du serveur et des clés avec un plafond de dépenses.
               </Notice>
 

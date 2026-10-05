@@ -1,7 +1,7 @@
 # .dockerignore - /volume3/docker/vinoflow/.dockerignore
 
 # Dépendances
-node_modules
+**/node_modules
 npm-debug.log
 yarn-error.log
 
@@ -23,10 +23,14 @@ docker-compose.yml
 coverage
 .nyc_output
 
-# Variables d'environnement
-.env
-.env*.local
-.env.local
+# Variables d'environnement (à tous les niveaux : le build backend part de la
+# racine, backend/.env ne doit pas finir dans l'image)
+**/.env
+**/.env.*
+!.env.example
+
+# Sauvegardes de la base
+backups
 
 # IDE
 .vscode

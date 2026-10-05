@@ -7,10 +7,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Search, Plus, GlassWater, CheckCircle2, PartyPopper, Loader2, Gem, Sparkles, Trash2, Download, Minus,
 } from 'lucide-react';
-import { saveSpirit, saveCocktail, deleteSpirit } from '../services/storageService';
+import { saveSpirit, saveCocktail, deleteSpirit, enrichSpirit, createCocktail } from '../services/storageService';
 import { Spirit, SpiritType, CocktailRecipe } from '../types';
 import { searchCocktailsByName } from '../services/cocktailDbService';
-import { createCustomCocktail, enrichSpiritData } from '../services/geminiService';
 import { useSpirits } from '../hooks/useSpirits';
 import { useCocktails } from '../hooks/useCocktails';
 import {
@@ -124,7 +123,7 @@ export const Bar: React.FC = () => {
 
     setIsEnriching(true);
     try {
-      const data = await enrichSpiritData(name);
+      const data = await enrichSpirit(name);
       const newSpirit: Spirit = {
         id: crypto.randomUUID(),
         name,
@@ -230,7 +229,7 @@ export const Bar: React.FC = () => {
     setIsGenerating(true);
     try {
       const availableIngredients = spirits.filter(s => !s.isLuxury).map(s => s.name);
-      const recipe = await createCustomCocktail(availableIngredients, chatQuery);
+      const recipe = await createCocktail(availableIngredients, chatQuery);
       if (!recipe) {
         toast.error("Le barman IA n'a pas pu créer de recette. Réessayez.");
         return;

@@ -57,6 +57,9 @@ app.use(
     '/api/wines/extract-from-image',
     '/api/wines/refresh-embeddings',
     '/api/enrichment/run',
+    '/api/ai/identify-wine',
+    '/api/ai/enrich-spirit',
+    '/api/ai/cocktail',
   ],
   aiLimiter
 );

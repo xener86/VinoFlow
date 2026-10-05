@@ -216,14 +216,11 @@ export interface CocktailRecipe {
   isFavorite: boolean;
 }
 
-export type AIProvider = 'GEMINI' | 'OPENAI' | 'MISTRAL' | 'CLAUDE';
-
+// Clés IA saisies dans les Réglages : envoyées au serveur, qui les utilise en
+// secours de ses propres clés (ALLOW_CLIENT_AI_KEYS). Aucun appel IA ne part du navigateur.
 export interface AIConfig {
-  provider: AIProvider;
   keys: {
-    gemini: string;
-    openai: string;
-    mistral: string;
+    gemini?: string;
     claude?: string;
   };
 }
