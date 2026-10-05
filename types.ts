@@ -38,6 +38,10 @@ export interface Wine {
   peakConfidence?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
   peakReasoning?: string | null;
   peakComputedAt?: string | null;
+  // Enrichissement sourcé : niveau atteint, sources vérifiées, état
+  enrichmentBasis?: EnrichmentLevel | null;
+  enrichmentSources?: EnrichmentSource[] | null;
+  enrichmentStatus?: 'ok' | 'needs_review' | 'error' | null;
   peakVerifiedBy?: string | null;
 }
 
@@ -222,4 +226,52 @@ export interface AIConfig {
     mistral: string;
     claude?: string;
   };
+}
+
+// ─── Enrichissement sourcé (cascade de recherche web) ───
+export type EnrichmentLevel = 'EXACT' | 'AUTRE_MILLESIME' | 'PRODUCTEUR' | 'APPELLATION' | 'REGLES';
+
+export interface EnrichmentSource {
+  url: string;
+  title?: string;
+  excerpt?: string;
+  level?: EnrichmentLevel;
+  vintage?: number | null;
+  check?: 'verified' | 'not_found' | 'unreachable';
+  domain?: string | null;
+}
+
+export interface EnrichmentCandidate {
+  producer?: string | null;
+  cuvee?: string | null;
+  location?: string | null;
+  evidence?: string | null;
+  url?: string | null;
+}
+
+export interface EnrichmentLogEntry {
+  id: number;
+  created_at: string;
+  engine: string;
+  trigger: string;
+  ok: boolean;
+  basis: EnrichmentLevel | null;
+  changes: Record<string, any> | null;
+  error: string | null;
+  reverted_at: string | null;
+}
+
+export interface WineEnrichment {
+  basis: EnrichmentLevel | null;
+  basisLabel: string | null;
+  sources: EnrichmentSource[];
+  enrichedAt: string | null;
+  nextCheckAt: string | null;
+  status: 'ok' | 'needs_review' | 'error' | null;
+  candidates: EnrichmentCandidate[];
+  hint: string | null;
+  error: string | null;
+  inProgress: boolean;
+  queuePosition: number | null;
+  log: EnrichmentLogEntry[];
 }

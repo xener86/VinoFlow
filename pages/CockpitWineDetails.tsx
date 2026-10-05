@@ -20,6 +20,7 @@ import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
 import { Card, MonoLabel, Button, Badge } from '../components/cockpit/primitives';
 import { JournalEntry, Bottle } from '../types';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { ProvenancePanel, ProvenanceBadge } from '../components/cockpit/ProvenancePanel';
 
 const typeLabel = (type: string) => {
   switch (type) {
@@ -198,10 +199,13 @@ export const CockpitWineDetails: React.FC = () => {
               <MonoLabel>◌ Profil sensoriel</MonoLabel>
               <h3 className="serif-it text-xl text-stone-900 mt-0.5">Caractère</h3>
             </div>
-            <AromaConfidenceBadge
-              source={(wine as any).aromaSource}
-              confidence={(wine as any).aromaConfidence}
-            />
+            <div className="flex items-center gap-1.5">
+              <AromaConfidenceBadge
+                source={wine.aromaSource}
+                confidence={wine.aromaConfidence}
+              />
+              <ProvenanceBadge basis={wine.enrichmentBasis} />
+            </div>
           </div>
 
           {wine.sensoryDescription && (
@@ -333,6 +337,9 @@ export const CockpitWineDetails: React.FC = () => {
             </div>
           )}
         </Card>
+
+        {/* ───── Provenance IA ───── */}
+        <ProvenancePanel wineId={wine.id} onChanged={refreshWines} className="col-span-12" />
 
         {/* ───── Histoire / récit producteur ───── */}
         {wine.producerHistory && (
