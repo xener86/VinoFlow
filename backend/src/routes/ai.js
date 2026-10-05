@@ -50,7 +50,6 @@ router.get('/ai/providers', async (req, res) => {
 router.post('/wines/enrich-aromas', async (req, res) => {
   try {
     const { onlyMissing = true, useConsensus = false, limit = 50 } = req.body || {};
-    const userId = req.user?.userId;
 
     const filter = onlyMissing
       ? `WHERE aroma_profile IS NULL OR array_length(aroma_profile, 1) IS NULL OR array_length(aroma_profile, 1) < 3 OR aroma_source IS NULL`

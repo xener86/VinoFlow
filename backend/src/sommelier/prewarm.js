@@ -27,7 +27,7 @@ export const prewarmCommonDishes = async () => {
       const criteria = await extractCriteria(dish, {});
       await setCriteriaCache(pool, dish, criteria);
       warmed++;
-    } catch (e) {
+    } catch {
       // Skip silently — likely no API key
     }
     // Avoid hammering the API

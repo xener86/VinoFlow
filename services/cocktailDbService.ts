@@ -90,26 +90,3 @@ export const searchCocktailsByName = async (query: string): Promise<CocktailReci
     return [];
   }
 };
-
-export const searchCocktailsByIngredient = async (ingredient: string): Promise<CocktailRecipe[]> => {
-  try {
-    // Note : L'endpoint filter retourne des données partielles (pas d'instructions).
-    // Avec une clé Premium, on peut parfois utiliser /popular.php ou d'autres filtres.
-    const response = await fetch(`${BASE_URL}/filter.php?i=${ingredient}`);
-    const data = await response.json();
-    if (!data.drinks) return [];
-    
-    // Pour avoir les détails complets (recette), on doit faire un appel lookup pour chaque résultat.
-    // On limite à 5 pour la performance, sauf si besoin de plus.
-    const detailsPromises = data.drinks.slice(0, 5).map(async (d: any) => {
-        const detailsRes = await fetch(`${BASE_URL}/lookup.php?i=${d.idDrink}`);
-        const detailsData = await detailsRes.json();
-        return mapApiToCocktail(detailsData.drinks[0]);
-    });
-
-    return Promise.all(detailsPromises);
-  } catch (error) {
-    console.error("CocktailDB Filter Error", error);
-    return [];
-  }
-};

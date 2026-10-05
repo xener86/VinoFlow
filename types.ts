@@ -79,13 +79,6 @@ export interface Rack {
   sortOrder?: number;
 }
 
-export interface TimelineEvent {
-  date: string;
-  type: 'IN' | 'OUT' | 'MOVE' | 'GIFT' | 'NOTE';
-  description: string;
-  user: string;
-}
-
 export interface JournalEntry {
   id: string;
   date: string;
@@ -101,6 +94,28 @@ export interface JournalEntry {
   occasion?: string;
   note?: string;
   userId?: string;
+}
+
+// Forme utilisée par le front (hooks/useTastingNotes). Diffère de la table
+// tasting_notes renvoyée par /api/tasting-notes (overallRating, noseNotes…).
+export interface TastingNote {
+  id: string;
+  wineId: string;
+  wineName: string;
+  wineVintage: number;
+  date: string;
+  visual: number;
+  visualNotes: string;
+  nose: string[];
+  body: number;
+  acidity: number;
+  tannin: number;
+  finish: number;
+  rating: number;
+  pairedWith?: string;
+  pairingQuality?: number;
+  pairingSuggestion?: string;
+  notes: string;
 }
 
 export interface SensoryProfile {
@@ -174,76 +189,6 @@ export interface CocktailRecipe {
   isFavorite: boolean;
 }
 
-export interface ShoppingListItem {
-  id: string;
-  name: string;
-  category: 'SPIRIT' | 'MIXER' | 'FRUIT' | 'GARNISH' | 'OTHER';
-  quantity: number;
-  isChecked: boolean;
-}
-
-export interface SommelierRecommendation {
-  wineId: string;
-  score: number;
-  reasoning: string;
-  servingTemp: string;
-  decanting: boolean;
-  foodPairingMatch: string;
-  alternative?: string;
-  peakStatus: 'DRINK_NOW' | 'KEEP_2_3_YEARS' | 'DRINK_SOON' | 'PAST_PEAK';
-  peakExplanation: string;
-  locations: string[];
-}
-
-export interface OutOfCellarSuggestion {
-  appellation: string;
-  reason: string;
-  recommendedDomains: string[];
-  recommendedVintages: string[];
-}
-
-export interface EveningPlan {
-  theme: string;
-  aperitif: {
-    type: string;
-    name: string;
-    description: string;
-    pairingSnack?: string;
-  };
-  mainCourse: {
-    dishName: string;
-    wineName: string;
-    pairingReason: string;
-  };
-  digestif: {
-    spiritName: string;
-    description: string;
-  };
-}
-
-export interface UserTasteProfile {
-  id: string;
-  userId: string;
-  favoriteGrapes: Record<string, number>;
-  favoriteRegions: Record<string, number>;
-  stylePreferences: SensoryProfile;
-  lastUpdated: string;
-}
-
-export interface CellarGapAnalysis {
-  generalAnalysis: string;
-  gaps: string[];
-  suggestions: {
-    id?: string;
-    region: string;
-    type: string;
-    priority: 'HIGH' | 'MEDIUM' | 'LOW';
-    reason: string;
-    budgetRecommendation: string;
-    specificTarget: string;
-  }[];
-}
-
 export type AIProvider = 'GEMINI' | 'OPENAI' | 'MISTRAL' | 'CLAUDE';
 
 export interface AIConfig {
@@ -254,14 +199,4 @@ export interface AIConfig {
     mistral: string;
     claude?: string;
   };
-}
-
-export interface FullBackupData {
-  wines: Wine[];
-  bottles: Bottle[];
-  racks: Rack[];
-  spirits: Spirit[];
-  cocktails: CocktailRecipe[];
-  shoppingList: ShoppingListItem[];
-  timestamp: string;
 }

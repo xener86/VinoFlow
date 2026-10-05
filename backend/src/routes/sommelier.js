@@ -105,7 +105,7 @@ router.post('/sommelier/reverse-pair', async (req, res) => {
 // Phase 7.2 — Multi-course menu pairing
 router.post('/sommelier/menu', async (req, res) => {
   try {
-    const { dishes, context } = req.body;
+    const { dishes } = req.body;
     if (!Array.isArray(dishes) || dishes.length === 0) {
       return res.status(400).json({ error: 'dishes must be a non-empty array' });
     }

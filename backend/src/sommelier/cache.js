@@ -8,9 +8,6 @@
 
 import crypto from 'crypto';
 
-const TTL_LEVEL1_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const TTL_LEVEL2_MS = 24 * 60 * 60 * 1000;      // 24 hours
-
 const normalizeDish = (dish) => String(dish || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
 export const computeCaveHash = (wines) => {

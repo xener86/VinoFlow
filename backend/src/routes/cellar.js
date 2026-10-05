@@ -52,7 +52,6 @@ router.get('/cellar/projection', async (req, res) => {
 router.post('/wines/refresh-peaks', async (req, res) => {
   try {
     const { onlyMissing = true, limit = 50, force = false } = req.body || {};
-    const userId = req.user?.userId;
 
     const filter = (onlyMissing && !force) ? `WHERE peak_start IS NULL OR peak_end IS NULL` : '';
     const result = await pool.query(`SELECT * FROM wines ${filter} ORDER BY created_at DESC LIMIT $1`, [limit]);
