@@ -2,8 +2,6 @@
 -- Apply to existing databases that were created before sommelier v2.
 -- Idempotent: safe to run multiple times.
 
-BEGIN;
-
 -- 1. Add aroma profile metadata columns to wines
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS aroma_confidence text;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS aroma_source text;
@@ -72,4 +70,3 @@ CREATE TABLE IF NOT EXISTS taste_profile (
     updated_at timestamp with time zone DEFAULT now()
 );
 
-COMMIT;

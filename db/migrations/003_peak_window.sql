@@ -4,8 +4,6 @@
 -- proper peak window per wine, computed via LLM based on producer, appellation,
 -- vintage quality, wine style.
 
-BEGIN;
-
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_start integer;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_end integer;
 ALTER TABLE wines ADD COLUMN IF NOT EXISTS peak_source text;
@@ -26,4 +24,3 @@ BEGIN
     END IF;
 END $$;
 
-COMMIT;
