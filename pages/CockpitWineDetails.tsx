@@ -197,13 +197,13 @@ export const CockpitWineDetails: React.FC = () => {
               <GlassWater className="w-3.5 h-3.5" />Ouvrir une bouteille
             </Button>
           )}
-          <Button variant={activeBottles.length > 0 ? 'outline' : 'default'} onClick={handleAddBottle}><Plus className="w-3.5 h-3.5" />Ajouter</Button>
+          <Button variant={activeBottles.length > 0 ? 'outline' : 'default'} onClick={handleAddBottle} className={activeBottles.length > 0 ? '' : 'col-span-2 sm:col-span-1'}><Plus className="w-3.5 h-3.5" />Ajouter</Button>
           {activeBottles.length > 0 && (
             <Link to={`/plan?wine=${wine.id}`}>
               <Button variant="outline" className="w-full"><MapPin className="w-3.5 h-3.5" />Où est-elle ?</Button>
             </Link>
           )}
-          <Link to={`/tasting/${wine.id}`} className={activeBottles.length > 0 ? 'col-span-2 sm:col-span-1' : ''}>
+          <Link to={`/tasting/${wine.id}`} className="col-span-2 sm:col-span-1">
             <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
           </Link>
         </div>
