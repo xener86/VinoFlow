@@ -15,7 +15,6 @@ import { computePeak, peakStatus } from './sommelier/peakCalculator.js';
 import { extractFromLabel } from './sommelier/ocr.js';
 import { computeBudget } from './sommelier/budget.js';
 import { sendMail, renderMailHtml } from './services/mailService.js';
-import { fetchCommunityData, fetchMarketValue, fetchPressScores } from './services/externalData.js';
 import { updateMissingEmbeddings } from './sommelier/embeddings.js';
 import { extractCriteria } from './sommelier/llm1.js';
 import { setCriteriaCache } from './sommelier/cache.js';
@@ -124,9 +123,9 @@ const aiLimiter = rateLimit({
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   keyGenerator: (req) => req.user?.userId || ipKeyGenerator(req.ip),
-  // Les lectures /api/sommelier/* qui n'appellent pas de LLM (alertes,
-  // profil de goût…) ne sont pas comptées. pair-stream, lui, est un GET coûteux.
-  skip: (req) => req.method === 'GET' && req.baseUrl === '/api/sommelier' && req.path !== '/pair-stream',
+  // Les lectures GET /api/sommelier/* n'appellent pas de LLM (alertes, profil
+  // de goût…) : elles ne sont pas comptées.
+  skip: (req) => req.method === 'GET' && req.baseUrl === '/api/sommelier',
   handler: (req, res, next, options) =>
     res.status(options.statusCode).json({ msg: 'Limite de requêtes IA atteinte, réessayez dans quelques minutes.' }),
 });
@@ -1585,46 +1584,6 @@ app.get('/api/cellar/budget', async (req, res) => {
   }
 });
 
-// Phase 9 — External data (stubs that use AI estimates today, replace with real APIs)
-app.get('/api/wines/:id/external/community', async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    const wine = convertKeysToCamelCase(r.rows[0]);
-    const data = await fetchCommunityData(wine);
-    res.json(data || { source: 'NONE', error: 'No data available' });
-  } catch (error) {
-    console.error('community error:', error);
-    res.status(500).json({ error: 'Failed to fetch community data' });
-  }
-});
-
-app.get('/api/wines/:id/external/market-value', async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    const wine = convertKeysToCamelCase(r.rows[0]);
-    const data = await fetchMarketValue(wine);
-    res.json(data || { source: 'NONE' });
-  } catch (error) {
-    console.error('market-value error:', error);
-    res.status(500).json({ error: 'Failed to fetch market value' });
-  }
-});
-
-app.get('/api/wines/:id/external/press', async (req, res) => {
-  try {
-    const r = await pool.query('SELECT * FROM wines WHERE id = $1', [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    const wine = convertKeysToCamelCase(r.rows[0]);
-    const data = await fetchPressScores(wine);
-    res.json(data || { source: 'NONE' });
-  } catch (error) {
-    console.error('press error:', error);
-    res.status(500).json({ error: 'Failed to fetch press scores' });
-  }
-});
-
 // Phase 5 — pgvector embeddings management
 app.post('/api/wines/refresh-embeddings', async (req, res) => {
   try {
@@ -1634,48 +1593,6 @@ app.post('/api/wines/refresh-embeddings', async (req, res) => {
   } catch (error) {
     console.error('refresh-embeddings error:', error);
     res.status(500).json({ error: 'Failed to refresh embeddings', details: error.message });
-  }
-});
-
-// Phase 4.3 — Streaming sommelier (Server-Sent Events)
-// Sends partial events: criteria → candidates → picks
-app.get('/api/sommelier/pair-stream', async (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders?.();
-
-  const send = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
-
-  try {
-    const dish = req.query.dish;
-    if (!dish) {
-      send('error', { message: 'dish required' });
-      return res.end();
-    }
-    send('status', { phase: 'extract-criteria' });
-
-    const criteria = await extractCriteria(dish, {});
-    send('criteria', criteria);
-
-    send('status', { phase: 'matching' });
-    const inventory = await loadInventory();
-    const userId = req.user?.userId;
-    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
-
-    const result = await runPairing({
-      pool, inventory, dish, context: {}, userId, userFeedback: [], tasteProfile, skipCache: false,
-    });
-
-    send('candidates', result.candidates);
-    send('picks', result.picks);
-    send('done', { fromCache: result.fromCache, cave_size: result.cave_size });
-  } catch (error) {
-    send('error', { message: error.message });
-  } finally {
-    res.end();
   }
 });
 

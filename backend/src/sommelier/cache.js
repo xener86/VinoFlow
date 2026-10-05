@@ -57,7 +57,3 @@ export const setResultCache = async (pool, dish, caveHash, userId, payload) => {
     ON CONFLICT DO NOTHING
   `, [normalizeDish(dish), caveHash, userId, payload]);
 };
-
-export const purgeExpired = async (pool) => {
-  await pool.query(`DELETE FROM pairing_cache WHERE expires_at IS NOT NULL AND expires_at < now()`);
-};
