@@ -261,6 +261,9 @@ const CaveList: React.FC = () => {
           })}
         </ul>
 
+        {/* Espace pour la barre de sélection fixe (mobile) */}
+        {selected.size > 0 && <div className="h-16 md:hidden" aria-hidden="true" />}
+
         {/* Desktop : tableau */}
         <table className="hidden md:table w-full text-sm">
           <thead>
