@@ -173,6 +173,23 @@ describe('moteur Claude Code', () => {
     expect(args[args.indexOf('--tools') + 1]).toBe('WebSearch,WebFetch');
   });
 
+  it('schéma, prompt système et tâche paramétrables (passe « cote »)', async () => {
+    const runner = vi.fn(async () => ({ code: 0, stdout: JSON.stringify({ is_error: false, structured_output: { status: 'NOT_FOUND' }, usage: {} }) }));
+    const schema = { type: 'object', properties: { status: { type: 'string' } }, required: ['status'], additionalProperties: false };
+    await runClaudeCode('p', { runner, schema, systemPrompt: 'Prompt cote', task: 'valuation' });
+    const [args] = runner.mock.calls[0];
+    expect(JSON.parse(args[args.indexOf('--json-schema') + 1])).toEqual(schema);
+    expect(args[args.indexOf('--append-system-prompt') + 1]).toBe('Prompt cote');
+  });
+
+  it('sans option : schéma et prompt de l’enrichissement (non-régression)', async () => {
+    const runner = vi.fn(async () => ({ code: 0, stdout: JSON.stringify({ is_error: false, structured_output: { basis: 'EXACT' }, usage: {} }) }));
+    await runClaudeCode('p', { runner });
+    const [args] = runner.mock.calls[0];
+    expect(JSON.parse(args[args.indexOf('--json-schema') + 1])).toHaveProperty('properties.basis');
+    expect(args[args.indexOf('--append-system-prompt') + 1]).toMatch(/documentaliste du vin/);
+  });
+
   it('erreur explicite si Claude Code échoue ou n’est pas connecté', async () => {
     const runner = async () => ({ code: 1, stdout: JSON.stringify({ is_error: true, subtype: 'success', result: 'Not logged in · Please run /login' }) });
     await expect(runClaudeCode('p', { runner })).rejects.toThrow(/Not logged in/);
