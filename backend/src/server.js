@@ -36,6 +36,7 @@ import bottlesRouter from './routes/bottles.js';
 import racksRouter from './routes/racks.js';
 import spiritsRouter from './routes/spirits.js';
 import tastingsRouter from './routes/tastings.js';
+import historyRouter from './routes/history.js';
 
 const app = express();
 const port = process.env.PORT || 3100;
@@ -109,56 +110,7 @@ app.use('/api', spiritsRouter);
 
 app.use('/api', tastingsRouter);
 
-// ========== HISTORY/JOURNAL ENDPOINTS ==========
-
-app.get('/api/history', async (req, res) => {
-  try {
-    const { wineId } = req.query;
-    let query = 'SELECT * FROM journal';
-    const params = [];
-    if (wineId) {
-      query += ' WHERE wine_id = $1';
-      params.push(wineId);
-    }
-    query += ' ORDER BY date DESC';
-    const result = await pool.query(query, params);
-    res.json(convertKeysToCamelCase(result.rows));
-  } catch (error) {
-    console.error('Error fetching history:', error);
-    res.status(500).json({ error: 'Failed to fetch history' });
-  }
-});
-
-app.post('/api/history', async (req, res) => {
-  try {
-    const entry = req.body;
-    // ID is always server-generated (gen_random_uuid default) to prevent
-    // clients from spoofing or colliding IDs.
-    const result = await pool.query(`
-      INSERT INTO journal (date, type, wine_id, wine_name, wine_vintage, quantity, description, from_location, to_location, recipient, occasion, note, user_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      RETURNING *
-    `, [
-      entry.date || new Date().toISOString(),
-      entry.type || 'NOTE',
-      entry.wineId || entry.wine_id || null,
-      entry.wineName || entry.wine_name || 'Vin inconnu',
-      entry.wineVintage || entry.wine_vintage || null,
-      entry.quantity || null,
-      entry.description || null,
-      entry.fromLocation || entry.from_location || null,
-      entry.toLocation || entry.to_location || null,
-      entry.recipient || null,
-      entry.occasion || null,
-      entry.note || null,
-      entry.userId || entry.user_id || null
-    ]);
-    res.status(201).json(convertKeysToCamelCase(result.rows[0]));
-  } catch (error) {
-    console.error('Error creating history:', error);
-    res.status(500).json({ error: 'Failed to create history entry' });
-  }
-});
+app.use('/api', historyRouter);
 
 // ========== WISHLIST ENDPOINTS ==========
 
