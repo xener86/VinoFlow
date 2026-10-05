@@ -4,8 +4,8 @@
 //   - Drag & drop bottles between limbo / shelves / cases
 // All mutations go through storageService (saveRack, updateRack, deleteRack, moveBottle).
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Settings, Plus, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
@@ -18,6 +18,10 @@ interface CockpitPlanProps {
 }
 
 type SlotInfo = { wine: CellarWine; bottle: Bottle } | null;
+
+// Vin mis en évidence (?wine=<id>, ex. « Voir l'emplacement » depuis le sommelier).
+const PlanFocusContext = createContext<string | null>(null);
+const FOCUS_RING = 'ring-2 ring-wine-600 ring-offset-2 ring-offset-white z-10 animate-pulse';
 type DragState = { bottleId: string; wineId: string; wineName: string; wineVintage?: number; from: 'LIMBO' | { rackId: string; x: number; y: number } } | null;
 
 // Short alias from a free-form rack name. Used as the big letter on top of
@@ -112,6 +116,9 @@ const Stepper: React.FC<{ value: number; onMinus: () => void; onPlus: () => void
 export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) => {
   const { wines, refresh: refreshWines } = useWines();
   const { racks, refresh: refreshRacks } = useRacks();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusWineId = searchParams.get('wine');
+  const focusWine = focusWineId ? wines.find(w => w.id === focusWineId) : undefined;
   const [hover, setHover] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [drag, setDrag] = useState<DragState>(null);
@@ -258,8 +265,34 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
     refreshWines();
   };
 
+  // Fait défiler jusqu'à la première bouteille mise en évidence.
+  useEffect(() => {
+    if (!focusWine) return;
+    const el = document.querySelector('[data-plan-focus="true"]');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }, [focusWine, racks]);
+
+  const focusPlaced = focusWine ? Object.values(rackContents).flatMap(slots => Object.values(slots)).filter(i => i?.wine.id === focusWine.id).length : 0;
+  const focusLimbo = focusWine ? limboBottles.filter(b => b.wine.id === focusWine.id).length : 0;
+
   return (
+    <PlanFocusContext.Provider value={focusWineId}>
     <div>
+      {focusWine && (
+        <div className="mb-4 flex items-center gap-3 rounded-md border border-wine-200 bg-wine-50/60 px-4 py-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-wine-700 animate-pulse shrink-0" />
+          <div className="flex-1 text-sm text-stone-800">
+            <Link to={`/wine/${focusWine.id}`} className="serif-it hover:text-wine-800">{focusWine.name} {focusWine.vintage || ''}</Link>
+            <span className="text-stone-500"> · {focusPlaced} bouteille(s) rangée(s){focusLimbo ? `, ${focusLimbo} en attente` : ''}</span>
+          </div>
+          <button
+            onClick={() => { searchParams.delete('wine'); setSearchParams(searchParams, { replace: true }); }}
+            className="mono text-[10px] tracking-widest text-stone-600 hover:text-wine-700 h-9 px-2"
+          >
+            EFFACER
+          </button>
+        </div>
+      )}
       {!embedded && (
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
@@ -428,6 +461,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         }
       </div>
     </div>
+    </PlanFocusContext.Provider>
   );
 };
 
@@ -444,6 +478,8 @@ interface LimboZoneProps {
   onStartDrag: (bottle: Bottle, wine: CellarWine) => void;
 }
 const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDragOver, onDragLeave, onDrop, onStartDrag }) => {
+  const navigate = useNavigate();
+  const focusWineId = useContext(PlanFocusContext);
   const dropAttempt = !!drag && isDropTarget;
   return (
     <div
@@ -484,10 +520,11 @@ const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDr
                 key={bottle.id}
                 draggable
                 onDragStart={() => onStartDrag(bottle, wine)}
-                onClick={() => { window.location.href = `/wine/${wine.id}`; }}
+                onClick={() => navigate(`/wine/${wine.id}`)}
+                data-plan-focus={focusWineId === wine.id ? 'true' : undefined}
                 className={`flex items-center gap-2 px-2.5 py-1.5 bg-white border border-stone-300 hover:border-wine-700 rounded-md cursor-grab active:cursor-grabbing transition ${
                   isDragSrc ? 'opacity-30' : ''
-                }`}
+                } ${focusWineId === wine.id ? FOCUS_RING : ''}`}
                 title={`Glisser pour placer · ${wine.name} ${wine.vintage || ''}`}
               >
                 <span className={`w-2.5 h-2.5 rounded-sm border shrink-0 ${cls}`} />
@@ -528,6 +565,8 @@ interface ShelfBlockProps {
   onDelete: () => void;
 }
 const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
+  const navigate = useNavigate();
+  const focusWineId = useContext(PlanFocusContext);
   const filled = Object.values(contents).filter(Boolean).length;
   const total = rack.width * rack.height;
 
@@ -628,8 +667,9 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
                     {...cellProps}
                     draggable
                     onDragStart={() => onStartDrag(info.bottle, info.wine, cIdx, rIdx)}
-                    onClick={() => { window.location.href = `/wine/${info.wine.id}`; }}
-                    className={`relative w-7 h-7 rounded-sm transition cursor-grab active:cursor-grabbing ${cellClass}`}
+                    onClick={() => navigate(`/wine/${info.wine.id}`)}
+                    data-plan-focus={focusWineId === info.wine.id ? 'true' : undefined}
+                    className={`relative w-7 h-7 rounded-sm transition cursor-grab active:cursor-grabbing ${cellClass} ${focusWineId === info.wine.id ? FOCUS_RING : ''}`}
                     title={`${slotAddr} · ${info.wine.name} ${info.wine.vintage || ''}`}
                   >
                     {isHovered && !drag && (
@@ -681,10 +721,12 @@ interface CaseBlockProps {
   onDelete: () => void;
 }
 const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
+  const navigate = useNavigate();
+  const focusWineId = useContext(PlanFocusContext);
   const capacity = rack.width * rack.height;
   const isLarge = capacity >= 12;
   const cols = rack.width;
-  const span = isLarge ? 'col-span-3' : 'col-span-2';
+  const span = isLarge ? 'col-span-6 sm:col-span-4 md:col-span-3' : 'col-span-4 sm:col-span-3 md:col-span-2';
 
   const lots = useMemo(() => {
     const m = new Map<string, { wine: CellarWine; qty: number; firstBottle: Bottle }>();
@@ -776,9 +818,10 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
               {...cellProps}
               draggable
               onDragStart={() => onStartDrag(info.bottle, info.wine, x, y)}
-              onClick={() => { window.location.href = `/wine/${info.wine.id}`; }}
+              onClick={() => navigate(`/wine/${info.wine.id}`)}
+              data-plan-focus={focusWineId === info.wine.id ? 'true' : undefined}
               title={`${info.wine.name} · ${info.wine.vintage || '?'}`}
-              className={`w-7 h-7 rounded-sm border cursor-grab active:cursor-grabbing transition hover:ring-1 hover:ring-stone-900/40 ${fill} ${isDragSrc ? 'opacity-30' : ''}`}
+              className={`w-7 h-7 rounded-sm border cursor-grab active:cursor-grabbing transition hover:ring-1 hover:ring-stone-900/40 ${fill} ${isDragSrc ? 'opacity-30' : ''} ${focusWineId === info.wine.id ? FOCUS_RING : ''}`}
             />
           );
         })}

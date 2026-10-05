@@ -359,16 +359,15 @@ export const consumeSpecificBottle = async (
       })
   });
 
-  if (response.ok) {
-      await addJournalEntry({
-          type: 'OUT',
-          wineId,
-          wineName,
-          wineVintage,
-          quantity: 1,
-          description: `Consommation - ${wineName} ${wineVintage || ''}`
-      });
-  }
+  await handleResponse(response);
+  await addJournalEntry({
+      type: 'OUT',
+      wineId,
+      wineName,
+      wineVintage,
+      quantity: 1,
+      description: `Consommation - ${wineName} ${wineVintage || ''}`
+  });
 };
 
 export const moveBottle = async (

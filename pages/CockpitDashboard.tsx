@@ -333,9 +333,15 @@ export const CockpitDashboard: React.FC = () => {
                 <li key={e.id} className="px-5 py-2 grid grid-cols-12 gap-3 items-baseline border-t border-stone-100">
                   <span className="col-span-1 mono text-[10px] text-stone-500">{time}</span>
                   <span className="col-span-2 mono text-[10px] tracking-widest text-stone-500">[{e.type}]</span>
-                  <span className="col-span-9 truncate text-stone-700">
-                    {e.description || `${e.wineName}${e.wineVintage ? ' · ' + e.wineVintage : ''}`}
-                  </span>
+                  {e.wineId ? (
+                    <Link to={`/wine/${e.wineId}`} className="col-span-9 truncate text-stone-700 hover:text-wine-700">
+                      {e.description || `${e.wineName}${e.wineVintage ? ' · ' + e.wineVintage : ''}`}
+                    </Link>
+                  ) : (
+                    <span className="col-span-9 truncate text-stone-700">
+                      {e.description || `${e.wineName}${e.wineVintage ? ' · ' + e.wineVintage : ''}`}
+                    </span>
+                  )}
                 </li>
               );
             })}

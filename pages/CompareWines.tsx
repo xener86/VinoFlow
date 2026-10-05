@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useWines } from '../hooks/useWines';
 import { CellarWine } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
@@ -51,8 +52,8 @@ export const CompareWines: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           {selected.map((w, i) => (
             <div key={w.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white" style={{ backgroundColor: OVERLAY_COLORS[i] }}>
-              {w.name} ({w.vintage})
-              <button onClick={() => removeWine(w.id)} className="hover:opacity-70"><X size={14} /></button>
+              <Link to={`/wine/${w.id}`} className="hover:underline">{w.name} ({w.vintage})</Link>
+              <button onClick={() => removeWine(w.id)} aria-label={`Retirer ${w.name}`} className="hover:opacity-70"><X size={14} /></button>
             </div>
           ))}
           {selected.length === 0 && (
@@ -110,7 +111,7 @@ export const CompareWines: React.FC = () => {
             {selected.map((w, i) => (
               <div key={w.id} className="flex items-center gap-2 text-sm">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: OVERLAY_COLORS[i] }} />
-                <span className="text-stone-600">{w.name}</span>
+                <Link to={`/wine/${w.id}`} className="text-stone-600 hover:text-wine-700 hover:underline">{w.name}</Link>
               </div>
             ))}
           </div>
@@ -127,7 +128,7 @@ export const CompareWines: React.FC = () => {
                 {selected.map((w, i) => (
                   <th key={w.id} className="p-4 text-left font-serif text-stone-800">
                     <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: OVERLAY_COLORS[i] }} />
-                    {w.name}
+                    <Link to={`/wine/${w.id}`} className="hover:text-wine-700 hover:underline">{w.name}</Link>
                   </th>
                 ))}
               </tr>

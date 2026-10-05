@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Sparkles, Wine, Utensils, Layers, Eye, GitCompareArrows, BookOpen,
   Camera, Loader2, Check, RefreshCw, ArrowLeft,
@@ -90,7 +90,7 @@ export const SommelierTools: React.FC = () => {
           </button>
           <div className="bg-white border border-stone-200 rounded-2xl p-6">
             {active === 'REVERSE'  && <ReverseTool wines={wines} />}
-            {active === 'MENU'     && <MenuTool />}
+            {active === 'MENU'     && <MenuTool wines={wines} />}
             {active === 'VERTICAL' && <VerticalTool wines={wines} />}
             {active === 'BLIND'    && <BlindTool />}
             {active === 'COMPARE'  && <CompareTool wines={wines} />}
@@ -149,7 +149,10 @@ const ReverseTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 // ──────────────────────────────────────────
 // Menu complet
 // ──────────────────────────────────────────
-const MenuTool: React.FC = () => {
+const wineLabel = (w: Partial<CellarWine>) =>
+  [w.producer, w.cuvee || w.name, w.vintage].filter(Boolean).join(' ');
+
+const MenuTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
   const [dishes, setDishes] = useState(['', '', '']);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -186,9 +189,19 @@ const MenuTool: React.FC = () => {
             <div key={i} className="border-l-4 border-wine-500 pl-4">
               <div className="text-xs uppercase text-stone-500 font-bold">Service {i + 1}</div>
               <div className="font-medium mb-2">{c.dish}</div>
-              {c.picks?.safe ? (
-                <div className="text-sm text-stone-700">→ {c.picks.safe.reason}</div>
-              ) : <div className="text-sm text-stone-400 italic">Pas d'accord trouvé</div>}
+              {c.picks?.safe ? (() => {
+                const w = wines.find(x => x.id === c.picks.safe.wine_id);
+                return (
+                  <div className="text-sm text-stone-700">
+                    {w && (
+                      <Link to={`/wine/${w.id}`} className="block font-serif text-base text-wine-700 hover:underline mb-1">
+                        {wineLabel(w)} →
+                      </Link>
+                    )}
+                    {c.picks.safe.reason}
+                  </div>
+                );
+              })() : <div className="text-sm text-stone-400 italic">Pas d'accord trouvé</div>}
             </div>
           ))}
         </div>
@@ -231,12 +244,15 @@ const VerticalTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
       {result?.wines && result.wines.length > 0 && (
         <ol className="space-y-2 mt-4">
           {result.wines.map((w: any, i: number) => (
-            <li key={w.id} className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg">
-              <span className="w-7 h-7 rounded-full bg-wine-600 text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
-              <div className="flex-1">
-                <div className="font-medium">{w.cuvee || w.name} <span className="text-stone-500">{w.vintage}</span></div>
-                <div className="text-xs text-stone-500">{w.peak?.status}</div>
-              </div>
+            <li key={w.id}>
+              <Link to={`/wine/${w.id}`} className="flex items-center gap-3 p-3 bg-stone-50 hover:bg-stone-100 rounded-lg">
+                <span className="w-7 h-7 rounded-full bg-wine-600 text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
+                <div className="flex-1">
+                  <div className="font-medium">{w.cuvee || w.name} <span className="text-stone-500">{w.vintage}</span></div>
+                  <div className="text-xs text-stone-500">{w.peak?.status}</div>
+                </div>
+                <span className="text-stone-400 text-xs">Fiche →</span>
+              </Link>
             </li>
           ))}
         </ol>
@@ -290,7 +306,7 @@ const BlindTool: React.FC = () => {
           ) : (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-xs uppercase font-bold text-green-700 mb-1">C'était</div>
-              <div className="text-lg font-serif">{tasting.reveal.producer} - {tasting.reveal.cuvee || tasting.reveal.name} {tasting.reveal.vintage}</div>
+              <Link to={`/wine/${tasting.reveal.id}`} className="block text-lg font-serif hover:text-wine-700 hover:underline">{tasting.reveal.producer} - {tasting.reveal.cuvee || tasting.reveal.name} {tasting.reveal.vintage}</Link>
               <div className="text-sm text-stone-500">{tasting.reveal.appellation || tasting.reveal.region}</div>
             </div>
           )}
@@ -339,16 +355,22 @@ const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
             <div className="text-xs uppercase font-bold mb-2">
               Gagnant : {result.winner === 'tie' ? 'Match nul' : `Vin ${result.winner}`}
             </div>
+            {result.winner !== 'tie' && (() => {
+              const w = wines.find(x => x.id === (result.winner === 'A' ? a : b));
+              return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-base text-wine-700 hover:underline mb-1">{wineLabel(w)} →</Link> : null;
+            })()}
             <p className="text-sm">{result.reasoning}</p>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
+              {(() => { const w = wines.find(x => x.id === a); return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-stone-900 hover:text-wine-700 hover:underline mb-1 truncate">A · {wineLabel(w)}</Link> : null; })()}
               <div className="font-bold mb-1 text-green-600">A — Forces</div>
               <p className="text-stone-700">{result.wine_a_strengths}</p>
               <div className="font-bold mt-2 mb-1 text-orange-600">A — Faiblesses</div>
               <p className="text-stone-700">{result.wine_a_weaknesses}</p>
             </div>
             <div>
+              {(() => { const w = wines.find(x => x.id === b); return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-stone-900 hover:text-wine-700 hover:underline mb-1 truncate">B · {wineLabel(w)}</Link> : null; })()}
               <div className="font-bold mb-1 text-green-600">B — Forces</div>
               <p className="text-stone-700">{result.wine_b_strengths}</p>
               <div className="font-bold mt-2 mb-1 text-orange-600">B — Faiblesses</div>

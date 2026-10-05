@@ -3,7 +3,7 @@
 // Right pane: the existing SommelierV2 component (3-perspective pairing).
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Sparkles } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { getDrinkBeforeAlerts } from '../services/storageService';
@@ -100,16 +100,16 @@ export const CockpitSommelier: React.FC = () => {
             <MonoLabel>◌ Suggestions proactives</MonoLabel>
             <div className="mt-3 space-y-1.5">
               {prompts.map((p, i) => (
-                <a
+                <Link
                   key={i}
-                  href={`?mode=PAIRING&q=${encodeURIComponent(p.q)}`}
+                  to={`/sommelier?q=${encodeURIComponent(p.q)}`}
                   className="block w-full text-left p-2 rounded hover:bg-stone-50 transition group"
                 >
                   <div className="mono text-[9px] tracking-widest text-stone-500 group-hover:text-wine-700 mb-0.5 uppercase">
                     {p.ctx}
                   </div>
                   <div className="text-[12.5px] text-stone-800 leading-snug">{p.q}</div>
-                </a>
+                </Link>
               ))}
             </div>
           </Card>
@@ -119,9 +119,9 @@ export const CockpitSommelier: React.FC = () => {
             <div className="mt-3 text-[12.5px] text-stone-700">
               Verticale, mode aveugle, decision assistant, OCR étiquette…
             </div>
-            <a href="/sommelier-tools" className="mt-3 inline-flex items-center gap-1 mono text-[10px] tracking-widest text-wine-700 hover:text-wine-800">
+            <Link to="/sommelier-tools" className="mt-3 inline-flex items-center gap-1 mono text-[10px] tracking-widest text-wine-700 hover:text-wine-800">
               <Sparkles className="w-3 h-3" /> BOÎTE À OUTILS →
-            </a>
+            </Link>
           </Card>
         </aside>
 

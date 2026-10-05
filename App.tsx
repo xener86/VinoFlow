@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { FeedbackProvider } from './components/cockpit/feedback';
 import { CockpitLayout } from './components/cockpit/CockpitLayout';
 import { Login } from './pages/Login';
 // Eager: the home page (most-used + LCP)
@@ -99,7 +100,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <FeedbackProvider>
+            <AppRoutes />
+          </FeedbackProvider>
         </BrowserRouter>
       </AuthProvider>
     </ErrorBoundary>

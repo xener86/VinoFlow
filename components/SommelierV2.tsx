@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle } from 'lucide-react';
-import { sommelierPair, sommelierFeedback } from '../services/storageService';
+import { Link, useNavigate } from 'react-router-dom';
+import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle, GlassWater, MapPin } from 'lucide-react';
+import { sommelierPair, sommelierFeedback, consumeSpecificBottle } from '../services/storageService';
+import { useToast, useConfirm } from './cockpit/feedback';
 import { CellarWine } from '../types';
 
 interface Pick {
@@ -67,6 +69,32 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
   };
 
   const wineById = (id: string) => inventory.find(w => w.id === id);
+
+  const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
+  // Bouteilles ouvertes depuis ces cartes (le stock affiché suit sans recharger la cave)
+  const [openedCount, setOpenedCount] = useState<Record<string, number>>({});
+
+  const handleOpenBottle = async (wine: CellarWine) => {
+    const remaining = (wine.bottles || []).filter(b => !b.isConsumed).slice(openedCount[wine.id] || 0);
+    const bottle = remaining[0];
+    if (!bottle) return;
+    const label = [wine.name, wine.vintage].filter(Boolean).join(' ');
+    const ok = await confirm({
+      title: `Ouvrir ${label} ?`,
+      message: `La bouteille sera retirée du stock (il en restera ${remaining.length - 1}) et notée au journal.`,
+      confirmLabel: 'Ouvrir la bouteille',
+    });
+    if (!ok) return;
+    try {
+      await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+      setOpenedCount(c => ({ ...c, [wine.id]: (c[wine.id] || 0) + 1 }));
+      toast.success(`${label} : bonne dégustation !`, { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
+    } catch (e: any) {
+      toast.error(`Impossible d'ouvrir la bouteille : ${e.message || 'erreur'}`);
+    }
+  };
 
   const [progressStep, setProgressStep] = useState<number>(0);
 
@@ -137,7 +165,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           value={dish}
           onChange={e => setDish(e.target.value)}
           placeholder="Décrivez votre plat (ex: curry de poulet aux noix de cajou)"
-          className="flex-1 bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
+          className="flex-1 min-w-0 bg-white border border-stone-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-wine-500 outline-none"
         />
         <button
           type="button"
@@ -151,10 +179,11 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
         <button
           type="submit"
           disabled={loading || !dish.trim()}
-          className="bg-wine-600 hover:bg-wine-700 text-white px-5 rounded-xl font-medium flex items-center gap-2 disabled:opacity-50"
+          aria-label="Trouver un accord"
+          className="bg-wine-600 hover:bg-wine-700 text-white px-3.5 sm:px-5 rounded-xl font-medium flex items-center gap-2 disabled:opacity-50 shrink-0"
         >
           {loading ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-          Trouver
+          <span className="hidden sm:inline">Trouver</span>
         </button>
       </form>
 
@@ -206,42 +235,23 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           )}
 
           <div className="grid md:grid-cols-3 gap-3">
-            <PickCard
-              category="SAFE"
-              icon={<Shield size={14} />}
-              color="bg-stone-100 border-stone-300"
-              accentColor="text-stone-700"
-              title="Sûr"
-              subtitle="L'accord classique"
-              pick={result.picks.safe}
-              wine={result.picks.safe ? wineById(result.picks.safe.wine_id) : undefined}
-              feedback={feedbackGiven.SAFE}
-              onFeedback={(rating) => result.picks.safe && handleFeedback('SAFE', result.picks.safe.wine_id, rating)}
-            />
-            <PickCard
-              category="PERSONAL"
-              icon={<Heart size={14} />}
-              color="bg-pink-50 border-pink-200"
-              accentColor="text-pink-700"
-              title="Personnel"
-              subtitle="Selon vos goûts"
-              pick={result.picks.personal}
-              wine={result.picks.personal ? wineById(result.picks.personal.wine_id) : undefined}
-              feedback={feedbackGiven.PERSONAL}
-              onFeedback={(rating) => result.picks.personal && handleFeedback('PERSONAL', result.picks.personal.wine_id, rating)}
-            />
-            <PickCard
-              category="CREATIVE"
-              icon={<Flame size={14} />}
-              color="bg-indigo-50 border-indigo-200"
-              accentColor="text-indigo-700"
-              title="Audacieux"
-              subtitle="L'option originale"
-              pick={result.picks.creative}
-              wine={result.picks.creative ? wineById(result.picks.creative.wine_id) : undefined}
-              feedback={feedbackGiven.CREATIVE}
-              onFeedback={(rating) => result.picks.creative && handleFeedback('CREATIVE', result.picks.creative.wine_id, rating)}
-            />
+            {PICK_SLOTS.map(({ key, category, icon, title, subtitle }) => {
+              const pick = result.picks[key];
+              return (
+                <PickCard
+                  key={key}
+                  icon={icon}
+                  title={title}
+                  subtitle={subtitle}
+                  pick={pick}
+                  wine={pick ? wineById(pick.wine_id) : undefined}
+                  opened={pick ? openedCount[pick.wine_id] || 0 : 0}
+                  feedback={feedbackGiven[category]}
+                  onFeedback={(rating) => pick && handleFeedback(category, pick.wine_id, rating)}
+                  onOpenBottle={handleOpenBottle}
+                />
+              );
+            })}
           </div>
 
           {result.picks.global_advice && (
@@ -267,76 +277,117 @@ const ProgressStep: React.FC<{ done: boolean; inProgress: boolean; label: string
   </div>
 );
 
+const PICK_SLOTS: { key: 'safe' | 'personal' | 'creative'; category: 'SAFE' | 'PERSONAL' | 'CREATIVE'; icon: React.ReactNode; title: string; subtitle: string }[] = [
+  { key: 'safe', category: 'SAFE', icon: <Shield size={14} />, title: 'Sûr', subtitle: "L'accord classique" },
+  { key: 'personal', category: 'PERSONAL', icon: <Heart size={14} />, title: 'Personnel', subtitle: 'Selon vos goûts' },
+  { key: 'creative', category: 'CREATIVE', icon: <Flame size={14} />, title: 'Audacieux', subtitle: "L'option originale" },
+];
+
+const inStockBottles = (wine: CellarWine) => (wine.bottles || []).filter(b => !b.isConsumed);
+const hasRackLocation = (wine: CellarWine) =>
+  inStockBottles(wine).some(b => typeof b.location === 'object' && b.location !== null && 'rackId' in b.location);
+
 const PickCard: React.FC<{
-  category: 'SAFE' | 'PERSONAL' | 'CREATIVE';
   icon: React.ReactNode;
-  color: string;
-  accentColor: string;
   title: string;
   subtitle: string;
   pick: Pick | null;
   wine: CellarWine | undefined;
+  opened: number;
   feedback: 'UP' | 'DOWN' | undefined;
   onFeedback: (rating: 'UP' | 'DOWN') => void;
-}> = ({ icon, color, accentColor, title, subtitle, pick, wine, feedback, onFeedback }) => (
-  <div className={`border-2 rounded-xl p-4 ${color} flex flex-col`}>
-    <div className="flex items-center gap-2 text-xs uppercase font-bold tracking-wider mb-1">
-      <span className={accentColor}>{icon}</span>
-      <span className={accentColor}>{title}</span>
-    </div>
-    <div className="text-xs text-stone-500 mb-3">{subtitle}</div>
-
-    {pick && wine ? (
-      <>
-        <div className="mb-2">
-          <div className="font-serif text-base text-stone-900">
-            {wine.name} {wine.cuvee && `· ${wine.cuvee}`}
-          </div>
-          <div className="text-xs text-stone-500">
-            {wine.producer && `${wine.producer} · `}{wine.vintage}
-          </div>
-        </div>
-        <p className="text-xs text-stone-700 mb-3 flex-1">{pick.reason}</p>
-
-        {(pick.service_temp_c || pick.decant_minutes > 0) && (
-          <div className="flex gap-3 text-xs text-stone-500 mb-3">
-            {pick.service_temp_c && (
-              <span className="flex items-center gap-1"><Thermometer size={10} /> {pick.service_temp_c}°C</span>
-            )}
-            {pick.decant_minutes > 0 && (
-              <span className="flex items-center gap-1"><Clock size={10} /> {pick.decant_minutes} min</span>
-            )}
-          </div>
-        )}
-
-        <div className="flex gap-2 pt-2 border-t border-stone-200">
-          <button
-            onClick={() => onFeedback('UP')}
-            disabled={feedback !== undefined}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'UP' ? 'bg-green-600 text-white' : 'hover:bg-green-100 text-stone-600'} disabled:cursor-not-allowed`}
-            aria-label="J'aime cet accord"
-          >
-            <ThumbsUp size={12} />
-          </button>
-          <button
-            onClick={() => onFeedback('DOWN')}
-            disabled={feedback !== undefined}
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${feedback === 'DOWN' ? 'bg-red-600 text-white' : 'hover:bg-red-100 text-stone-600'} disabled:cursor-not-allowed`}
-            aria-label="Je n'aime pas cet accord"
-          >
-            <ThumbsDown size={12} />
-          </button>
-          {feedback && (
-            <span className="text-xs text-stone-500 italic ml-1">Merci !</span>
-          )}
-        </div>
-      </>
-    ) : (
-      <div className="text-sm text-stone-400 italic flex-1 flex items-center justify-center text-center">
-        <Wine size={16} className="mb-1" />
-        <br />
-        Pas de proposition pour cette catégorie
+  onOpenBottle: (wine: CellarWine) => void;
+}> = ({ icon, title, subtitle, pick, wine, opened, feedback, onFeedback, onOpenBottle }) => {
+  const stock = wine ? Math.max(0, inStockBottles(wine).length - opened) : 0;
+  return (
+    <div className="border border-stone-200 bg-white rounded-md p-4 flex flex-col">
+      <div className="flex items-center gap-2 mb-0.5 text-wine-700">
+        {icon}
+        <span className="mono text-[10px] tracking-widest uppercase">{title}</span>
       </div>
-    )}
-  </div>
-);
+      <div className="text-xs text-stone-500 mb-3">{subtitle}</div>
+
+      {pick && wine ? (
+        <>
+          <Link
+            to={`/wine/${wine.id}`}
+            className="group block -mx-2 px-2 py-1.5 rounded hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-wine-600/40 mb-2"
+          >
+            <div className="serif text-base text-stone-900 group-hover:text-wine-800 leading-snug">
+              {wine.name}{wine.cuvee && wine.cuvee !== wine.name ? ` · ${wine.cuvee}` : ''}
+            </div>
+            <div className="text-xs text-stone-500 flex items-center gap-1">
+              <span>{[wine.producer, wine.vintage || null].filter(Boolean).join(' · ')}</span>
+              <span className="mono text-[9px] tracking-widest text-wine-700 opacity-0 group-hover:opacity-100 transition ml-auto">FICHE →</span>
+            </div>
+          </Link>
+          <p className="text-xs text-stone-700 mb-3 flex-1 leading-relaxed">{pick.reason}</p>
+
+          {(pick.service_temp_c || pick.decant_minutes > 0) && (
+            <div className="flex gap-3 text-xs text-stone-500 mb-3">
+              {pick.service_temp_c && (
+                <span className="flex items-center gap-1"><Thermometer size={12} /> {pick.service_temp_c} °C</span>
+              )}
+              {pick.decant_minutes > 0 && (
+                <span className="flex items-center gap-1"><Clock size={12} /> carafe {pick.decant_minutes} min</span>
+              )}
+            </div>
+          )}
+
+          {/* Actions rapides */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              onClick={() => onOpenBottle(wine)}
+              disabled={stock === 0}
+              title={stock === 0 ? 'Plus de bouteille en stock' : `${stock} bouteille(s) en stock`}
+              className="h-11 md:h-9 rounded-md bg-wine-700 hover:bg-wine-800 text-white text-xs font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <GlassWater size={14} /> Ouvrir{stock > 0 ? ` (${stock})` : ''}
+            </button>
+            {hasRackLocation(wine) ? (
+              <Link
+                to={`/plan?wine=${wine.id}`}
+                className="h-11 md:h-9 rounded-md border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium inline-flex items-center justify-center gap-1.5"
+              >
+                <MapPin size={14} /> Emplacement
+              </Link>
+            ) : (
+              <span
+                title="Aucune bouteille rangée dans un casier"
+                className="h-11 md:h-9 rounded-md border border-dashed border-stone-200 text-stone-400 text-xs inline-flex items-center justify-center gap-1.5"
+              >
+                <MapPin size={14} /> Non rangée
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 pt-2 border-t border-stone-100">
+            <span className="text-[11px] text-stone-500 mr-1">Cet accord ?</span>
+            <button
+              onClick={() => onFeedback('UP')}
+              disabled={feedback !== undefined}
+              className={`h-9 w-9 inline-flex items-center justify-center rounded transition-colors ${feedback === 'UP' ? 'bg-emerald-600 text-white' : 'hover:bg-emerald-50 text-stone-600'} disabled:cursor-not-allowed`}
+              aria-label="J'aime cet accord"
+            >
+              <ThumbsUp size={14} />
+            </button>
+            <button
+              onClick={() => onFeedback('DOWN')}
+              disabled={feedback !== undefined}
+              className={`h-9 w-9 inline-flex items-center justify-center rounded transition-colors ${feedback === 'DOWN' ? 'bg-wine-700 text-white' : 'hover:bg-wine-50 text-stone-600'} disabled:cursor-not-allowed`}
+              aria-label="Je n'aime pas cet accord"
+            >
+              <ThumbsDown size={14} />
+            </button>
+            {feedback && <span className="text-xs text-stone-500 italic ml-1">Merci !</span>}
+          </div>
+        </>
+      ) : (
+        <div className="text-sm text-stone-400 italic flex-1 flex flex-col items-center justify-center text-center gap-1 py-6">
+          <Wine size={16} />
+          Pas de proposition pour cette catégorie
+        </div>
+      )}
+    </div>
+  );
+};
