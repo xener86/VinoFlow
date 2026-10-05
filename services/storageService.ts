@@ -922,27 +922,22 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
 };
 
 // ─── Import CSV (aller-retour avec l'export) ───
-type CsvImportFailure = { ok: false; status: number; error: string };
+// status 409 à l'application : la cave a changé depuis l'aperçu.
+export interface CsvImportResponse { ok: boolean; status: number; error?: string; plan?: CsvImportPlan; applied?: CsvImportApplied }
 
-const postCsvImport = async (body: object): Promise<{ ok: true; data: any } | CsvImportFailure> => {
+const postCsvImport = async (body: object): Promise<CsvImportResponse> => {
   try {
     const response = await apiFetch(`${API_URL}/import/csv`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
     const data = await response.json().catch(() => null);
     if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}` };
-    return { ok: true, data };
+    return { ok: true, status: response.status, plan: data?.plan, applied: data?.applied };
   } catch {
     return { ok: false, status: 0, error: 'Serveur injoignable.' };
   }
 };
 
 /** Aperçu : ce que l'import ferait, sans rien écrire. */
-export const previewCsvImport = async (csv: string): Promise<{ ok: true; plan: CsvImportPlan } | CsvImportFailure> => {
-  const res = await postCsvImport({ csv, dryRun: true });
-  return res.ok ? { ok: true, plan: res.data.plan } : (res as CsvImportFailure);
-};
+export const previewCsvImport = (csv: string) => postCsvImport({ csv, dryRun: true });
 
-/** Application ; status 409 si la cave a changé depuis l'aperçu. */
-export const applyCsvImport = async (csv: string, planHash: string): Promise<{ ok: true; applied: CsvImportApplied } | CsvImportFailure> => {
-  const res = await postCsvImport({ csv, dryRun: false, planHash });
-  return res.ok ? { ok: true, applied: res.data.applied } : (res as CsvImportFailure);
-};
+/** Application de l'aperçu identifié par planHash. */
+export const applyCsvImport = (csv: string, planHash: string) => postCsvImport({ csv, dryRun: false, planHash });
