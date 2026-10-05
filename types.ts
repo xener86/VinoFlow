@@ -272,3 +272,20 @@ export interface WineEnrichment {
   queuePosition: number | null;
   log: EnrichmentLogEntry[];
 }
+
+// ─── Valeur de la cave ───
+export interface CellarValuePoint { month: string; invested: number; value: number; estimatedPurchase: number; }
+export interface ValueMover { wineId: string; name: string; vintage: number | null; price: number; avgPurchase: number; gainPerBottle: number; gainTotal: number; }
+export interface CellarValue {
+  series: CellarValuePoint[];
+  today: { invested: number; estimatedPurchase: number; value: number; gain: number; gainPct: number | null };
+  coverage: { bottles: number; withPrice: number; withValuation: number };
+  movers: { up: ValueMover[]; down: ValueMover[] };
+}
+export interface ValuationSource { url: string; title: string; quote: string; price_eur: number; format_ml: number; status: 'verified' | 'not_found' | 'unreachable'; counted?: boolean; }
+export interface WineValuation {
+  id: number; wineId: string; valuedAt: string; priceEur: number; lowEur: number | null; highEur: number | null;
+  basis: 'EXACT' | 'AUTRE_MILLESIME' | 'USER'; basisVintage: number | null; sources: ValuationSource[]; engine: string | null; note: string | null;
+}
+export interface WineValuations { latest: WineValuation | null; history: WineValuation[]; status: 'OK' | 'NONE' | 'ERROR' | null; nextCheckAt: string | null; }
+export interface MissingPriceRow { wineId: string; name: string; cuvee: string | null; vintage: number | null; format: string | null; missing: number; suggestedPrice: number | null; }
