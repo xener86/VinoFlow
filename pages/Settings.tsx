@@ -186,23 +186,27 @@ export const Settings: React.FC = () => {
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = ''; // permet de resélectionner le même fichier
     if(!file) return;
+    if (!window.confirm(
+        `Restaurer « ${file.name} » ?\n\n` +
+        "Les éléments de la sauvegarde sont ajoutés ou remplacent ceux qui ont le même identifiant. " +
+        "Rien n'est supprimé, et réimporter le même fichier ne crée pas de doublon."
+    )) return;
 
     const reader = new FileReader();
     reader.onload = async (event) => {
         const content = event.target?.result as string;
         setImportStatus('Importation en cours...');
-        try {
-            const success = await importFullData(content); // ✅ Import Async
-            if(success) {
-                setImportStatus('Succès ! Rechargez la page.');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                setImportStatus('Erreur : Fichier invalide.');
-            }
-        } catch (error) {
-            setImportStatus("Erreur lors de l'importation.");
+        const result = await importFullData(content);
+        if (result.ok) {
+            const total = Object.values(result.imported || {}).reduce((n, c) => n + c.inserted + c.updated, 0);
+            setImportStatus(`Succès : ${total} élément(s) restauré(s). Rechargement...`);
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            setImportStatus(`Erreur : ${result.error}`);
         }
     };
     reader.readAsText(file);
