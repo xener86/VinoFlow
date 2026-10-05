@@ -3,18 +3,63 @@
  */
 
 const API_URL = process.env.VINOFLOW_API_URL || 'http://localhost:3100/api';
-const AUTH_TOKEN = process.env.VINOFLOW_AUTH_TOKEN || '';
+// Recommandé : un compte du foyer. Le client se connecte, garde la session en
+// mémoire et la renouvelle tout seul (access token 15 min + refresh token).
+const EMAIL = process.env.VINOFLOW_EMAIL || '';
+const PASSWORD = process.env.VINOFLOW_PASSWORD || '';
+// Ancien mode : jeton d'accès fixe. Il expire désormais au bout de 15 minutes.
+const STATIC_TOKEN = process.env.VINOFLOW_AUTH_TOKEN || '';
+
+let accessToken = STATIC_TOKEN;
+let refreshToken = '';
+
+async function authRequest(path: string, body: unknown): Promise<boolean> {
+    const response = await fetch(`${API_URL}/auth${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!response.ok) return false;
+    const data = await response.json() as { access_token: string; refresh_token: string };
+    accessToken = data.access_token;
+    refreshToken = data.refresh_token;
+    return true;
+}
+
+async function login(): Promise<void> {
+    if (!EMAIL || !PASSWORD) return;
+    if (!(await authRequest('/login', { email: EMAIL, password: PASSWORD }))) {
+        throw new Error('Connexion VinoFlow impossible : vérifiez VINOFLOW_EMAIL / VINOFLOW_PASSWORD.');
+    }
+}
+
+// Renouvelle la session : refresh token d'abord, sinon nouvelle connexion.
+async function renewSession(): Promise<boolean> {
+    if (refreshToken && (await authRequest('/refresh', { refresh_token: refreshToken }))) return true;
+    if (EMAIL && PASSWORD) {
+        await login();
+        return true;
+    }
+    return false;
+}
 
 const headers = (): Record<string, string> => ({
     'Content-Type': 'application/json',
-    ...(AUTH_TOKEN ? { 'Authorization': `Bearer ${AUTH_TOKEN}` } : {})
+    ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
 });
 
 async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_URL}${path}`, {
+    if (!accessToken) await login();
+
+    const send = () => fetch(`${API_URL}${path}`, {
         ...options,
         headers: { ...headers(), ...options?.headers }
     });
+
+    let response = await send();
+    if (response.status === 401 && (await renewSession())) {
+        response = await send();
+    }
 
     if (!response.ok) {
         const text = await response.text();
