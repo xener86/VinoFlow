@@ -59,6 +59,12 @@ describe.skipIf(!hasDb)('API passerelle MenuFlow', () => {
     expect(puts.at(-1).suggested.wine).toBe('Bravo');
   });
 
+  it('tonight?remote=0 ne contacte pas MenuFlow (confirmation d’ouverture instantanée)', async () => {
+    const r = await client.get('/api/menuflow/tonight?remote=0');
+    expect(r.body).toMatchObject({ configured: true, dinner: null });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
   it('resuggest sans IA : 409', async () => {
     isNoteAvailable.mockReturnValue(false);
     expect((await client.post('/api/menuflow/tonight/resuggest', {})).status).toBe(409);

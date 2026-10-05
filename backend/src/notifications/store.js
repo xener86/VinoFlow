@@ -151,3 +151,13 @@ export const recentLog = async (userId, limit = 5) => {
 };
 
 export const purgeOldLog = () => pool.query("DELETE FROM notification_log WHERE sent_at < now() - interval '180 days'");
+
+/** Un envoi de newsletter a-t-il échoué récemment ? (réessai sans régénérer le mot du sommelier) */
+export const hasRecentFailedNewsletter = async (userId, hours = 23) => {
+  const { rowCount } = await pool.query(
+    `SELECT 1 FROM notification_log WHERE user_id = $1 AND kind = 'newsletter' AND ok = false
+     AND sent_at > now() - make_interval(hours => $2) LIMIT 1`,
+    [userId, hours]
+  );
+  return rowCount > 0;
+};

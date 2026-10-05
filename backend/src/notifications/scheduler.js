@@ -13,7 +13,7 @@ import { renderAlert, renderNewsletter } from './render.js';
 import { composeNewsletter } from './newsletter.js';
 import { syncMenuflow } from '../menuflow/sync.js';
 import {
-  listAllSettings, loadAlertStates, applyAlertChanges, markNewsletterSent, logDeliveries, purgeOldLog,
+  listAllSettings, loadAlertStates, applyAlertChanges, markNewsletterSent, logDeliveries, purgeOldLog, hasRecentFailedNewsletter,
 } from './store.js';
 
 const LOCK_KEY = 74_206_003;
@@ -39,7 +39,9 @@ const processAlerts = async (settings, inventory, { now, tz }) => {
 const processNewsletter = async (settings, { now, tz }) => {
   const channels = availableChannels(settings);
   if (channels.length === 0) return;
-  const nl = await composeNewsletter(settings, { now, tz, withAi: settings.newsletterAi });
+  // Réessai après un échec d'envoi : sans IA, pour ne pas repayer le mot du sommelier à chaque tick.
+  const retrying = await hasRecentFailedNewsletter(settings.userId);
+  const nl = await composeNewsletter(settings, { now, tz, withAi: settings.newsletterAi && !retrying });
   const message = renderNewsletter(nl);
   const results = await deliver(channels, { settings, email: settings.email, message });
   await logDeliveries(settings.userId, 'newsletter', results, message.title);

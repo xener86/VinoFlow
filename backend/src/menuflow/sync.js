@@ -25,13 +25,30 @@ export const addDays = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n *
 const state = { lastSyncAt: null, lastError: null };
 export const menuflowStatus = () => ({ configured: isMenuflowConfigured(), ...state });
 
-export const needsSuggestion = (row, inventoryById, today) => {
-  if (row.dinnerDate < today) return false;
-  if (!row.suggestedWineId || row.suggestedForTitle !== row.dishTitle) return true;
+const RETRY_MS = 24 * 3_600_000;
+
+/**
+ * Faut-il (re)demander un conseil pour ce dîner ? Jamais pour un dîner passé, ni
+ * quand une bouteille a déjà été ouverte, ni sans vin en stock ; après un échec
+ * (aucun vin trouvé pour ce plat), pas de nouvel essai avant 24 h.
+ */
+export const needsSuggestion = (row, inventoryById, today, { opened = [], now = new Date() } = {}) => {
+  if (row.dinnerDate < today || opened.length > 0) return false;
+  if (![...inventoryById.values()].some((w) => (w.inventoryCount ?? 0) > 0)) return false;
+  if (row.suggestedForTitle !== row.dishTitle) return true;
+  if (!row.suggestedWineId) {
+    return !row.suggestedAt || now.getTime() - new Date(row.suggestedAt).getTime() >= RETRY_MS;
+  }
   return (inventoryById.get(row.suggestedWineId)?.inventoryCount ?? 0) <= 0;
 };
 
-const ref = (wine, extra = {}) => ({ wine: wine.wine, vintage: wine.vintage ?? null, reason: null, location: null, url: null, ...extra });
+// Limites du schéma MenuFlow (DinnerWineIn / WineRef) : au-delà, MenuFlow répond 422.
+const cut = (value, max) => (value == null ? value : String(value).slice(0, max));
+
+const ref = (wine, extra = {}) => {
+  const r = { wine: wine.wine, vintage: wine.vintage ?? null, reason: null, location: null, url: null, ...extra };
+  return { ...r, wine: cut(r.wine, 200), reason: cut(r.reason, 1000), location: cut(r.location, 200), url: cut(r.url, 500) };
+};
 
 export const buildWinePayload = (row, { inventoryById, openedByDay, locations, appUrl }) => {
   const w = row.suggestedWineId ? inventoryById.get(row.suggestedWineId) : null;
@@ -44,7 +61,7 @@ export const buildWinePayload = (row, { inventoryById, openedByDay, locations, a
     : null;
   const opened = (openedByDay.get(row.dinnerDate) || []).map((o) =>
     ref({ wine: o.wineName, vintage: o.wineVintage }, { url: o.wineId ? `${appUrl}/wine/${o.wineId}` : null }));
-  return { dish_title: row.dishTitle, suggested, opened };
+  return { dish_title: cut(row.dishTitle, 300), suggested, opened };
 };
 
 export const payloadHash = (payload) => createHash('sha256').update(JSON.stringify(payload)).digest('hex');
@@ -65,7 +82,7 @@ export const upsertDinners = async (dinners) => {
 export const loadPairings = async (from, to) => {
   const { rows } = await pool.query(
     `SELECT to_char(dinner_date, 'YYYY-MM-DD') AS dinner_date, menuflow_dinner_id, dish_title, verdicts,
-            suggested_wine_id, suggestion_reason, suggested_for_title, pushed_hash
+            suggested_wine_id, suggestion_reason, suggested_for_title, suggested_at, pushed_hash
      FROM dinner_pairings WHERE dinner_date BETWEEN $1::date AND $2::date ORDER BY dinner_date`,
     [from, to]
   );
@@ -91,7 +108,17 @@ export const openedByDay = async (from, tz = notifyTz()) => {
 export const suggestFor = async (row, { inventoryById, exclude = [] }) => {
   if (!isNoteAvailable()) return null;
   const pick = pickInStock(await pairForDish({ dish: row.dishTitle, exclude }), inventoryById);
-  if (!pick) return null;
+  if (!pick) {
+    // Aucun vin pour ce plat : on le mémorise pour ne pas repayer un appel IA à chaque tick.
+    if (!row.suggestedWineId) {
+      await pool.query(
+        'UPDATE dinner_pairings SET suggested_for_title = $2, suggested_at = now() WHERE dinner_date = $1::date',
+        [row.dinnerDate, row.dishTitle]
+      );
+      Object.assign(row, { suggestedForTitle: row.dishTitle, suggestedAt: new Date().toISOString() });
+    }
+    return null;
+  }
   await pool.query(
     `UPDATE dinner_pairings SET suggested_wine_id = $2, suggestion_reason = $3, suggested_for_title = $4, suggested_at = now()
      WHERE dinner_date = $1::date`,
@@ -113,6 +140,29 @@ export const pushDay = async (row, ctx) => {
   return true;
 };
 
+/**
+ * Dîners retirés d'une semaine republiée : on oublie la ligne (et on efface le vin
+ * déjà poussé chez MenuFlow). Seules les semaines effectivement relues sont concernées.
+ */
+export const removeGhostDinners = async (weeks, dinners, { from, to }) => {
+  const kept = new Set(dinners.map((d) => d.date));
+  for (const week of weeks) {
+    const start = week.start_date > from ? week.start_date : from;
+    const endOfWeek = addDays(week.start_date, 6);
+    const end = endOfWeek < to ? endOfWeek : to;
+    if (start > end) continue;
+    const { rows } = await pool.query(
+      `SELECT to_char(dinner_date, 'YYYY-MM-DD') AS d, pushed_hash FROM dinner_pairings
+       WHERE dinner_date BETWEEN $1::date AND $2::date`,
+      [start, end]
+    );
+    for (const r of rows.filter((x) => !kept.has(x.d))) {
+      if (r.pushed_hash) await deleteDinnerWine(r.d);
+      await pool.query('DELETE FROM dinner_pairings WHERE dinner_date = $1::date', [r.d]);
+    }
+  }
+};
+
 const context = async (from, tz, inventory) => ({
   inventoryById: new Map(inventory.map((w) => [w.id, w])),
   openedByDay: await openedByDay(from, tz),
@@ -128,23 +178,40 @@ export const syncMenuflow = async ({ now = new Date(), tz = notifyTz(), maxSugge
   try {
     const summaries = (await getWeeks(8)) || [];
     const starts = summaries.map((w) => w.start_date).filter((s) => s <= to && addDays(s, 6) >= from);
-    const weeks = (await Promise.all(starts.map((s) => getWeek(s)))).filter(Boolean);
+    const weeks = (await Promise.all(starts.map(async (start) => {
+      const week = await getWeek(start);
+      return week ? { ...week, start_date: start } : null;
+    }))).filter(Boolean);
     const dinners = weeks.flatMap((w) => w.dinners || []).filter((d) => d.date >= from && d.date <= to);
     await upsertDinners(dinners);
+    await removeGhostDinners(weeks, dinners, { from, to });
 
     const inventory = await loadInventory();
     const ctx = await context(from, tz, inventory);
     const rows = await loadPairings(from, to);
+    // Une erreur sur un dîner (IA en panne, refus de MenuFlow) n'empêche pas les autres.
+    const failures = [];
+    const attempt = async (row, fn) => {
+      try {
+        return await fn();
+      } catch (error) {
+        failures.push(`${row.dinnerDate} : ${error.message}`);
+        console.error(`[menuflow] dîner du ${row.dinnerDate} :`, error.message);
+        return null;
+      }
+    };
     let suggested = 0;
+    let attempts = 0;
     for (const row of rows) {
-      if (suggested >= maxSuggestions) break;
-      if (!needsSuggestion(row, ctx.inventoryById, today)) continue;
-      if (await suggestFor(row, ctx)) suggested++;
+      if (attempts >= maxSuggestions) break;
+      if (!needsSuggestion(row, ctx.inventoryById, today, { opened: ctx.openedByDay.get(row.dinnerDate) || [], now })) continue;
+      attempts++;
+      if (await attempt(row, () => suggestFor(row, ctx))) suggested++;
     }
     let pushed = 0;
-    for (const row of rows) if (await pushDay(row, ctx)) pushed++;
-    Object.assign(state, { lastSyncAt: new Date().toISOString(), lastError: null });
-    return { dinners: dinners.length, suggested, pushed };
+    for (const row of rows) if (await attempt(row, () => pushDay(row, ctx))) pushed++;
+    Object.assign(state, { lastSyncAt: new Date().toISOString(), lastError: failures.length ? failures.join(' ; ') : null });
+    return { dinners: dinners.length, suggested, pushed, errors: failures.length };
   } catch (error) {
     state.lastError = error.message;
     console.error('[menuflow] synchronisation :', error.message);
@@ -153,10 +220,10 @@ export const syncMenuflow = async ({ now = new Date(), tz = notifyTz(), maxSugge
 };
 
 /** Dîner du jour : lu en base, sinon chez MenuFlow (puis mémorisé). */
-export const loadTonight = async ({ now = new Date(), tz = notifyTz() } = {}) => {
+export const loadTonight = async ({ now = new Date(), tz = notifyTz(), remote = true } = {}) => {
   const today = localDay(now, tz);
   let [row] = await loadPairings(today, today);
-  if (!row) {
+  if (!row && remote) {
     const dinner = await getDinnerByDate(today);
     if (!dinner) return null;
     await upsertDinners([dinner]);

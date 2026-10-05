@@ -80,6 +80,39 @@ describe.skipIf(!hasDb)('synchronisation MenuFlow', () => {
     expect(puts().map((c) => c.body.suggested.wine)).toEqual(['Bravo', 'Bravo']);
   });
 
+  it('erreur IA sur un dîner : les autres jours sont quand même poussés', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    pairForDish.mockRejectedValueOnce(new Error('surcharge 529'));
+    const r = await syncMenuflow({ now: NOW });
+    expect(puts().map((c) => c.path)).toEqual(['/api/v1/dinners/by-date/2026-10-06/wine']);
+    expect(r.errors).toBe(1);
+  });
+
+  it('dîner retiré de MenuFlow : ligne supprimée et vin effacé', async () => {
+    await syncMenuflow({ now: NOW });
+    const original = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url, init = {}) => {
+      if (new URL(url).pathname === '/api/v1/weeks/2026-10-05') {
+        calls.push({ method: 'GET', path: '/api/v1/weeks/2026-10-05', body: null });
+        return Response.json({ dinners: [{ id: 1, date: '2026-10-05', title: 'Poulet basquaise', verdicts: [] }] });
+      }
+      return original(url, init);
+    }));
+    calls = [];
+    await syncMenuflow({ now: NOW });
+    expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/api/v1/dinners/by-date/2026-10-06/wine']);
+    const { rows } = await pool.query("SELECT to_char(dinner_date, 'YYYY-MM-DD') AS d FROM dinner_pairings ORDER BY 1");
+    expect(rows.map((r) => r.d)).toEqual(['2026-10-05']);
+  });
+
+  it('aucun vin possible : pas de nouvel appel IA au tick suivant', async () => {
+    pairForDish.mockResolvedValue({ picks: { safe: null, personal: null, creative: null } });
+    await syncMenuflow({ now: NOW });
+    expect(pairForDish).toHaveBeenCalledTimes(2);
+    await syncMenuflow({ now: NOW });
+    expect(pairForDish).toHaveBeenCalledTimes(2);
+  });
+
   it('MenuFlow injoignable : erreur consignée, pas d’exception', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
     vi.spyOn(console, 'error').mockImplementation(() => {});

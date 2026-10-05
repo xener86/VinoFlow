@@ -36,7 +36,9 @@ router.get('/menuflow/tonight', async (req, res) => {
   if (!isMenuflowConfigured()) return res.json({ configured: false });
   try {
     const tz = notifyTz();
-    res.json(await tonightResponse(await loadTonight({ tz }), { inventory: await loadInventory(), tz }));
+    // ?remote=0 : base seule, pour ne pas faire attendre la confirmation d'ouverture si MenuFlow ne répond pas.
+    const remote = req.query.remote !== '0';
+    res.json(await tonightResponse(await loadTonight({ tz, remote }), { inventory: await loadInventory(), tz }));
   } catch (error) {
     console.error('menuflow tonight error:', error);
     res.status(502).json({ error: `MenuFlow indisponible : ${error.message}` });

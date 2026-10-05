@@ -354,8 +354,8 @@ export const getMenuflowStatus = async (): Promise<MenuflowStatus> => {
   return handleResponse(response);
 };
 
-export const getTonight = async (): Promise<TonightResponse> => {
-  const response = await apiFetch(`${API_URL}/menuflow/tonight`, { headers: getHeaders() });
+export const getTonight = async ({ remote = true }: { remote?: boolean } = {}): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight${remote ? '' : '?remote=0'}`, { headers: getHeaders() });
   return handleResponse(response);
 };
 

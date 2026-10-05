@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from 'vitest';
 import { authed, bootstrapUser, hasDb, pool, resetData } from './helpers.js';
-import { runNotificationTick } from '../../src/notifications/scheduler.js';
+vi.mock('../../src/notifications/sommelierNote.js', async (orig) => ({ ...(await orig()), generateSommelierNote: vi.fn(async () => null) }));
+const { generateSommelierNote } = await import('../../src/notifications/sommelierNote.js');
+const { runNotificationTick } = await import('../../src/notifications/scheduler.js');
 
 describe.skipIf(!hasDb)('planificateur de notifications', () => {
   const NOW = new Date('2026-10-05T10:00:00Z');
@@ -76,5 +78,18 @@ describe.skipIf(!hasDb)('planificateur de notifications', () => {
 
     await runNotificationTick({ now: NOW });
     expect(newsletters()).toHaveLength(1);
+  });
+
+  it('newsletter en échec : pas de nouvel appel IA à chaque réessai', async () => {
+    await client.put('/api/notifications/settings', { newsletterFrequency: 'monthly', newsletterAi: true });
+    await pool.query("UPDATE notification_settings SET last_newsletter_at = '2026-09-01T07:00:00Z', alerts_seeded_at = now() WHERE user_id = $1", [userId]);
+    fetchMock.mockImplementation(async () => new Response('', { status: 500 }));
+    generateSommelierNote.mockClear();
+    await runNotificationTick({ now: NOW });
+    expect(generateSommelierNote).toHaveBeenCalledTimes(1);
+    await runNotificationTick({ now: new Date(NOW.getTime() + 3_600_000) });
+    expect(generateSommelierNote).toHaveBeenCalledTimes(1);
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM notification_log WHERE kind = 'newsletter' AND ok = false");
+    expect(rows[0].n).toBe(2); // le réessai a bien eu lieu, sans IA
   });
 });

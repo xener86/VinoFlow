@@ -23,7 +23,7 @@ export const useOpenBottleConfirm = () => {
   return async (wineName: string): Promise<{ forDinner: boolean | null } | null> => {
     let dish: string | null = null;
     try {
-      const tonight = await getTonight();
+      const tonight = await getTonight({ remote: false }); // base seule : pas d'attente si MenuFlow ne répond pas
       dish = tonight.configured && tonight.dinner ? tonight.dinner.title : null;
     } catch {
       dish = null;
