@@ -7,6 +7,7 @@ import { classifyWine } from './classify.js';
 import { wineName, windowBadge, periodTitle, dayMonth } from './format.js';
 import { periodStart, zonedParts, notifyTz } from './schedule.js';
 import { generateSommelierNote } from './sommelierNote.js';
+import { collectMenuflowSections } from '../menuflow/newsletterSections.js';
 
 /** Emplacement lisible par vin en stock : nom du casier, ou libellé libre. */
 export const loadLocations = async () => {
@@ -106,7 +107,15 @@ export const buildNewsletter = (data, { settings, now, tz = notifyTz(), since, a
 
 export const composeNewsletter = async (settings, { now = new Date(), tz = notifyTz(), withAi }) => {
   const since = periodStart(settings, now);
-  const data = await collectNewsletterData({ since });
-  const note = withAi ? await generateSommelierNote({ inventory: data.inventory, settings, now, tz }) : null;
-  return buildNewsletter(data, { settings, now, tz, since, appUrl: APP_URL, note });
+  const [data, menuflow] = await Promise.all([
+    collectNewsletterData({ since }),
+    collectMenuflowSections({ since, now, tz, settings }).catch((error) => {
+      console.error('[newsletter] rubriques MenuFlow :', error.message);
+      return null;
+    }),
+  ]);
+  const note = withAi
+    ? await generateSommelierNote({ inventory: data.inventory, settings, now, tz, accords: menuflow?.accords ?? [] })
+    : null;
+  return buildNewsletter(data, { settings, now, tz, since, appUrl: APP_URL, note, menuflow });
 };
