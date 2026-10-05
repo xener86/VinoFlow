@@ -68,12 +68,7 @@ describe.skipIf(!hasDb)('API vins et bouteilles', () => {
     expect(wine.bottles).toHaveLength(1);
   });
 
-  // Bugs connus, documentés et non corrigés dans le refactoring (it.fails passera
-  // au rouge quand ils seront corrigés — retirer alors le .fails) :
-  //  1. convertKeysToCamelCase transforme les Date en {} → purchaseDate invalide,
-  //     aucune bouteille dans la fenêtre : le budget vaut toujours 0 ;
-  //  2. purchase_price (numeric) arrive en chaîne → somme par concaténation.
-  it.fails('budget : additionne les prix d’achat récents (bugs connus)', async () => {
+  it('budget : additionne les prix d’achat récents', async () => {
     const wineId = (await client.post('/api/wines', newWine)).body.id;
     const now = new Date().toISOString();
     await pool.query(
@@ -81,6 +76,27 @@ describe.skipIf(!hasDb)('API vins et bouteilles', () => {
       [wineId, now]
     );
     const res = await client.get('/api/cellar/budget?months=12');
-    expect(res.body.total_spent).toBe(35.5);
+    expect(res.body).toMatchObject({ total_spent: 35.5, total_bottles: 2, cellar_value_estimate: 35.5 });
+  });
+
+  it('dates en ISO 8601 et colonnes numeric en nombres', async () => {
+    const wine = (await client.post('/api/wines', newWine)).body;
+    expect(wine.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    const bottle = (await client.post('/api/bottles', {
+      wineId: wine.id, location: 'Non trié', purchasePrice: 19.9, purchaseDate: '2026-03-01T10:00:00.000Z',
+    })).body;
+    expect(bottle.purchasePrice).toBe(19.9);
+    expect(bottle.purchaseDate).toBe('2026-03-01T10:00:00.000Z');
+    const [listed] = (await client.get('/api/bottles')).body;
+    expect(listed).toMatchObject({ purchasePrice: 19.9, purchaseDate: '2026-03-01T10:00:00.000Z' });
+    expect(typeof listed.createdAt).toBe('string');
+
+    await client.post('/api/history', { type: 'IN', wineId: wine.id, wineName: wine.name, quantity: 1, date: '2026-03-01T10:00:00.000Z' });
+    const [entry] = (await client.get('/api/history')).body;
+    expect(entry.date).toBe('2026-03-01T10:00:00.000Z');
+
+    const item = (await client.post('/api/wishlist', { name: 'Envie', estimatedPrice: 42.5 })).body;
+    expect(item.estimatedPrice).toBe(42.5);
+    expect(typeof item.addedAt).toBe('string');
   });
 });

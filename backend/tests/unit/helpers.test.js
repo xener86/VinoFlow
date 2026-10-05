@@ -46,4 +46,13 @@ describe('convertKeysToCamelCase', () => {
       .toEqual([{ wineId: 1, noseNotes: { topAroma: 'x' }, tags: ['a_b'] }]);
     expect(convertKeysToCamelCase(null)).toBeNull();
   });
+
+  it('laisse les Date intactes (sérialisées en ISO par res.json)', () => {
+    const created = new Date('2026-01-02T03:04:05Z');
+    const out = convertKeysToCamelCase({ created_at: created, nested: [{ consumed_date: created }] });
+    expect(out.createdAt).toBe(created);
+    expect(JSON.parse(JSON.stringify(out))).toEqual({
+      createdAt: '2026-01-02T03:04:05.000Z', nested: [{ consumedDate: '2026-01-02T03:04:05.000Z' }],
+    });
+  });
 });

@@ -3,6 +3,9 @@ export const toCamelCase = (str) => str.replace(/_([a-z])/g, (g) => g[1].toUpper
 
 export const convertKeysToCamelCase = (obj) => {
   if (Array.isArray(obj)) return obj.map(convertKeysToCamelCase);
+  // Les Date (colonnes timestamp) restent des Date : res.json les sérialise en
+  // ISO 8601. Les parcourir comme des objets les transformait en {}.
+  if (obj instanceof Date) return obj;
   if (obj !== null && typeof obj === 'object') {
     return Object.keys(obj).reduce((acc, key) => {
       acc[toCamelCase(key)] = convertKeysToCamelCase(obj[key]);
