@@ -118,9 +118,13 @@ Without `SWEEGO_API_KEY`, nothing is sent: the reset link is written to the back
 
 ### AI Providers (Optional)
 
-The AI Sommelier works with **Google Gemini**, **Anthropic Claude**, or both. By default Gemini extracts criteria and Claude writes the argumentation; if only one provider is configured, VinoFlow falls back to it for every task.
+The AI features work with **Anthropic Claude**, **Google Gemini**, or both. Each task has its own default model — Claude Haiku 4.5 for dish analysis and critique, Claude Sonnet 5.5 for pairing arguments and enrichment (with web search), Gemini Flash for label OCR, `gemini-embedding-001` for embeddings — and falls back to the other provider when the first one is missing or fails (except enrichment, which never guesses without web search). Outputs use native structured JSON on both providers.
 
-Set the keys in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) — recommended — or in the app's **Settings** page (stored in the browser, see [Security](#security)). Per-task overrides (`VINOFLOW_PROVIDER_*`) are documented in `.env.example`.
+Set the keys in `.env` (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) — recommended — or in the app's **Settings** page (stored in the browser, see [Security](#security)). Per-task overrides (`VINOFLOW_PROVIDER_*`, `VINOFLOW_MODEL_*`, `VINOFLOW_MAX_TOKENS_*`, `VINOFLOW_EFFORT_*`) are documented in `.env.example`.
+
+Every AI call is logged (task, model, tokens, latency, success, estimated cost) to the backend logs and the `ai_calls` table — `GET /api/ai/usage?days=30` sums it up per task and model.
+
+After upgrading from a version that used `text-embedding-004`, recompute embeddings (old vectors are incompatible): `docker compose exec backend npm run embeddings:refresh -- --all`.
 
 - Gemini: [Google AI Studio](https://aistudio.google.com/apikey)
 - Claude: [Anthropic Console](https://console.anthropic.com/)

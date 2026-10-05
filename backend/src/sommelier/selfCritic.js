@@ -6,13 +6,14 @@
 // If criticism is severe, regenerate with stricter constraints.
 
 import { generateJson } from '../services/aiService.js';
+import { CRITIQUE_SCHEMA } from './schemas.js';
 
 const SYSTEM_PROMPT = `Tu es un sommelier critique. Évalue 3 propositions d'accords mets-vins en termes de cohérence et de qualité. Pour chaque proposition, juge:
 - pertinence du choix (0-10): l'accord fonctionne-t-il vraiment avec ce plat?
 - crédibilité de l'argument (0-10): la justification est-elle solide?
 - y a-t-il un drapeau rouge évident?
 
-Réponds en JSON strict:
+Structure de la réponse:
 {
   "safe":     { "pertinence": 8, "credibility": 9, "red_flag": null, "suggestion": null },
   "personal": { ... },
@@ -41,9 +42,10 @@ export const critiquePicks = async (dish, criteria, picks, candidates) => {
   ].join('\n');
 
   try {
-    const critique = await generateJson('argue', {
+    const critique = await generateJson('critique', {
       system: SYSTEM_PROMPT,
       user: userPrompt,
+      schema: CRITIQUE_SCHEMA,
     });
     return critique;
   } catch (e) {

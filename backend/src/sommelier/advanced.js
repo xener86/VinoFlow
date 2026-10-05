@@ -1,6 +1,7 @@
 // Phase 10 + 11 — Advanced sommelier modes.
 
 import { generateJson } from '../services/aiService.js';
+import { COMPARE_SCHEMA } from './schemas.js';
 import { getPeakWindow } from './peakWindow.js';
 
 /**
@@ -41,7 +42,7 @@ export const buildVerticalTasting = (inventory, producer) => {
 export const compareForDish = async (dish, wineA, wineB) => {
   const SYSTEM = `Tu es un sommelier. Compare deux vins pour un plat précis et choisis le meilleur accord, en argumentant. Sois honnête sur les forces et faiblesses de chacun.
 
-Réponds en JSON pur:
+Structure de la réponse:
 {
   "winner": "A" | "B" | "tie",
   "reasoning": "...",
@@ -53,7 +54,7 @@ Réponds en JSON pur:
 }`;
   const formatWine = (w) => `${w.producer || '?'} ${w.name} ${w.cuvee || ''} ${w.vintage || ''} (${w.type}, ${w.region || '?'})`;
   const user = `Plat: ${dish}\n\nVin A: ${formatWine(wineA)}\nArômes A: ${(wineA.aromaProfile || []).join(', ') || '?'}\n\nVin B: ${formatWine(wineB)}\nArômes B: ${(wineB.aromaProfile || []).join(', ') || '?'}`;
-  return generateJson('argue', { system: SYSTEM, user });
+  return generateJson('argue', { system: SYSTEM, user, schema: COMPARE_SCHEMA });
 };
 
 /**

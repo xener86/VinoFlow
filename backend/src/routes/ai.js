@@ -10,10 +10,12 @@ import { updateMissingEmbeddings } from '../sommelier/embeddings.js';
 const router = Router();
 
 // Phase 5 — pgvector embeddings management
+// Body: { limit?: number, all?: boolean } — all: recalcul complet (changement de modèle).
 router.post('/wines/refresh-embeddings', async (req, res) => {
   try {
-    const limit = parseInt(req.body?.limit) || 100;
-    const result = await updateMissingEmbeddings(pool, { limit });
+    const all = req.body?.all === true;
+    const limit = parseInt(req.body?.limit) || (all ? 10000 : 100);
+    const result = await updateMissingEmbeddings(pool, { limit, all });
     res.json(result);
   } catch (error) {
     console.error('refresh-embeddings error:', error);
@@ -35,6 +37,34 @@ router.post('/wines/extract-from-image', async (req, res) => {
   }
 });
 
+// Coût et volume des appels IA (table ai_calls), par tâche et par modèle.
+router.get('/ai/usage', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365);
+    const { rows } = await pool.query(
+      `SELECT task, provider, model,
+              count(*)::int AS calls,
+              count(*) FILTER (WHERE NOT ok)::int AS failures,
+              coalesce(sum(input_tokens), 0)::int AS input_tokens,
+              coalesce(sum(output_tokens), 0)::int AS output_tokens,
+              coalesce(sum(cache_read_tokens), 0)::int AS cache_read_tokens,
+              coalesce(sum(web_searches), 0)::int AS web_searches,
+              round(avg(latency_ms))::int AS avg_latency_ms,
+              coalesce(sum(cost_usd), 0)::float AS cost_usd
+         FROM ai_calls
+        WHERE created_at > now() - make_interval(days => $1)
+        GROUP BY task, provider, model
+        ORDER BY cost_usd DESC`,
+      [days]
+    );
+    const total = rows.reduce((s, r) => s + r.cost_usd, 0);
+    res.json({ days, total_cost_usd: Math.round(total * 10000) / 10000, by_task: rows });
+  } catch (error) {
+    console.error('ai usage error:', error);
+    res.status(500).json({ error: 'Failed to compute AI usage' });
+  }
+});
+
 // Discover which AI providers are configured (used by frontend Settings)
 router.get('/ai/providers', async (req, res) => {
   res.json({
@@ -47,10 +77,10 @@ router.get('/ai/providers', async (req, res) => {
 });
 
 // Phase 3.1 - Enrich aromas in batch (vins sans profil)
-// Body: { onlyMissing: boolean, useConsensus: boolean, limit: number }
+// Body: { onlyMissing: boolean, limit: number }
 router.post('/wines/enrich-aromas', async (req, res) => {
   try {
-    const { onlyMissing = true, useConsensus = false, limit = 50 } = req.body || {};
+    const { onlyMissing = true, limit = 50 } = req.body || {};
 
     const filter = onlyMissing
       ? `WHERE aroma_profile IS NULL OR array_length(aroma_profile, 1) IS NULL OR array_length(aroma_profile, 1) < 3 OR aroma_source IS NULL`
@@ -63,7 +93,7 @@ router.post('/wines/enrich-aromas', async (req, res) => {
 
     for (const wine of wines) {
       try {
-        const profile = await enrichWine(wine, { useConsensus });
+        const profile = await enrichWine(wine);
         await pool.query(`
           UPDATE wines SET
             aroma_profile = $1,

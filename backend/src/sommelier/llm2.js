@@ -13,6 +13,7 @@
 //   - CREATIVE : an audacious but defensible choice
 
 import { generateJson } from '../services/aiService.js';
+import { PICKS_SCHEMA } from './schemas.js';
 
 const SYSTEM_PROMPT = `Tu es un sommelier expert français. À partir d'un plat, du profil de vin idéal et d'une liste de vins candidats déjà pré-filtrés depuis la cave de l'utilisateur, choisis 3 recommandations:
 
@@ -27,7 +28,7 @@ Pour chaque recommandation:
 
 Si aucun candidat ne convient pour une catégorie, mets null pour cette catégorie avec une raison.
 
-Réponds en JSON pur, structure exacte:
+Structure de la réponse:
 {
   "safe":     { "wine_id": "...", "reason": "...", "service_temp_c": 16, "decant_minutes": 30 } | null,
   "personal": { ... } | null,
@@ -80,6 +81,7 @@ export const argueAndPick = async (dish, criteria, candidates, options = {}) => 
   const result = await generateJson('argue', {
     system: SYSTEM_PROMPT,
     user: userPrompt,
+    schema: PICKS_SCHEMA,
   });
 
   return validateLlm2Response(result, candidates);

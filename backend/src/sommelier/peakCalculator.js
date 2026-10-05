@@ -14,6 +14,15 @@
 // wine style.
 
 import { generateJson } from '../services/aiService.js';
+import { schemaHelpers } from './schemas.js';
+
+const { obj, int, str, enumOf } = schemaHelpers;
+const PEAK_SCHEMA = obj({
+  peak_start_year: int,
+  peak_end_year: int,
+  confidence: enumOf('HIGH', 'MEDIUM', 'LOW'),
+  reasoning: str,
+});
 
 const SYSTEM_PROMPT = `Tu es un sommelier expert en garde des vins. Pour un vin précis, donne sa fenêtre optimale de consommation (apogée).
 
@@ -26,7 +35,7 @@ Considère :
 
 Si tu n'es pas sûr du producteur exact, base-toi sur le niveau de l'appellation. Sois honnête sur la confiance.
 
-Réponds UNIQUEMENT en JSON :
+Structure de la réponse :
 {
   "peak_start_year": 2025,
   "peak_end_year": 2045,
@@ -55,12 +64,10 @@ export const computePeak = async (wine) => {
       : null,
   ].filter(Boolean).join('\n');
 
-  // Use the 'enrich' task which defaults to Claude Sonnet — better for
-  // wine knowledge (less hallucination, more honest about confidence).
-  // Falls back to Gemini if Anthropic is not configured.
-  const result = await generateJson('enrich', {
+  const result = await generateJson('enrich-peak', {
     system: SYSTEM_PROMPT,
     user: userPrompt,
+    schema: PEAK_SCHEMA,
   });
 
   const peakStart = parseInt(result.peak_start_year);

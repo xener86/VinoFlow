@@ -1,8 +1,8 @@
 // LLM1 — Extract pairing criteria from a dish description.
 //
 // This is the first step of Sommelier v2. Instead of sending the full cellar
-// to a single LLM, we ask a fast model (Gemini Flash by default) to break the
-// dish down into structured criteria. The cellar is queried locally afterwards.
+// to a single LLM, we ask a fast model (Claude Haiku by default) to break the
+// dish down into structured criteria (sortie structurée, schéma CRITERIA_SCHEMA). The cellar is queried locally afterwards.
 //
 // Output shape:
 // {
@@ -30,6 +30,7 @@
 // }
 
 import { generateJson } from '../services/aiService.js';
+import { CRITERIA_SCHEMA } from './schemas.js';
 
 const SYSTEM_PROMPT = `Tu es un sommelier expert. Pour un plat donné, analyse-le et génère un profil de vin idéal en JSON structuré.
 
@@ -38,7 +39,7 @@ Ensuite déduis le profil de vin idéal: types autorisés, fourchettes sensoriel
 
 Sois précis. Les fourchettes doivent être étroites (10-30 points de large) pour un vrai filtrage. La liste 'avoid' doit citer les profils incompatibles (ex: "rouges tanniques" pour du poisson cru, "blanc sec" pour dessert chocolat).
 
-Réponds en JSON uniquement, suivant exactement la structure de l'exemple suivant:
+Exemple de réponse:
 
 {
   "decomposition": {
@@ -79,6 +80,7 @@ export const extractCriteria = async (dish, context = {}) => {
   const response = await generateJson('extract-criteria', {
     system: SYSTEM_PROMPT,
     user: userPrompt,
+    schema: CRITERIA_SCHEMA,
   });
 
   return validateCriteria(response);

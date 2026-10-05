@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "embeddings:refresh": "node src/cli/refresh-embeddings.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
