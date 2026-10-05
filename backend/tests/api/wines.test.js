@@ -31,6 +31,29 @@ describe.skipIf(!hasDb)('API vins et bouteilles', () => {
     expect((await client.get(`/api/wines/${id}`)).status).toBe(404);
   });
 
+  it('appellation enregistrée, mise à jour partielle (favori) sans écraser le reste', async () => {
+    const created = (await client.post('/api/wines', { ...newWine, appellation: 'Pauillac' })).body;
+    expect(created.appellation).toBe('Pauillac');
+
+    const toggled = await client.put(`/api/wines/${created.id}`, { isFavorite: true });
+    expect(toggled.status).toBe(200);
+    expect(toggled.body).toMatchObject({ ...newWine, appellation: 'Pauillac', isFavorite: true });
+
+    expect((await client.put(`/api/wines/${created.id}`, { appellation: 'Margaux' })).body)
+      .toMatchObject({ name: 'Grand Vin', appellation: 'Margaux', isFavorite: true });
+    expect((await client.put(`/api/wines/${created.id}`, {})).status).toBe(400);
+  });
+
+  it('les réponses vins n’exposent pas la colonne embedding ; dates des bouteilles agrégées lisibles', async () => {
+    const wineId = (await client.post('/api/wines', newWine)).body.id;
+    await client.post('/api/bottles', { wineId, location: 'Non trié', purchaseDate: '2026-03-01T10:00:00.000Z' });
+    const [wine] = (await client.get('/api/wines')).body;
+    expect(wine).not.toHaveProperty('embedding');
+    expect(new Date(wine.bottles[0].purchaseDate).toISOString()).toBe('2026-03-01T10:00:00.000Z');
+    expect(Number.isNaN(new Date(wine.bottles[0].createdAt).getTime())).toBe(false);
+    expect((await client.get(`/api/wines/${wineId}`)).body).not.toHaveProperty('embedding');
+  });
+
   it('vin inexistant : 404', async () => {
     expect((await client.get('/api/wines/00000000-0000-0000-0000-000000000000')).status).toBe(404);
   });
