@@ -128,7 +128,9 @@ Renvoie `{ notify: [{ wine, from, to }], upserts: [{ wineId, state }], deletes: 
 | `newsletter.js` | `collectNewsletterData(db, period)`, `buildNewsletter(data, aiSection)` (pur), `renderNewsletterEmail`, `renderNewsletterGotify`, `renderAlert` |
 | `sommelierNote.js` | appel IA `newsletter` + validation |
 | `scheduler.js` | tick, verrou, orchestration par utilisateur, `notification_log` |
-| `settings.js` | lecture/écriture/valeurs par défaut des réglages, masquage du jeton |
+| `store.js` | réglages (défauts, validation, lecture/écriture, masquage du jeton), états d'alerte, journal d'envois |
+| `format.js` | libellés (vin, état, euros, période) |
+| `render.js` | rendu des alertes, de la newsletter et du message de test |
 
 ### 5.1 Planificateur
 
