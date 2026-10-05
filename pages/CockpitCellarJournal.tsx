@@ -388,6 +388,12 @@ const Timeline: React.FC<{
       return 0;
     });
   }, [entries, now, limit]);
+  // Total par jour sur toute la sélection (la pagination peut couper un jour).
+  const dayTotals = useMemo(() => {
+    const t: Record<string, number> = {};
+    for (const e of entries) { const k = dayKey(e.date, now).k; t[k] = (t[k] || 0) + 1; }
+    return t;
+  }, [entries, now]);
 
   if (groups.length === 0) {
     return (
@@ -408,7 +414,7 @@ const Timeline: React.FC<{
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">{g.sub}</div>
             <div className="flex-1 ml-2 border-t border-dashed border-stone-200 self-center" />
             <div className="mono text-[10px] tracking-widest text-stone-400 uppercase">
-              {g.items.length} évènement{g.items.length > 1 ? 's' : ''}
+              {dayTotals[g.k]} évènement{dayTotals[g.k] > 1 ? 's' : ''}
             </div>
           </div>
           {g.items.map(e => (
@@ -496,7 +502,7 @@ const EventRow: React.FC<{
               {canUndo && (
                 <button
                   onClick={() => onUndo(entry.id)}
-                  className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700 uppercase opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="mono text-[10px] tracking-widest text-stone-500 hover:text-wine-700 uppercase py-2 md:py-0 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                   title="Retire l'événement de la liste (local uniquement)"
                 >
                   Annuler
@@ -505,7 +511,7 @@ const EventRow: React.FC<{
               {entry.wineId && (
                 <Link
                   to={`/wine/${entry.wineId}`}
-                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 uppercase inline-flex items-center gap-1"
+                  className="mono text-[10px] tracking-widest text-stone-400 hover:text-stone-700 uppercase inline-flex items-center gap-1 py-2 md:py-0"
                 >
                   Voir vin <ArrowRight className="w-2.5 h-2.5" />
                 </Link>

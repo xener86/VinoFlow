@@ -19,6 +19,7 @@ import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
 import { Card, MonoLabel, Button, Badge } from '../components/cockpit/primitives';
 import { JournalEntry, Bottle } from '../types';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
 
 const typeLabel = (type: string) => {
   switch (type) {
@@ -45,6 +46,8 @@ const typeAccent = (type: string) => {
 export const CockpitWineDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirmAction = useConfirm();
   const { wines, loading: loadingWines, refresh: refreshWines } = useWines();
   const { notes: allTastingNotes, refresh: refreshNotes } = useTastingNotes();
   const { racks } = useRacks();
@@ -65,14 +68,24 @@ export const CockpitWineDetails: React.FC = () => {
 
   const handleAddBottle = async () => {
     if (!wine) return;
-    await addBottles(wine.id, 1, 'Non trié', wine.name, wine.vintage);
+    try {
+      await addBottles(wine.id, 1, 'Non trié', wine.name, wine.vintage);
+      toast.success('Bouteille ajoutée (zone d’attente)');
+    } catch {
+      toast.error('L’ajout a échoué.');
+    }
     refreshWines();
   };
 
   const handleConsume = async (bottle: Bottle) => {
     if (!wine) return;
-    if (!confirm(`Consommer cette bouteille de ${wine.name} ?`)) return;
-    await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+    if (!(await confirmAction({ title: `Ouvrir une bouteille de ${wine.name} ?`, message: 'Elle sera retirée du stock et notée dans le journal.', confirmLabel: 'Ouvrir' }))) return;
+    try {
+      await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+      toast.success('Bouteille ouverte — santé !', { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
+    } catch {
+      toast.error('La bouteille n’a pas pu être retirée du stock.');
+    }
     refreshWines();
   };
 

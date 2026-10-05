@@ -16,6 +16,8 @@ interface TabProps {
 const Tab: React.FC<TabProps> = ({ to, icon: Icon, label, active, highlight }) => (
   <Link
     to={to}
+    aria-label={label || (highlight ? 'Ajouter un vin' : undefined)}
+    aria-current={active ? 'page' : undefined}
     className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-2 ${
       highlight
         ? 'text-white'

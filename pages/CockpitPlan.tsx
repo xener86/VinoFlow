@@ -12,6 +12,7 @@ import { useRacks } from '../hooks/useRacks';
 import { Card, MonoLabel } from '../components/cockpit/primitives';
 import { saveRack, updateRack, deleteRack, moveBottle, reorderRack } from '../services/storageService';
 import { CellarWine, Bottle, Rack, BottleLocation } from '../types';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
 
 interface CockpitPlanProps {
   embedded?: boolean;
@@ -114,6 +115,8 @@ const Stepper: React.FC<{ value: number; onMinus: () => void; onPlus: () => void
 // Main page
 // ────────────────────────────────────────────
 export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) => {
+  const confirmAction = useConfirm();
+  const toast = useToast();
   const { wines, refresh: refreshWines } = useWines();
   const { racks, refresh: refreshRacks } = useRacks();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -205,8 +208,9 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
   const handleDeleteRack = async (id: string) => {
     const rack = racks.find(r => r.id === id);
     if (!rack) return;
-    if (!confirm(`Supprimer "${rack.name}" ? Les bouteilles partiront en zone d'attente.`)) return;
+    if (!(await confirmAction({ title: `Supprimer « ${rack.name} » ?`, message: 'Les bouteilles partiront en zone d’attente.', confirmLabel: 'Supprimer', danger: true }))) return;
     await deleteRack(id);
+    toast.success(`« ${rack.name} » supprimé`);
     refreshAll();
   };
 

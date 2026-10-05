@@ -9,7 +9,7 @@ import { Plus, MoreHorizontal, List, Map, TrendingUp } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { getPeakWindow } from '../utils/peakWindow';
-import { Card, Badge, MonoLabel, Button } from '../components/cockpit/primitives';
+import { Card, Badge, MonoLabel, Button, Tabs, EmptyState } from '../components/cockpit/primitives';
 import { CellarWine } from '../types';
 
 const CockpitPlan = lazy(() => import('./CockpitPlan').then(m => ({ default: m.CockpitPlan })));
@@ -199,7 +199,7 @@ const CaveList: React.FC = () => {
       {loading ? (
         <div className="px-5 py-8 text-sm text-stone-500 italic">Chargement de la cave…</div>
       ) : filtered.length === 0 ? (
-        <div className="px-5 py-8 text-sm text-stone-500 italic">Aucun vin trouvé.</div>
+        <EmptyState title="Aucun vin ne correspond." hint="Ajuster les filtres" />
       ) : (
         <>
         {/* Mobile : cartes */}
@@ -312,23 +312,6 @@ const CaveList: React.FC = () => {
 };
 
 // ────────────────────────────────────────────
-// Tab switcher
-// ────────────────────────────────────────────
-const TabButton: React.FC<{ active: boolean; onClick: () => void; icon: React.FC<any>; children: React.ReactNode }> = ({ active, onClick, icon: Icon, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 h-9 rounded text-sm font-medium transition-colors flex items-center gap-2 ${
-      active
-        ? 'bg-white shadow-sm text-stone-900'
-        : 'text-stone-600 hover:text-stone-900'
-    }`}
-  >
-    <Icon className="w-3.5 h-3.5" />
-    {children}
-  </button>
-);
-
-// ────────────────────────────────────────────
 // Page
 // ────────────────────────────────────────────
 export const CockpitCave: React.FC = () => {
@@ -364,11 +347,16 @@ export const CockpitCave: React.FC = () => {
             {inStock.length} vins en stock · {total} bouteilles
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md">
-          <TabButton active={tab === 'liste'} onClick={() => switchTab('liste')} icon={List}>Liste</TabButton>
-          <TabButton active={tab === 'plan'} onClick={() => switchTab('plan')} icon={Map}>Plan</TabButton>
-          <TabButton active={tab === 'insights'} onClick={() => switchTab('insights')} icon={TrendingUp}>Insights</TabButton>
-        </div>
+        <Tabs<Tab>
+          aria-label="Vue de la cave"
+          value={tab}
+          onChange={switchTab}
+          items={[
+            { key: 'liste', label: 'Liste', icon: List },
+            { key: 'plan', label: 'Plan', icon: Map },
+            { key: 'insights', label: 'Insights', icon: TrendingUp },
+          ]}
+        />
       </div>
 
       {tab === 'liste' && <CaveList />}

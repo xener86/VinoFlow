@@ -7,6 +7,7 @@ import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTri
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
 
 const PASSWORD_MIN_LENGTH = 10;
 
@@ -58,6 +59,8 @@ const ChangePasswordForm: React.FC = () => {
 };
 
 export const Settings: React.FC = () => {
+  const toast = useToast();
+  const confirmAction = useConfirm();
   // ✅ Utilisation du Hook
   const { config, loading, saveConfig } = useAIConfig();
   const { user } = useAuth();
@@ -93,7 +96,7 @@ export const Settings: React.FC = () => {
           const r = await enrichAromaProfilesBatch({ onlyMissing: true, limit: 50 });
           setEnrichResult(r);
       } catch (e: any) {
-          alert('Échec : ' + (e.message || 'erreur'));
+          toast.error('Échec de l’enrichissement : ' + (e.message || 'erreur'));
       } finally {
           setEnriching(false);
       }
@@ -130,7 +133,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleCleanup = async () => {
-      if (!window.confirm(`Supprimer ${orphanedBottles?.length || 0} bouteille(s) orpheline(s) ? Cette action est irréversible.`)) return;
+      if (!(await confirmAction({ title: `Supprimer ${orphanedBottles?.length || 0} bouteille(s) orpheline(s) ?`, message: 'Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }))) return;
       setIsCleaning(true);
       try {
           const result = await cleanupGhostBottles();
@@ -138,6 +141,7 @@ export const Settings: React.FC = () => {
           setOrphanedBottles(null);
       } catch (e) {
           console.error('Cleanup failed', e);
+          toast.error('Le nettoyage a échoué.');
       } finally {
           setIsCleaning(false);
       }
@@ -148,7 +152,10 @@ export const Settings: React.FC = () => {
       const success = await saveConfig(localConfig); // ✅ Sauvegarde Async
       if (success) {
           setSaved(true);
+          toast.success('Configuration enregistrée');
           setTimeout(() => setSaved(false), 2000);
+      } else {
+          toast.error('La configuration n’a pas pu être enregistrée.');
       }
   };
 
@@ -166,7 +173,7 @@ export const Settings: React.FC = () => {
         document.body.removeChild(a);
     } catch (error) {
         console.error("Export failed", error);
-        alert("Une erreur est survenue lors de l'exportation.");
+        toast.error("Une erreur est survenue lors de l'exportation.");
     } finally {
         setIsExporting(false);
     }

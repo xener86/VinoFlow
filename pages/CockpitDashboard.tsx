@@ -142,7 +142,7 @@ export const CockpitDashboard: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2 mono text-[10px] tracking-widest text-wine-700">
             <span className="w-1.5 h-1.5 rounded-full bg-wine-700"></span>
-            SOMMELIER · MODÈLE LOCAL
+            SOMMELIER · DANS TA CAVE
           </div>
           <div className="mono text-[10px] text-stone-500">3 PERSPECTIVES</div>
         </div>
@@ -160,10 +160,11 @@ export const CockpitDashboard: React.FC = () => {
           <input
             value={dish}
             onChange={e => setDish(e.target.value)}
-            className="bg-transparent flex-1 text-sm outline-none placeholder:text-stone-500 text-stone-900"
+            aria-label="Décris le moment ou le plat"
+            className="bg-transparent flex-1 min-w-0 text-sm outline-none placeholder:text-stone-500 text-stone-900"
             placeholder="ex. dîner à deux, agneau aux herbes, on est mardi"
           />
-          <button type="submit" className="h-7 px-3 rounded bg-wine-700 hover:bg-wine-800 text-white text-xs font-medium flex items-center gap-1">
+          <button type="submit" className="h-9 md:h-7 px-3 rounded bg-wine-700 hover:bg-wine-800 text-white text-xs font-medium flex items-center gap-1 shrink-0">
             Demander <ArrowRight className="w-3 h-3" />
           </button>
         </form>
@@ -172,7 +173,7 @@ export const CockpitDashboard: React.FC = () => {
             <button
               key={chip}
               onClick={() => navigate(`/sommelier?mode=PAIRING&q=${encodeURIComponent(chip.toLowerCase())}`)}
-              className="mono text-[10px] px-2 py-1 rounded border border-stone-300 bg-white/60 text-stone-700 hover:bg-white cursor-pointer"
+              className="mono text-[10px] px-2.5 py-2 md:px-2 md:py-1 rounded border border-stone-300 bg-white/60 text-stone-700 hover:bg-white cursor-pointer"
             >
               {chip}
             </button>

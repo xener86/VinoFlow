@@ -1,5 +1,5 @@
 // Thin status strip at the very top of every Cockpit page.
-// Shows brand, sync status, and date/version.
+// Marque, état de la connexion au serveur, date et version.
 
 import React, { useEffect, useState } from 'react';
 
@@ -10,30 +10,40 @@ const formatDate = () => {
   return `${days[d.getDay()]} ${String(d.getDate()).padStart(2, '0')} ${months[d.getMonth()]} ${d.getFullYear()} · ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 
-const PulseDot: React.FC = () => (
-  <span className="relative inline-flex h-1.5 w-1.5 mr-1.5">
-    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-wine-600 opacity-75"></span>
-    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-wine-700"></span>
-  </span>
-);
+declare const __APP_VERSION__: string;
+
+const useOnline = () => {
+  const [online, setOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+};
 
 export const TopStrip: React.FC = () => {
   const [now, setNow] = useState(formatDate());
+  const online = useOnline();
   useEffect(() => {
     const t = setInterval(() => setNow(formatDate()), 60000);
     return () => clearInterval(t);
   }, []);
 
   return (
-    <div className="border-b border-stone-200 bg-white px-7 h-9 flex items-center justify-between mono text-[10px] text-stone-500">
+    <div className="border-b border-stone-200 bg-white px-4 md:px-7 h-9 flex items-center justify-between mono text-[10px] text-stone-500">
       <div className="flex items-center gap-4">
         <span className="text-wine-700 font-medium tracking-widest">VINOFLOW</span>
-        <span className="flex items-center"><PulseDot />LOCAL</span>
       </div>
       <div className="hidden md:block">{now}</div>
       <div className="flex items-center gap-3">
-        <span className="text-emerald-700">SYNC ✓</span>
-        <span>v2.0.0</span>
+        <span className={`flex items-center gap-1.5 ${online ? 'text-emerald-700' : 'text-wine-700'}`} title={online ? 'Connecté au serveur' : 'Hors ligne : les modifications ne seront pas enregistrées'}>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${online ? 'bg-emerald-600' : 'bg-wine-700 animate-pulse'}`} />
+          {online ? 'EN LIGNE' : 'HORS LIGNE'}
+        </span>
+        <span>v{__APP_VERSION__}</span>
       </div>
     </div>
   );

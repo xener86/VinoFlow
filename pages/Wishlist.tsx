@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWishlist } from '../hooks/useWishlist';
 import { addWishlistItem, deleteWishlistItem } from '../services/storageService';
 import { WishlistItem, WineType } from '../types';
+import { useToast, useConfirm } from '../components/cockpit/feedback';
 import { Heart, Plus, Trash2, ShoppingCart, X, Loader2, Wine as WineIcon } from 'lucide-react';
 
 const wineTypeLabels: Record<string, string> = {
@@ -16,6 +17,7 @@ const priorityLabels: Record<string, { label: string; color: string }> = {
 };
 
 export const Wishlist: React.FC = () => {
+  const confirmAction = useConfirm();
   const navigate = useNavigate();
   const { items, loading, refresh } = useWishlist();
   const [showForm, setShowForm] = useState(false);
@@ -51,7 +53,7 @@ export const Wishlist: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Supprimer de la wishlist ?')) return;
+    if (!(await confirmAction({ title: 'Supprimer de la wishlist ?', confirmLabel: 'Supprimer', danger: true }))) return;
     await deleteWishlistItem(id);
     refresh();
   };

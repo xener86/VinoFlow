@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-cream-50 text-stone-900;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-wine-600/50 ring-offset-1 ring-offset-white;
+  }
+}
+
+@layer components {
+  /* Helpers typographiques du design system */
+  .serif    { font-family: 'Playfair Display', Georgia, serif; }
+  .serif-it { font-family: 'Playfair Display', Georgia, serif; font-style: italic; }
+  .mono     { font-family: 'JetBrains Mono', monospace; }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #a8a29e; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #78716c; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
