@@ -43,6 +43,8 @@ services:
       - ENRICH_DAILY_LIMIT=${ENRICH_DAILY_LIMIT:-30}
       - ENRICH_TICK_MINUTES=${ENRICH_TICK_MINUTES:-60}
       - MAIL_FROM=${MAIL_FROM:-}
+      # Sommelier en un appel avec outils (repli automatique sur le pipeline en cas d'échec)
+      - VINOFLOW_SOMMELIER_AGENT=${VINOFLOW_SOMMELIER_AGENT:-true}
       - NODE_ENV=production
     networks:
       - vinoflow-network

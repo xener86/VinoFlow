@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
 import { loadInventory } from '../services/inventory.js';
 import { runAgentPairing } from '../sommelier/agent.js';
+import { isProviderConfigured } from '../services/aiService.js';
 import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from '../sommelier/coordinator.js';
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from '../sommelier/tasteProfile.js';
 import { drinkBeforeAlerts, anticipationForEvent, purchaseSuggestions } from '../sommelier/proactive.js';
@@ -37,21 +38,26 @@ router.post('/sommelier/pair', async (req, res) => {
 
     const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
 
-    // Prototype (flag) : sommelier en un appel avec outils — voir sommelier/agent.js.
-    if (process.env.VINOFLOW_SOMMELIER_AGENT === 'true') {
-      const inStock = inventory.filter((w) => (w.inventoryCount ?? 0) > 0);
-      const agent = await runAgentPairing({ inventory, dish, tasteProfile, userFeedback });
-      return res.json({
-        criteria: null,
-        candidates: agent.candidates,
-        picks: agent.picks,
-        critique: null,
-        fromCache: null,
-        cave_size: inStock.length,
-        cave_after_filter: null,
-        engine: 'agent',
-        turns: agent.turns,
-      });
+    // Sommelier en un appel avec outils (flag) — voir sommelier/agent.js.
+    // En cas d'échec (pas de clé Claude, erreur API), on retombe sur le pipeline.
+    if (process.env.VINOFLOW_SOMMELIER_AGENT === 'true' && isProviderConfigured('claude')) {
+      try {
+        const inStock = inventory.filter((w) => (w.inventoryCount ?? 0) > 0);
+        const agent = await runAgentPairing({ inventory, dish, tasteProfile, userFeedback });
+        return res.json({
+          criteria: null,
+          candidates: agent.candidates,
+          picks: agent.picks,
+          critique: null,
+          fromCache: null,
+          cave_size: inStock.length,
+          cave_after_filter: null,
+          engine: 'agent',
+          turns: agent.turns,
+        });
+      } catch (error) {
+        console.warn('Sommelier agent en échec, repli sur le pipeline :', error.message);
+      }
     }
 
     const result = await runPairing({
