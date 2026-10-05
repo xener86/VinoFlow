@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -347,6 +347,23 @@ export const getCellarBudget = async (months = 12) => {
   return handleResponse(response);
 };
 
+// --- MENUFLOW ---
+
+export const getMenuflowStatus = async (): Promise<MenuflowStatus> => {
+  const response = await apiFetch(`${API_URL}/menuflow/status`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getTonight = async (): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const resuggestTonight = async (): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight/resuggest`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
 // --- NOTIFICATIONS ---
 
 export const getNotificationSettings = async (): Promise<NotificationSettingsResponse> => {
@@ -445,7 +462,8 @@ export const consumeSpecificBottle = async (
   wineId: string,
   bottleId: string,
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  forDinner: boolean | null = null
 ): Promise<void> => {
   const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
@@ -463,7 +481,8 @@ export const consumeSpecificBottle = async (
       wineName,
       wineVintage,
       quantity: 1,
-      description: `Consommation - ${wineName} ${wineVintage || ''}`
+      description: `Consommation - ${wineName} ${wineVintage || ''}`,
+      forDinner
   });
 };
 

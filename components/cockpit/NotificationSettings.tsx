@@ -3,9 +3,9 @@ import { Bell, Eye, Loader2, Send } from 'lucide-react';
 import { Badge, Button, Input, Modal, MonoLabel, Select, Skeleton } from './primitives';
 import { useToast } from './feedback';
 import {
-  getNotificationSettings, saveNotificationSettings, sendTestNotification, previewNewsletter, sendNewsletterNow,
+  getNotificationSettings, saveNotificationSettings, sendTestNotification, previewNewsletter, sendNewsletterNow, getMenuflowStatus,
 } from '../../services/storageService';
-import { NotificationChannel, NotificationSettingsPatch, NotificationSettingsResponse, NewsletterPreview } from '../../types';
+import { MenuflowStatus, NotificationChannel, NotificationSettingsPatch, NotificationSettingsResponse, NewsletterPreview } from '../../types';
 
 const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
 const KIND_LABELS = { alert: 'Alerte', newsletter: 'Newsletter', test: 'Test' } as const;
@@ -28,8 +28,10 @@ export const NotificationSettings: React.FC = () => {
   const [preview, setPreview] = useState<NewsletterPreview | null>(null);
   const [previewing, setPreviewing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [menuflow, setMenuflow] = useState<MenuflowStatus | null>(null);
 
   useEffect(() => {
+    getMenuflowStatus().then(setMenuflow).catch(() => setMenuflow(null));
     getNotificationSettings().then(setServer).catch((e) => toast.error('Réglages de notification indisponibles : ' + errMsg(e)));
   }, []);
 
@@ -98,6 +100,15 @@ export const NotificationSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {menuflow && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+          <Badge tone={menuflow.configured ? (menuflow.lastError ? 'warning' : 'success') : 'neutral'}>
+            MenuFlow · {menuflow.configured ? 'relié' : 'non relié (MENUFLOW_URL / MENUFLOW_TOKEN)'}
+          </Badge>
+          {menuflow.lastSyncAt && <span>dernière synchro {new Date(menuflow.lastSyncAt).toLocaleString('fr-FR')}</span>}
+          {menuflow.lastError && <span className="text-wine-700">{menuflow.lastError}</span>}
+        </div>
+      )}
       {/* Canaux */}
       <div className="space-y-3">
         <MonoLabel>Canaux</MonoLabel>

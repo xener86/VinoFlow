@@ -110,6 +110,7 @@ export interface JournalEntry {
   occasion?: string;
   note?: string;
   userId?: string;
+  forDinner?: boolean | null;
 }
 
 // Note de dégustation telle que renvoyée par /api/tasting-notes (table
@@ -315,3 +316,15 @@ export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'goti
 };
 
 export interface NewsletterPreview { subject: string; html: string; markdown: string; }
+
+// ─── Passerelle MenuFlow ───
+export interface MenuflowStatus { configured: boolean; lastSyncAt: string | null; lastError: string | null; }
+export interface TonightWine { wineId: string; wine: string; vintage: number | null; reason?: string | null; location?: string | null; }
+export type TonightResponse =
+  | { configured: false }
+  | {
+      configured: true;
+      dinner: { date: string; title: string; verdicts: { author: string; rating: string }[] } | null;
+      suggested: TonightWine | null;
+      opened: TonightWine[];
+    };
