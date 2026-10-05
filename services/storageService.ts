@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -919,4 +919,30 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
     console.error("Import failed", e);
     return { ok: false, error: "Serveur injoignable." };
   }
+};
+
+// ─── Import CSV (aller-retour avec l'export) ───
+type CsvImportFailure = { ok: false; status: number; error: string };
+
+const postCsvImport = async (body: object): Promise<{ ok: true; data: any } | CsvImportFailure> => {
+  try {
+    const response = await apiFetch(`${API_URL}/import/csv`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}` };
+    return { ok: true, data };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable.' };
+  }
+};
+
+/** Aperçu : ce que l'import ferait, sans rien écrire. */
+export const previewCsvImport = async (csv: string): Promise<{ ok: true; plan: CsvImportPlan } | CsvImportFailure> => {
+  const res = await postCsvImport({ csv, dryRun: true });
+  return res.ok ? { ok: true, plan: res.data.plan } : (res as CsvImportFailure);
+};
+
+/** Application ; status 409 si la cave a changé depuis l'aperçu. */
+export const applyCsvImport = async (csv: string, planHash: string): Promise<{ ok: true; applied: CsvImportApplied } | CsvImportFailure> => {
+  const res = await postCsvImport({ csv, dryRun: false, planHash });
+  return res.ok ? { ok: true, applied: res.data.applied } : (res as CsvImportFailure);
 };
