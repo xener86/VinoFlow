@@ -608,28 +608,88 @@ export const deleteSpirit = async (id: string): Promise<void> => {
 
 // --- COCKTAIL FUNCTIONS ---
 
+// Recettes enregistrées hors ligne (ancien fallback quand /api/cocktails
+// n'existait pas) : reprises dans l'API dès qu'elle répond, puis effacées.
+const LOCAL_COCKTAILS_KEY = 'vf_cocktails';
+
+const readLocalCocktails = (): CocktailRecipe[] => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(LOCAL_COCKTAILS_KEY) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+};
+
+const postCocktail = async (recipe: CocktailRecipe): Promise<CocktailRecipe> => {
+    const response = await apiFetch(`${API_URL}/cocktails`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(recipe)
+    });
+    return handleResponse(response);
+};
+
+// Le POST étant un upsert par id, une reprise interrompue peut être rejouée sans doublon.
+const migrateLocalCocktails = async (): Promise<boolean> => {
+    const pending = readLocalCocktails();
+    if (pending.length === 0) return false;
+    const remaining: CocktailRecipe[] = [];
+    for (const recipe of pending) {
+        try {
+            await postCocktail(recipe);
+        } catch (e) {
+            console.warn('Reprise du cocktail local impossible', recipe?.name, e);
+            // Rejetée par l'API (400) : inutile de la retenter à chaque chargement.
+            if (!(e instanceof Error && e.message.startsWith('API Error: 400'))) remaining.push(recipe);
+        }
+    }
+    if (remaining.length) localStorage.setItem(LOCAL_COCKTAILS_KEY, JSON.stringify(remaining));
+    else localStorage.removeItem(LOCAL_COCKTAILS_KEY);
+    return remaining.length < pending.length;
+};
+
 export const getCocktails = async (): Promise<CocktailRecipe[]> => {
-    const response = await apiFetch(`${API_URL}/cocktails`, { headers: getHeaders() });
-    if (!response.ok && response.status === 404) return []; // Endpoint might not exist yet
-    return handleResponse(response) || [];
+    let response: Response;
+    try {
+        response = await apiFetch(`${API_URL}/cocktails`, { headers: getHeaders() });
+    } catch {
+        return readLocalCocktails(); // API injoignable : recettes locales seulement
+    }
+    if (response.status === 404) return readLocalCocktails(); // backend sans la route
+    const cocktails: CocktailRecipe[] = (await handleResponse(response)) || [];
+    if (await migrateLocalCocktails()) return getCocktails();
+    return cocktails;
 };
 
 export const saveCocktail = async (recipe: CocktailRecipe): Promise<void> => {
-    // Si l'endpoint n'existe pas encore, on peut fallback sur localStorage ou ne rien faire
-    // Supposons qu'il existe :
     try {
-        await apiFetch(`${API_URL}/cocktails`, {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify(recipe)
-        });
+        await postCocktail(recipe);
     } catch (e) {
-        console.warn("Cocktail API not ready, saving locally fallback?");
-        // Fallback LocalStorage si API pas prête
-        const cocktails = JSON.parse(localStorage.getItem('vf_cocktails') || '[]');
+        // Données refusées : on remonte l'erreur plutôt que de la masquer en local.
+        if (e instanceof Error && /^API Error: (400|401)/.test(e.message)) throw e;
+        console.warn('API cocktails indisponible, recette gardée localement', e);
+        const cocktails = readLocalCocktails().filter(c => c.id !== recipe.id);
         cocktails.push(recipe);
-        localStorage.setItem('vf_cocktails', JSON.stringify(cocktails));
+        localStorage.setItem(LOCAL_COCKTAILS_KEY, JSON.stringify(cocktails));
     }
+};
+
+export const updateCocktail = async (id: string, updates: Partial<CocktailRecipe>): Promise<CocktailRecipe> => {
+    const response = await apiFetch(`${API_URL}/cocktails/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(updates)
+    });
+    return handleResponse(response);
+};
+
+export const deleteCocktail = async (id: string): Promise<void> => {
+    const response = await apiFetch(`${API_URL}/cocktails/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+    });
+    await handleResponse(response);
 };
 
 // --- TASTING NOTES ---
@@ -735,13 +795,15 @@ export const saveAIConfig = (config: AIConfig): void => {
 
 export const exportFullData = async (): Promise<string> => {
   // On récupère tout depuis l'API
-  const [wines, bottles, racks, spirits, notes, history] = await Promise.all([
+  const [wines, bottles, racks, spirits, notes, history, wishlist, cocktails] = await Promise.all([
       getWines(),
       getBottles(),
       getRacks(),
       getSpirits(),
       getTastingNotes(),
-      getCellarJournal()
+      getCellarJournal(),
+      getWishlist(),
+      getCocktails()
   ]);
 
   const data = {
@@ -751,6 +813,8 @@ export const exportFullData = async (): Promise<string> => {
     spirits,
     tastingNotes: notes,
     history,
+    wishlist,
+    cocktails,
     timestamp: new Date().toISOString()
   };
   
@@ -780,22 +844,35 @@ export const deleteWishlistItem = async (id: string): Promise<void> => {
     });
 };
 
-export const importFullData = async (jsonString: string): Promise<boolean> => {
+export interface ImportResult {
+  ok: boolean;
+  error?: string;
+  imported?: Record<string, { inserted: number; updated: number }>;
+}
+
+// Restauration côté serveur (POST /api/import) : fusion par identifiant dans
+// une transaction — les lignes de la sauvegarde sont créées ou remplacent
+// celles de même id, rien n'est supprimé, réimporter ne crée pas de doublon.
+export const importFullData = async (jsonString: string): Promise<ImportResult> => {
+  let data: unknown;
   try {
-    const data = JSON.parse(jsonString);
-    
-    // Ceci est une opération lourde qui devrait être gérée par un endpoint /import côté serveur
-    // pour éviter de faire 1000 fetch calls.
-    // Si l'endpoint existe :
+    data = JSON.parse(jsonString);
+  } catch {
+    return { ok: false, error: "Le fichier n'est pas un JSON valide." };
+  }
+  try {
     const response = await apiFetch(`${API_URL}/import`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    
-    return response.ok;
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return { ok: false, error: body?.error || `Erreur ${response.status}` };
+    }
+    return { ok: true, imported: body?.imported };
   } catch (e) {
     console.error("Import failed", e);
-    return false;
+    return { ok: false, error: "Serveur injoignable." };
   }
 };

@@ -231,24 +231,24 @@ export const Settings: React.FC = () => {
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = '';
+    e.target.value = ''; // permet de resélectionner le même fichier
     if (!file) return;
     const ok = await confirmAction({
       title: 'Restaurer cette sauvegarde ?',
-      message: <>Les données de <strong>{file.name}</strong> vont être importées dans la cave partagée et peuvent écraser les données actuelles. Faites d’abord une sauvegarde JSON si besoin.</>,
+      message: <>Les éléments de <strong>{file.name}</strong> sont ajoutés ou remplacent ceux qui ont le même identifiant. Rien n’est supprimé, et réimporter le même fichier ne crée pas de doublon.</>,
       confirmLabel: 'Restaurer',
-      danger: true,
     });
     if (!ok) return;
     setImporting(true);
     try {
       const content = await file.text();
-      const success = await importFullData(content);
-      if (success) {
-        toast.success('Restauration terminée. Rechargement…');
+      const result = await importFullData(content);
+      if (result.ok) {
+        const total = Object.values(result.imported || {}).reduce((n, c) => n + c.inserted + c.updated, 0);
+        toast.success(`Restauration terminée : ${total} élément(s). Rechargement…`);
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        toast.error('Restauration impossible : fichier invalide ou refusé par le serveur.');
+        toast.error(`Restauration impossible : ${result.error}`);
       }
     } catch (err) {
       toast.error("Erreur lors de l'import : " + errMsg(err));
