@@ -13,6 +13,7 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
       - ./db/migrations/002_pgvector.sql:/docker-entrypoint-initdb.d/02_pgvector.sql:ro
       - ./db/migrations/003_peak_window.sql:/docker-entrypoint-initdb.d/03_peak_window.sql:ro
+      - ./db/migrations/004_auth_tokens.sql:/docker-entrypoint-initdb.d/04_auth_tokens.sql:ro
     networks:
       - vinoflow-network
     healthcheck:
@@ -32,6 +33,12 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5001}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ALLOW_CLIENT_AI_KEYS=${ALLOW_CLIENT_AI_KEYS:-true}
+      - ALLOW_SIGNUP=${ALLOW_SIGNUP:-false}
+      - TRUST_PROXY=${TRUST_PROXY:-1}
+      - APP_URL=${APP_URL:-}
+      - SWEEGO_API_KEY=${SWEEGO_API_KEY:-}
+      - MAIL_FROM=${MAIL_FROM:-}
       - NODE_ENV=production
     networks:
       - vinoflow-network
@@ -55,6 +62,29 @@ services:
       - vinoflow-network
     depends_on:
       backend:
+        condition: service_healthy
+
+  # Sauvegarde quotidienne de la base dans ./backups (rotation 7 jours + 4 semaines).
+  # Restauration : voir README, section « Sauvegardes ».
+  backup:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    entrypoint: ["bash", "/usr/local/bin/vinoflow-backup.sh"]
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-vinoflow}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-vinoflow}
+      - BACKUP_HOUR=${BACKUP_HOUR:-3}
+      - BACKUP_KEEP_DAILY=${BACKUP_KEEP_DAILY:-7}
+      - BACKUP_KEEP_WEEKLY=${BACKUP_KEEP_WEEKLY:-4}
+      - TZ=${TZ:-Europe/Paris}
+    volumes:
+      - ./scripts/backup.sh:/usr/local/bin/vinoflow-backup.sh:ro
+      - ./backups:/backups
+    networks:
+      - vinoflow-network
+    depends_on:
+      db:
         condition: service_healthy
 
 volumes:
