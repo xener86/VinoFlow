@@ -218,15 +218,16 @@ export async function addWine(wine: Partial<Wine>, quantity: number = 1): Promis
         ...wine
     } as Wine;
 
-    await fetchJSON('/wines', { method: 'POST', body: JSON.stringify(newWine) });
+    // L'identifiant est attribué par le serveur (celui généré ici est ignoré) : on
+    // rattache les bouteilles au vin réellement créé.
+    const created = await fetchJSON<Wine>('/wines', { method: 'POST', body: JSON.stringify(newWine) });
+    const wineId = created?.id || newWine.id;
 
-    // Add bottles
     for (let i = 0; i < quantity; i++) {
         await fetchJSON('/bottles', {
             method: 'POST',
             body: JSON.stringify({
-                id: crypto.randomUUID(),
-                wineId: newWine.id,
+                wineId,
                 location: 'Non trié',
                 purchaseDate: new Date().toISOString(),
                 isConsumed: false,
@@ -235,7 +236,21 @@ export async function addWine(wine: Partial<Wine>, quantity: number = 1): Promis
         });
     }
 
-    return newWine.id;
+    if (quantity > 0) {
+        await fetchJSON('/history', {
+            method: 'POST',
+            body: JSON.stringify({
+                type: 'IN',
+                wineId,
+                wineName: newWine.name,
+                wineVintage: newWine.vintage,
+                quantity,
+                description: `Ajout de ${quantity} bouteille(s) (MCP)`,
+            })
+        });
+    }
+
+    return wineId;
 }
 
 export async function consumeBottle(wineId: string, bottleId?: string): Promise<boolean> {

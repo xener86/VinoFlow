@@ -30,6 +30,18 @@ describe('apiRequest', () => {
     });
 });
 
+describe('addWine', () => {
+    it('utilise l’identifiant renvoyé par le serveur pour les bouteilles et note l’entrée au journal', async () => {
+        const { calls } = mockBackend((c) => (c.method === 'POST' && c.path === '/wines'
+            ? { status: 201, body: { id: 'id-serveur', name: 'Alpha', vintage: 2019 } } : { status: 201, body: {} }));
+        expect(await client.addWine({ name: 'Alpha', vintage: 2019 }, 2)).toBe('id-serveur');
+        const bottles = calls.filter((c) => c.path === '/bottles');
+        expect(bottles).toHaveLength(2);
+        expect(bottles.every((c) => (c.body as { wineId: string }).wineId === 'id-serveur')).toBe(true);
+        expect(calls.find((c) => c.path === '/history')?.body).toMatchObject({ type: 'IN', wineId: 'id-serveur', quantity: 2 });
+    });
+});
+
 describe('consumeBottle', () => {
     it('retire la bouteille du stock ET écrit la sortie au journal', async () => {
         const { calls } = mockBackend((c) => {
