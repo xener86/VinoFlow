@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
+import { serializeWine } from '../utils/wine.js';
 import { isProviderConfigured, getTaskDefaults } from '../services/aiService.js';
 import { enrichWine, aromasFromTastingNotes } from '../sommelier/enrich.js';
 import { extractFromLabel } from '../sommelier/ocr.js';
@@ -152,7 +153,7 @@ router.post('/wines/:id/refresh-from-tastings', async (req, res) => {
       RETURNING *
     `, [aromas, userId || null, id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    res.json({ wine: convertKeysToCamelCase(result.rows[0]), aromas });
+    res.json({ wine: serializeWine(result.rows[0]), aromas });
   } catch (error) {
     console.error('Refresh-from-tastings error:', error);
     res.status(500).json({ error: 'Failed to refresh from tastings' });
@@ -186,7 +187,7 @@ router.put('/wines/:id/aroma-profile', async (req, res) => {
       id,
     ]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    res.json(convertKeysToCamelCase(result.rows[0]));
+    res.json(serializeWine(result.rows[0]));
   } catch (error) {
     console.error('Update aroma-profile error:', error);
     res.status(500).json({ error: 'Failed to update aroma profile' });

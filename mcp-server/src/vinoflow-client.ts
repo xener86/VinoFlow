@@ -90,7 +90,7 @@ export interface Wine {
     tastingNotes: string;
     suggestedFoodPairings: string[];
     producerHistory: string;
-    enrichedByAI: boolean;
+    enrichedByAi: boolean;
     isFavorite: boolean;
     createdAt: string;
     updatedAt: string;
@@ -196,7 +196,7 @@ export async function addWine(wine: Partial<Wine>, quantity: number = 1): Promis
         tastingNotes: wine.tastingNotes || '',
         suggestedFoodPairings: wine.suggestedFoodPairings || [],
         producerHistory: wine.producerHistory || '',
-        enrichedByAI: wine.enrichedByAI || false,
+        enrichedByAi: wine.enrichedByAi || false,
         isFavorite: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

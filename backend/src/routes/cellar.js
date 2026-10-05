@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
+import { serializeWine } from '../utils/wine.js';
 import { loadInventory } from '../services/inventory.js';
 import { computePeak } from '../sommelier/peakCalculator.js';
 import { computeBudget } from '../sommelier/budget.js';
@@ -166,7 +167,7 @@ router.put('/wines/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
       RETURNING *
     `, [peakStart, peakEnd, reasoning || null, id]);
     if (result.rows.length === 0) return res.status(404).json({ error: 'Wine not found' });
-    res.json(convertKeysToCamelCase(result.rows[0]));
+    res.json(serializeWine(result.rows[0]));
   } catch (error) {
     console.error('Update peak error:', error);
     res.status(500).json({ error: 'Failed to update peak' });

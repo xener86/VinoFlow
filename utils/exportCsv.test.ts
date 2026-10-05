@@ -51,11 +51,4 @@ describe('exportWinesToCsv', () => {
     expect(row).toContain(',25.00,Oui,À Boire,2023-2028,');
     expect(row).toContain('"Dit ""superbe"""');
   });
-
-  // Bug connu : l'API renvoie purchasePrice en chaîne ("20.00", type numeric
-  // côté Postgres) alors que types.ts le déclare number → la moyenne concatène.
-  it.fails('prix moyen correct quand l’API renvoie les prix en chaîne (bug connu)', async () => {
-    exportWinesToCsv([wine({ bottles: [{ purchasePrice: '20.00' }, { purchasePrice: '30.00' }] } as any)], []);
-    expect((await csvLines())[1]).toContain(',25.00,');
-  });
 });

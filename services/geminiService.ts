@@ -108,7 +108,7 @@ ${antiHallucination}`;
         }
 
         const res = await this.generateJSON(contents, wineSchemaStructure as Schema, isImageScan);
-        if(res) return { ...res, enrichedByAI: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
+        if(res) return { ...res, enrichedByAi: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
         return null;
     }
 
@@ -137,7 +137,7 @@ ${antiHallucination}`;
 Retourne un JSON complet EN FRANÇAIS avec catégorie, distillerie, région, pays, ABV, description, notes de dégustation, profil aromatique, cocktails suggérés et accords culinaires.
 Si tu n'es pas certain d'une information (ABV, type de fût, etc.), mets null plutôt que d'inventer.`;
         const res = await this.generateJSON(prompt, schema);
-        if(res) return { ...res, enrichedByAI: true, addedAt: new Date().toISOString() };
+        if(res) return { ...res, enrichedByAi: true, addedAt: new Date().toISOString() };
         return null;
     }
 
@@ -247,7 +247,7 @@ RÈGLES : Si tu n'es pas certain d'une info, mets null. Le champ "confidence" (H
         }
 
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: userContent }]);
-        if(res) return { ...res, enrichedByAI: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
+        if(res) return { ...res, enrichedByAi: true, format: '750ml', personalNotes: [], aiConfidence: res.confidence || 'MEDIUM' };
         return null;
     }
 
@@ -255,7 +255,7 @@ RÈGLES : Si tu n'es pas certain d'une info, mets null. Le champ "confidence" (H
         const system = "Tu es expert en spiritueux. Retourne JSON complet en français : {category, distillery, region, country, abv, format, description, producerHistory, tastingNotes, aromaProfile, suggestedCocktails, culinaryPairings}. Si tu n'es pas certain d'une info, mets null.";
         const user = `Analyse ce spiritueux : "${name}" ${hint||''}. En Français.`;
         const res = await this.call([{ role: "system", content: system }, { role: "user", content: user }]);
-        if(res) return { ...res, enrichedByAI: true, addedAt: new Date().toISOString() };
+        if(res) return { ...res, enrichedByAi: true, addedAt: new Date().toISOString() };
         return null;
     }
 

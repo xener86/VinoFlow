@@ -1,5 +1,6 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote } from '../types';
 import { customAuth, clearSession } from './customAuth';
+import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
 
 const currentUserId = (): string | null => customAuth.getUser()?.id ?? null;
@@ -613,17 +614,23 @@ export const saveCocktail = async (recipe: CocktailRecipe): Promise<void> => {
 
 // --- TASTING NOTES ---
 
-export const getTastingNotes = async (): Promise<any[]> => {
+export const getTastingNotes = async (): Promise<TastingNote[]> => {
     const response = await apiFetch(`${API_URL}/tasting-notes`, { headers: getHeaders() });
-    return handleResponse(response) || [];
+    const notes: Omit<TastingNote, 'rating' | 'notes'>[] = (await handleResponse(response)) || [];
+    return notes.map(n => ({
+        ...n,
+        rating: typeof n.overallRating === 'number' ? n.overallRating : null,
+        notes: tastingPhrase(n.generalNotes),
+    }));
 };
 
-export const saveTastingNote = async (note: any): Promise<void> => {
-    await apiFetch(`${API_URL}/tasting-notes`, {
+export const saveTastingNote = async (note: NewTastingNote): Promise<void> => {
+    const response = await apiFetch(`${API_URL}/tasting-notes`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(note)
     });
+    await handleResponse(response);
 };
 
 // --- JOURNAL / HISTORY ---

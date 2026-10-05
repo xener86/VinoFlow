@@ -148,7 +148,7 @@ export const Bar: React.FC = () => {
               aromaProfile: data?.aromaProfile || [],
               suggestedCocktails: data?.suggestedCocktails || [],
               culinaryPairings: data?.culinaryPairings || [],
-              enrichedByAI: !!data,
+              enrichedByAi: !!data,
               addedAt: new Date().toISOString(),
               isOpened: false,
               inventoryLevel: 100,

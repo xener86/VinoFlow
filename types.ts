@@ -19,16 +19,26 @@ export interface Wine {
   tastingNotes: string;
   suggestedFoodPairings: string[];
   producerHistory: string;
-  enrichedByAI: boolean;
+  enrichedByAi: boolean;
   aiConfidence?: 'HIGH' | 'MEDIUM' | 'LOW';
   isFavorite: boolean;
   sensoryProfile: SensoryProfile;
   createdAt: string;
   updatedAt: string;
+  // Aroma profile provenance (sommelier v2)
+  aromaConfidence?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  aromaSource?: 'AI' | 'USER' | 'TASTING' | 'COMMUNITY' | 'CONSENSUS' | null;
+  aromaVerifiedAt?: string | null;
+  aromaVerifiedBy?: string | null;
+  aromaProvider?: string | null;
   // Peak drinking window — optionally stored by AI/USER on the backend
   peakStart?: number;
   peakEnd?: number;
-  peakSource?: 'AI' | 'USER' | 'NAIVE';
+  peakSource?: 'AI' | 'USER' | 'COMMUNITY' | 'NAIVE';
+  peakConfidence?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  peakReasoning?: string | null;
+  peakComputedAt?: string | null;
+  peakVerifiedBy?: string | null;
 }
 
 export interface Bottle {
@@ -42,6 +52,7 @@ export interface Bottle {
   consumedDate?: string;
   giftedTo?: string;
   giftOccasion?: string;
+  createdAt?: string;
 }
 
 export interface WishlistItem {
@@ -77,6 +88,7 @@ export interface Rack {
   height: number;
   type: 'SHELF' | 'BOX';
   sortOrder?: number;
+  createdAt?: string;
 }
 
 export interface JournalEntry {
@@ -96,26 +108,37 @@ export interface JournalEntry {
   userId?: string;
 }
 
-// Forme utilisée par le front (hooks/useTastingNotes). Diffère de la table
-// tasting_notes renvoyée par /api/tasting-notes (overallRating, noseNotes…).
+// Note de dégustation telle que renvoyée par /api/tasting-notes (table
+// tasting_notes), plus deux champs dérivés par storageService.getTastingNotes.
 export interface TastingNote {
   id: string;
   wineId: string;
-  wineName: string;
-  wineVintage: number;
   date: string;
-  visual: number;
-  visualNotes: string;
-  nose: string[];
-  body: number;
-  acidity: number;
-  tannin: number;
-  finish: number;
-  rating: number;
-  pairedWith?: string;
-  pairingQuality?: number;
-  pairingSuggestion?: string;
-  notes: string;
+  overallRating: number | null; // 0-5 étoiles
+  visualNotes: unknown;
+  noseNotes: unknown;
+  palateNotes: unknown;
+  generalNotes: string | null; // texte libre, ou JSON de la dégustation express
+  occasion: string | null;
+  companions: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Dérivés
+  rating: number | null; // = overallRating
+  notes: string; // phrase libre de la dégustation express, sinon generalNotes
+}
+
+// Corps de POST /api/tasting-notes.
+export interface NewTastingNote {
+  wineId: string;
+  date?: string;
+  overallRating?: number | null;
+  visualNotes?: unknown;
+  noseNotes?: unknown;
+  palateNotes?: unknown;
+  generalNotes?: string | null;
+  occasion?: string | null;
+  companions?: string | null;
 }
 
 export interface SensoryProfile {
@@ -159,7 +182,7 @@ export interface Spirit {
   aromaProfile: string[];
   suggestedCocktails: string[];
   culinaryPairings: string[];
-  enrichedByAI: boolean;
+  enrichedByAi: boolean;
   addedAt: string;
   isOpened: boolean;
   inventoryLevel: number;
