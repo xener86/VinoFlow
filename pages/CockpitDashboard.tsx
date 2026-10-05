@@ -10,7 +10,8 @@ import { useJournal } from '../hooks/useJournal';
 import { TonightCard } from '../components/cockpit/TonightCard';
 import { useWishlist } from '../hooks/useWishlist';
 import { useAuth } from '../contexts/AuthContext';
-import { getDrinkBeforeAlerts, getCellarBudget } from '../services/storageService';
+import { getDrinkBeforeAlerts, getCellarBudget, getCellarValue } from '../services/storageService';
+import { CellarValue } from '../types';
 import { getPeakWindow } from '../utils/peakWindow';
 import { MonoLabel } from '../components/cockpit/primitives';
 
@@ -73,11 +74,13 @@ export const CockpitDashboard: React.FC = () => {
 
   const [drinkBefore, setDrinkBefore] = useState<any[]>([]);
   const [budget, setBudget] = useState<any>(null);
+  const [value, setValue] = useState<CellarValue | null>(null);
   const [dish, setDish] = useState('');
 
   useEffect(() => {
     getDrinkBeforeAlerts(12).then(r => setDrinkBefore(r?.alerts || [])).catch(() => {});
     getCellarBudget(12).then(setBudget).catch(() => {});
+    getCellarValue(13).then(setValue).catch(() => {});
   }, []);
 
   // KPIs derived from real data
@@ -186,7 +189,7 @@ export const CockpitDashboard: React.FC = () => {
       <TonightCard className="col-span-12" />
 
       {/* ───── 4 KPI tiles ───── */}
-      <section className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className={`col-span-12 grid grid-cols-2 md:grid-cols-4 ${value && value.coverage.withValuation > 0 ? 'lg:grid-cols-5' : ''} gap-4`}>
         <KpiTile
           label="Bouteilles"
           value={totalBottles}
@@ -224,6 +227,24 @@ export const CockpitDashboard: React.FC = () => {
           value={<>{regions}</>}
           sub={`${wines.filter(w => w.inventoryCount > 0).length} vins en stock`}
         />
+        {value && value.coverage.withValuation > 0 && (() => {
+          // Plus-value latente plutôt qu'une variation de la valeur totale : celle-ci
+          // mélange achats, nouvelles cotes et vraie hausse des prix.
+          const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+          const { gain, gainPct } = value.today;
+          return (
+            <KpiTile
+              label="Valeur"
+              value={eur.format(value.today.value)}
+              sub={
+                <Link to="/insights?lens=VALEUR" className="hover:text-wine-700">
+                  <span className={gain >= 0 ? 'text-emerald-700' : 'text-wine-700'}>{gain >= 0 ? '+' : ''}{eur.format(gain)}</span>
+                  {gainPct != null && ` (${new Intl.NumberFormat('fr-FR', { style: 'percent', maximumFractionDigits: 1, signDisplay: 'exceptZero' }).format(gainPct)})`} · {Math.round((value.coverage.withValuation / value.coverage.bottles) * 100)} % coté
+                </Link>
+              }
+            />
+          );
+        })()}
       </section>
 
       {/* ───── À boire — table critique ───── */}

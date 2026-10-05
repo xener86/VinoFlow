@@ -24,6 +24,14 @@ describe.skipIf(!hasDb)('runner de migrations', () => {
     expect(c.rows[0]?.data_type).toBe('boolean');
   });
 
+  it('011 : wine_valuations et colonnes de suivi des cotes', async () => {
+    const t = await pool.query("SELECT 1 FROM information_schema.tables WHERE table_name = 'wine_valuations'");
+    expect(t.rowCount).toBe(1);
+    const { rows } = await pool.query(`SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'wines' AND column_name IN ('valuation_next_check_at', 'valuation_status') ORDER BY 1`);
+    expect(rows.map((r) => r.column_name)).toEqual(['valuation_next_check_at', 'valuation_status']);
+  });
+
   it('relancé, il n’applique rien', async () => {
     const report = await runMigrations(pool, { log: () => {} });
     expect(report).toMatchObject({ baseline: false, detected: [], applied: [] });

@@ -21,6 +21,7 @@ export default defineConfig({
       ANTHROPIC_API_KEY: '',
       SWEEGO_API_KEY: '',
       NOTIFICATIONS_ENABLED: 'false',
+      VALUATION_ENABLED: 'false',
     },
   },
 });

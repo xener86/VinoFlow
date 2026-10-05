@@ -6,6 +6,7 @@ import { runMigrations } from './migrations.js';
 import { prewarmCommonDishes } from './sommelier/prewarm.js';
 import { startScheduler } from './enrichment/scheduler.js';
 import { startNotificationScheduler } from './notifications/scheduler.js';
+import { startValuationScheduler } from './valuation/scheduler.js';
 
 const port = process.env.PORT || 3100;
 
@@ -37,4 +38,6 @@ app.listen(port, () => {
   startScheduler();
   // Alertes « à boire avant » et newsletter (Gotify / email), réglées par compte.
   startNotificationScheduler();
+  // Cotes des vins : recherche sourcée trimestrielle (moteurs de l'enrichissement).
+  startValuationScheduler();
 });

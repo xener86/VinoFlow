@@ -42,6 +42,10 @@ services:
       - ENRICH_ENGINE=${ENRICH_ENGINE:-auto}
       - ENRICH_DAILY_LIMIT=${ENRICH_DAILY_LIMIT:-30}
       - ENRICH_TICK_MINUTES=${ENRICH_TICK_MINUTES:-60}
+      # Cote des vins (valeur de la cave), recherche web trimestrielle
+      - VALUATION_ENABLED=${VALUATION_ENABLED:-true}
+      - VALUATION_DAILY_LIMIT=${VALUATION_DAILY_LIMIT:-15}
+      - VALUATION_TICK_MINUTES=${VALUATION_TICK_MINUTES:-60}
       - MAIL_FROM=${MAIL_FROM:-}
       # Notifications « à boire avant » et newsletter
       - NOTIFICATIONS_ENABLED=${NOTIFICATIONS_ENABLED:-true}
