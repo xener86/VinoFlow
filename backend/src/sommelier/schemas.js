@@ -110,3 +110,60 @@ export const OCR_SCHEMA = obj({
 });
 
 export const schemaHelpers = { str, int, num, bool, nullable, arr, enumOf, obj };
+
+// ─── Assistant de saisie (ajout de vin, Bar) — ex-services/geminiService.ts ───
+
+// Identification d'un vin depuis une saisie libre. Champs inconnus → null.
+export const WINE_IDENTIFY_SCHEMA = obj({
+  name: nullable(str),
+  producer: nullable(str),
+  cuvee: nullable(str),
+  parcel: nullable(str),
+  vintage: nullable(int),
+  type: nullable(enumOf(...WINE_TYPES)),
+  region: nullable(str),
+  appellation: nullable(str),
+  country: nullable(str),
+  grapeVarieties: arr(str),
+  sensoryDescription: nullable(str),
+  tastingNotes: nullable(str),
+  aromaProfile: arr(str),
+  suggestedFoodPairings: arr(str),
+  producerHistory: nullable(str),
+  sensoryProfile: nullable(obj({
+    body: int,
+    acidity: int,
+    tannin: int,
+    sweetness: int,
+    alcohol: int,
+    flavors: arr(str),
+  })),
+  confidence: enumOf('HIGH', 'MEDIUM', 'LOW'),
+});
+
+export const SPIRIT_TYPES = ['WHISKY', 'GIN', 'VODKA', 'RUM', 'TEQUILA', 'COGNAC', 'VERMOUTH', 'LIQUEUR', 'BITTER', 'OTHER'];
+
+export const SPIRIT_SCHEMA = obj({
+  category: enumOf(...SPIRIT_TYPES),
+  distillery: nullable(str),
+  region: nullable(str),
+  country: nullable(str),
+  caskType: nullable(str),
+  abv: nullable(num),
+  format: nullable(int),
+  description: str,
+  producerHistory: nullable(str),
+  tastingNotes: nullable(str),
+  aromaProfile: arr(str),
+  suggestedCocktails: arr(str),
+  culinaryPairings: arr(str),
+});
+
+export const COCKTAIL_SCHEMA = obj({
+  name: str,
+  description: str,
+  ingredients: arr(obj({ name: str, amount: nullable(num), unit: nullable(str), optional: bool })),
+  instructions: arr(str),
+  glassType: str,
+  difficulty: enumOf('Easy', 'Medium', 'Hard'),
+});

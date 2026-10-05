@@ -71,6 +71,21 @@ const TASK_DEFAULTS = {
     provider: 'gemini', model: MODELS.GEMINI_FLASH, maxTokens: 2048,
     fallback: { provider: 'claude', model: MODELS.CLAUDE_SONNET, effort: 'low' },
   },
+  // Assistant de saisie (ajout de vin pendant la frappe, Bar) : rapide et peu
+  // coûteux, pas de recherche web — l'enrichissement sourcé prend le relais
+  // après création de la fiche.
+  'identify-wine': {
+    provider: 'claude', model: MODELS.CLAUDE_HAIKU, maxTokens: 2048,
+    fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
+  },
+  'enrich-spirit': {
+    provider: 'claude', model: MODELS.CLAUDE_HAIKU, maxTokens: 2048,
+    fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
+  },
+  cocktail: {
+    provider: 'claude', model: MODELS.CLAUDE_HAIKU, maxTokens: 2048,
+    fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
+  },
   embedding: { provider: 'gemini', model: MODELS.GEMINI_EMBEDDING },
 };
 

@@ -234,6 +234,49 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
   return handleResponse(response);
 };
 
+// --- Assistant de saisie (IA côté serveur) ---
+
+// Identification d'un vin pendant la saisie. Lève une erreur si l'IA est
+// indisponible : l'écran d'ajout passe alors en saisie manuelle.
+export const identifyWine = async (name: string, vintage?: number, hint?: string): Promise<Partial<Wine>> => {
+  const response = await apiFetch(`${API_URL}/ai/identify-wine`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ name, vintage, hint }),
+  });
+  return handleResponse(response);
+};
+
+// Fiche d'un spiritueux ; null si l'IA est indisponible (ajout manuel).
+export const enrichSpirit = async (name: string, hint?: string): Promise<Partial<Spirit> | null> => {
+  try {
+    const response = await apiFetch(`${API_URL}/ai/enrich-spirit`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ name, hint }),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('enrichSpirit:', error);
+    return null;
+  }
+};
+
+// Cocktail sur mesure ; null si l'IA est indisponible.
+export const createCocktail = async (ingredients: string[], query: string): Promise<Partial<CocktailRecipe> | null> => {
+  try {
+    const response = await apiFetch(`${API_URL}/ai/cocktail`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ ingredients, query }),
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('createCocktail:', error);
+    return null;
+  }
+};
+
 // Phase 7 - Modes de pairing avancés
 export const sommelierReversePair = async (wineId: string) => {
   const response = await apiFetch(`${API_URL}/sommelier/reverse-pair`, {
@@ -780,15 +823,16 @@ export const getAIConfig = (): AIConfig => {
     const stored = localStorage.getItem('vf_ai_config');
     if (!stored) {
         return {
-            provider: 'GEMINI',
-            keys: { gemini: '', openai: '', mistral: '' }
+            keys: { gemini: '', claude: '' }
         };
     }
-    return JSON.parse(stored);
+    // Anciennes configurations : fournisseur et clés OpenAI/Mistral ignorés.
+    const { keys = {} } = JSON.parse(stored);
+    return { keys: { gemini: keys.gemini || '', claude: keys.claude || '' } };
 };
 
 export const saveAIConfig = (config: AIConfig): void => {
-    localStorage.setItem('vf_ai_config', JSON.stringify(config));
+    localStorage.setItem('vf_ai_config', JSON.stringify({ keys: config.keys }));
 };
 
 // --- BACKUP (Export/Import) ---

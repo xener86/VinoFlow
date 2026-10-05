@@ -30,7 +30,6 @@ export default defineConfig(({ mode }) => {
               'recharts': ['recharts', 'react-is'],
               'simple-maps': ['react-simple-maps'],
               'lucide': ['lucide-react'],
-              'ai': ['@google/genai'],
             },
           },
         },

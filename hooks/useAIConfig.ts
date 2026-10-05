@@ -3,10 +3,7 @@ import { getAIConfig, saveAIConfig } from '../services/storageService';
 import { AIConfig } from '../types';
 
 export const useAIConfig = () => {
-  const [config, setConfig] = useState<AIConfig>({ 
-    provider: 'GEMINI', 
-    keys: { gemini: '', openai: '', mistral: '' } 
-  });
+  const [config, setConfig] = useState<AIConfig>({ keys: { gemini: '', claude: '' } });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
