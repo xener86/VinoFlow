@@ -218,11 +218,16 @@ const MODAL_SIZES = { sm: 'md:max-w-sm', md: 'md:max-w-lg', lg: 'md:max-w-3xl' }
 export const Modal: React.FC<ModalProps> = ({ open, onClose, title, subtitle, footer, size = 'md', children }) => {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // onClose est souvent une fonction recréée à chaque rendu : on la lit via
+  // une ref pour ne pas relancer l'effet (et voler le focus) à chaque frappe.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
-    panel.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    // Laisse un champ autoFocus garder le focus ; sinon focus sur le panneau.
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', onKey);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -231,7 +236,7 @@ export const Modal: React.FC<ModalProps> = ({ open, onClose, title, subtitle, fo
       document.body.style.overflow = overflow;
       previous?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-stone-900/40 md:p-4 animate-fade-in" onClick={onClose}>

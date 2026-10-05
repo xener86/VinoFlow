@@ -6,7 +6,8 @@ import { Link } from 'react-router-dom';
 import { useWines } from '../hooks/useWines';
 import { getPeakWindow } from '../utils/peakWindow';
 import { MonoLabel, Card, Badge } from '../components/cockpit/primitives';
-import { CellarWine } from '../types';
+import { CellarWine, SensoryProfile } from '../types';
+import { FlavorRadar } from '../components/FlavorRadar';
 
 type Lens = 'GARDE' | 'INVENTAIRE' | 'ACHATS';
 
@@ -415,6 +416,21 @@ const InventoryView: React.FC = () => {
     RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Bulles', DESSERT: 'Doux', FORTIFIED: 'Mutés',
   };
 
+  // Profil gustatif moyen de la cave, pondéré par le nombre de bouteilles
+  const avgProfile = useMemo<SensoryProfile | null>(() => {
+    const keys = ['body', 'acidity', 'tannin', 'sweetness', 'alcohol'] as const;
+    const sum = { body: 0, acidity: 0, tannin: 0, sweetness: 0, alcohol: 0 };
+    let n = 0;
+    for (const w of inStock) {
+      const p = w.sensoryProfile;
+      if (!p || keys.some(k => typeof p[k] !== 'number')) continue;
+      keys.forEach(k => { sum[k] += p[k] * w.inventoryCount; });
+      n += w.inventoryCount;
+    }
+    if (n === 0) return null;
+    return { body: Math.round(sum.body / n), acidity: Math.round(sum.acidity / n), tannin: Math.round(sum.tannin / n), sweetness: Math.round(sum.sweetness / n), alcohol: Math.round(sum.alcohol / n), flavors: [] };
+  }, [inStock]);
+
   return (
     <div className="grid grid-cols-12 gap-4">
       <Card className="col-span-12 md:col-span-4 p-5">
@@ -479,6 +495,27 @@ const InventoryView: React.FC = () => {
         <div className="mono text-[10px] tracking-widest text-stone-500 mt-2 text-center">
           {vintageEntries[0]?.y ? `de ${vintageEntries[0].y} à ${vintageEntries[vintageEntries.length - 1].y}` : '—'}
         </div>
+      </Card>
+
+      <Card className="col-span-12 p-5">
+        <MonoLabel>◌ PROFIL GUSTATIF MOYEN</MonoLabel>
+        {avgProfile ? (
+          <div className="grid md:grid-cols-2 gap-4 items-center mt-2">
+            <div className="h-60"><FlavorRadar data={avgProfile} /></div>
+            <dl className="grid grid-cols-5 md:grid-cols-1 gap-2 md:gap-1.5">
+              {([['Corps', avgProfile.body], ['Acidité', avgProfile.acidity], ['Tanins', avgProfile.tannin], ['Sucre', avgProfile.sweetness], ['Alcool', avgProfile.alcohol]] as [string, number][]).map(([l, v]) => (
+                <div key={l} className="md:flex md:items-center md:gap-3">
+                  <dt className="mono text-[10px] tracking-widest text-stone-500 uppercase md:w-20">{l}</dt>
+                  <dd className="serif text-lg text-stone-900 md:hidden">{v}</dd>
+                  <dd className="hidden md:block flex-1 h-1.5 rounded bg-stone-100"><div className="h-full rounded bg-wine-700" style={{ width: `${v}%` }} /></dd>
+                  <dd className="hidden md:block mono text-xs text-stone-600 w-8 text-right">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : (
+          <div className="text-stone-400 italic text-sm mt-3">Pas assez de profils sensoriels renseignés.</div>
+        )}
       </Card>
 
       {/* Region coverage grid */}

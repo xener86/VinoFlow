@@ -5,7 +5,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, List, Sparkles, TrendingUp,
-  Heart, BookOpen, Globe, Wand2, Award, Settings as SettingsIcon, LogOut,
+  Heart, BookOpen, Globe, Martini, Award, Settings as SettingsIcon, LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -78,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ totalWines, insightsCount, wis
         <ShortcutItem to="/wishlist" icon={Heart} label="Wishlist" badge={wishlistCount} />
         <ShortcutItem to="/journal" icon={BookOpen} label="Journal" />
         <ShortcutItem to="/regions" icon={Globe} label="Régions" />
-        <ShortcutItem to="/sommelier-tools" icon={Wand2} label="Outils sommelier" />
+        <ShortcutItem to="/bar" icon={Martini} label="Bar & spiritueux" />
       </nav>
 
       {/* Spacer to push footer down */}

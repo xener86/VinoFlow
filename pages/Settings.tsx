@@ -1,479 +1,467 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, getRacks } from '../services/storageService';
-import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
+import { useAIConfig } from '../hooks/useAIConfig';
 import { AIConfig, AIProvider, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
-import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, Wand2, KeyRound } from 'lucide-react';
+import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { Badge, Button, Card, EmptyState, Input, MonoLabel, Skeleton, WineLink } from '../components/cockpit/primitives';
 
 const PASSWORD_MIN_LENGTH = 10;
 
-// Formulaire isolé dans son propre composant pour garder son état local.
+const errMsg = (e: unknown, fallback = 'erreur inconnue') => (e instanceof Error && e.message ? e.message : fallback);
+
+// ────────────────────────────────────────────
+// Section — carte avec en-tête mono (défini hors du composant de page pour ne
+// pas remonter les formulaires à chaque rendu).
+// ────────────────────────────────────────────
+const Section: React.FC<{ label: string; title: string; hint?: React.ReactNode; children: React.ReactNode }> = ({ label, title, hint, children }) => (
+  <Card className="p-4 md:p-5">
+    <MonoLabel>◌ {label}</MonoLabel>
+    <h2 className="serif text-lg text-stone-900 leading-tight mt-1">{title}</h2>
+    {hint && <p className="text-sm text-stone-500 mt-1 leading-relaxed">{hint}</p>}
+    <div className="mt-4">{children}</div>
+  </Card>
+);
+
+const Notice: React.FC<{ tone?: 'success' | 'warning' | 'info'; children: React.ReactNode }> = ({ tone = 'info', children }) => {
+  const styles = {
+    success: 'border-emerald-200 bg-emerald-50/60 text-emerald-800',
+    warning: 'border-amber-200 bg-amber-50/60 text-amber-900',
+    info: 'border-stone-200 bg-stone-50 text-stone-700',
+  }[tone];
+  const Icon = tone === 'success' ? Check : tone === 'warning' ? AlertTriangle : null;
+  return (
+    <div className={`flex gap-2 rounded-md border px-3 py-2.5 text-sm leading-relaxed ${styles}`}>
+      {Icon && <Icon className="w-4 h-4 shrink-0 mt-0.5" />}
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+};
+
+// ────────────────────────────────────────────
+// Mot de passe
+// ────────────────────────────────────────────
 const ChangePasswordForm: React.FC = () => {
+  const toast = useToast();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const mismatch = confirm.length > 0 && next !== confirm;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
     if (next !== confirm) {
-      setMessage({ ok: false, text: 'Les deux nouveaux mots de passe ne correspondent pas.' });
+      toast.error('Les deux nouveaux mots de passe ne correspondent pas.');
       return;
     }
     setBusy(true);
     try {
       await customAuth.changePassword(current, next);
       setCurrent(''); setNext(''); setConfirm('');
-      setMessage({ ok: true, text: 'Mot de passe modifié. Les autres appareils ont été déconnectés.' });
-    } catch (err: any) {
-      setMessage({ ok: false, text: err.message || 'Échec du changement de mot de passe.' });
+      toast.success('Mot de passe modifié. Les autres appareils ont été déconnectés.');
+    } catch (err) {
+      toast.error(errMsg(err, 'Échec du changement de mot de passe.'));
     } finally {
       setBusy(false);
     }
   };
 
-  const inputClass = 'w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none';
-
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <input type="password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="Mot de passe actuel" autoComplete="current-password" required className={inputClass} />
-      <input type="password" value={next} onChange={e => setNext(e.target.value)} placeholder={`Nouveau mot de passe (${PASSWORD_MIN_LENGTH} caractères min.)`} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required className={inputClass} />
-      <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required className={inputClass} />
-      {message && (
-        <div className={`p-3 rounded-lg text-sm border ${message.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
-          {message.text}
-        </div>
-      )}
-      <button type="submit" disabled={busy} className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50">
-        {busy ? <Loader2 className="animate-spin" size={18} /> : <KeyRound size={18} />}
+      <Input label="Mot de passe actuel" type="password" value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" required />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Input label="Nouveau mot de passe" hint={`${PASSWORD_MIN_LENGTH} caractères minimum`} type="password" value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required />
+        <Input label="Confirmation" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required error={mismatch ? 'Ne correspond pas' : undefined} />
+      </div>
+      <Button type="submit" disabled={busy || mismatch}>
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
         Changer mon mot de passe
-      </button>
+      </Button>
     </form>
   );
 };
 
+const PROVIDERS: { key: AIProvider; label: string }[] = [
+  { key: 'GEMINI', label: 'Google Gemini' },
+  { key: 'OPENAI', label: 'OpenAI' },
+  { key: 'MISTRAL', label: 'Mistral AI' },
+  { key: 'CLAUDE', label: 'Claude' },
+];
+
+const KEY_FIELDS: { key: keyof AIConfig['keys']; label: string; placeholder: string }[] = [
+  { key: 'gemini', label: 'Clé API Google Gemini', placeholder: 'AIza…' },
+  { key: 'openai', label: 'Clé API OpenAI', placeholder: 'sk-…' },
+  { key: 'mistral', label: 'Clé API Mistral (La Plateforme)', placeholder: 'clé…' },
+  { key: 'claude', label: 'Clé API Claude (Anthropic)', placeholder: 'sk-ant-…' },
+];
+
 export const Settings: React.FC = () => {
   const toast = useToast();
   const confirmAction = useConfirm();
-  // ✅ Utilisation du Hook
   const { config, loading, saveConfig } = useAIConfig();
   const { user } = useAuth();
   const [localConfig, setLocalConfig] = useState<AIConfig | null>(null);
-  
-  const [importStatus, setImportStatus] = useState<string>('');
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  const importInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  // Cleanup state
+  // Nettoyage
   const [isScanning, setIsScanning] = useState(false);
   const [orphanedBottles, setOrphanedBottles] = useState<Bottle[] | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
-  const [cleanupResult, setCleanupResult] = useState<{ orphaned: number; cleaned: number } | null>(null);
 
-  // Backend AI providers status
-  const [backendProviders, setBackendProviders] = useState<{ providers: any; defaults: any } | null>(null);
+  // Fournisseurs IA côté serveur
+  const [backendProviders, setBackendProviders] = useState<{ providers: { gemini?: boolean; claude?: boolean }; defaults: any } | null>(null);
   useEffect(() => {
-      getAvailableAIProviders().then(setBackendProviders).catch(() => {});
+    getAvailableAIProviders().then(setBackendProviders).catch(() => {});
   }, []);
 
-  // Phase 3 - Batch enrichment
+  // Enrichissement / audit
   const [enriching, setEnriching] = useState(false);
   const [enrichResult, setEnrichResult] = useState<{ queued: number; engine: string } | null>(null);
   const [auditing, setAuditing] = useState(false);
   const [auditResult, setAuditResult] = useState<{ count: number; wines: any[] } | null>(null);
 
+  useEffect(() => {
+    if (config) setLocalConfig(config);
+  }, [config]);
+
   const handleEnrich = async () => {
-      setEnriching(true);
-      setEnrichResult(null);
-      try {
-          const r = await enrichAromaProfilesBatch({ onlyMissing: true, limit: 50 });
-          setEnrichResult(r);
-      } catch (e: any) {
-          toast.error('Échec de l’enrichissement : ' + (e.message || 'erreur'));
-      } finally {
-          setEnriching(false);
-      }
+    setEnriching(true);
+    setEnrichResult(null);
+    try {
+      const r = await enrichAromaProfilesBatch({ onlyMissing: true, limit: 50 });
+      setEnrichResult(r);
+      toast.success(r.queued > 0 ? `${r.queued} vin(s) mis en file d’enrichissement` : 'Aucun vin à enrichir');
+    } catch (e) {
+      toast.error('Échec de l’enrichissement : ' + errMsg(e));
+    } finally {
+      setEnriching(false);
+    }
   };
 
   const handleAudit = async () => {
-      setAuditing(true);
-      try {
-          const r = await auditWines();
-          setAuditResult(r);
-      } finally {
-          setAuditing(false);
-      }
+    setAuditing(true);
+    try {
+      setAuditResult(await auditWines());
+    } catch (e) {
+      toast.error('Échec de l’audit : ' + errMsg(e));
+    } finally {
+      setAuditing(false);
+    }
   };
 
-  // Synchronisation de l'état local une fois la config chargée
-  useEffect(() => {
-      if (config) {
-          setLocalConfig(config);
-      }
-  }, [config]);
-
   const handleScanGhosts = async () => {
-      setIsScanning(true);
-      setCleanupResult(null);
-      try {
-          const orphaned = await findOrphanedBottles();
-          setOrphanedBottles(orphaned);
-      } catch (e) {
-          console.error('Scan failed', e);
-      } finally {
-          setIsScanning(false);
-      }
+    setIsScanning(true);
+    try {
+      setOrphanedBottles(await findOrphanedBottles());
+    } catch (e) {
+      toast.error('Échec de l’analyse : ' + errMsg(e));
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const handleCleanup = async () => {
-      if (!(await confirmAction({ title: `Supprimer ${orphanedBottles?.length || 0} bouteille(s) orpheline(s) ?`, message: 'Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }))) return;
-      setIsCleaning(true);
-      try {
-          const result = await cleanupGhostBottles();
-          setCleanupResult(result);
-          setOrphanedBottles(null);
-      } catch (e) {
-          console.error('Cleanup failed', e);
-          toast.error('Le nettoyage a échoué.');
-      } finally {
-          setIsCleaning(false);
-      }
+    const n = orphanedBottles?.length || 0;
+    if (!(await confirmAction({ title: `Supprimer ${n} bouteille(s) orpheline(s) ?`, message: 'Cette action est irréversible.', confirmLabel: 'Supprimer', danger: true }))) return;
+    setIsCleaning(true);
+    try {
+      const result = await cleanupGhostBottles();
+      setOrphanedBottles(null);
+      toast.success(`${result.cleaned}/${result.orphaned} bouteille(s) nettoyée(s).`);
+    } catch (e) {
+      toast.error('Le nettoyage a échoué : ' + errMsg(e));
+    } finally {
+      setIsCleaning(false);
+    }
   };
 
   const handleSaveConfig = async () => {
-      if (!localConfig) return;
-      const success = await saveConfig(localConfig); // ✅ Sauvegarde Async
-      if (success) {
-          setSaved(true);
-          toast.success('Configuration enregistrée');
-          setTimeout(() => setSaved(false), 2000);
-      } else {
-          toast.error('La configuration n’a pas pu être enregistrée.');
-      }
+    if (!localConfig) return;
+    setSavingConfig(true);
+    const success = await saveConfig(localConfig);
+    setSavingConfig(false);
+    if (success) toast.success('Configuration enregistrée');
+    else toast.error('La configuration n’a pas pu être enregistrée.');
   };
 
   const handleExport = async () => {
     setIsExporting(true);
     try {
-        const json = await exportFullData(); // ✅ Export Async
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `vinoflow-backup-${new Date().toISOString().slice(0,10)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    } catch (error) {
-        console.error("Export failed", error);
-        toast.error("Une erreur est survenue lors de l'exportation.");
+      const json = await exportFullData();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vinoflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Sauvegarde téléchargée');
+    } catch (e) {
+      toast.error("Une erreur est survenue lors de l'export : " + errMsg(e));
     } finally {
-        setIsExporting(false);
+      setIsExporting(false);
     }
   };
 
   const handleCsvExport = async () => {
     setIsExportingCsv(true);
     try {
-        const [wines, racks] = await Promise.all([getInventory(), getRacks()]);
-        const withStock = wines.filter(w => w.inventoryCount > 0);
-        exportWinesToCsv(withStock, racks);
-    } catch (error) {
-        console.error("CSV Export failed", error);
+      const [wines, racks] = await Promise.all([getInventory(), getRacks()]);
+      const withStock = wines.filter(w => w.inventoryCount > 0);
+      exportWinesToCsv(withStock, racks);
+      toast.success(`${withStock.length} vin(s) exporté(s) en CSV`);
+    } catch (e) {
+      toast.error("L'export CSV a échoué : " + errMsg(e));
     } finally {
-        setIsExportingCsv(false);
+      setIsExportingCsv(false);
     }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if(!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        const content = event.target?.result as string;
-        setImportStatus('Importation en cours...');
-        try {
-            const success = await importFullData(content); // ✅ Import Async
-            if(success) {
-                setImportStatus('Succès ! Rechargez la page.');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                setImportStatus('Erreur : Fichier invalide.');
-            }
-        } catch (error) {
-            setImportStatus("Erreur lors de l'importation.");
-        }
-    };
-    reader.readAsText(file);
+    e.target.value = '';
+    if (!file) return;
+    const ok = await confirmAction({
+      title: 'Restaurer cette sauvegarde ?',
+      message: <>Les données de <strong>{file.name}</strong> vont être importées dans la cave partagée et peuvent écraser les données actuelles. Faites d’abord une sauvegarde JSON si besoin.</>,
+      confirmLabel: 'Restaurer',
+      danger: true,
+    });
+    if (!ok) return;
+    setImporting(true);
+    try {
+      const content = await file.text();
+      const success = await importFullData(content);
+      if (success) {
+        toast.success('Restauration terminée. Rechargement…');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error('Restauration impossible : fichier invalide ou refusé par le serveur.');
+      }
+    } catch (err) {
+      toast.error("Erreur lors de l'import : " + errMsg(err));
+    } finally {
+      setImporting(false);
+    }
   };
 
-  const Section = ({ title, icon: Icon, children }: any) => (
-      <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4 text-stone-500 border-b border-stone-200 pb-2">
-              <Icon size={18} />
-              <h3 className="font-serif text-lg text-stone-900">{title}</h3>
-          </div>
-          {children}
-      </div>
-  );
-
-  if (loading || !localConfig) {
-      return (
-          <div className="flex justify-center items-center h-[50vh]">
-              <Loader2 className="animate-spin text-indigo-600" size={32} />
-          </div>
-      );
-  }
-
   return (
-    <div className="max-w-2xl mx-auto pb-20 animate-fade-in">
-        <h2 className="text-3xl font-serif text-stone-900 mb-6">Paramètres</h2>
+    <div className="max-w-3xl">
+      <div className="mb-5">
+        <MonoLabel>VINOFLOW · RÉGLAGES</MonoLabel>
+        <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Paramètres</h1>
+        <div className="text-[12px] text-stone-500 mt-0.5">Compte, intelligence artificielle, enrichissement et données</div>
+      </div>
 
-        {/* Pas de <Section> ici : elle est recréée à chaque rendu et remonterait le formulaire. */}
-        <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4 text-stone-500 border-b border-stone-200 pb-2">
-                <KeyRound size={18} />
-                <h3 className="font-serif text-lg text-stone-900">Mon compte</h3>
-            </div>
-            <p className="text-sm text-stone-500 mb-4">
-                Connecté en tant que <strong className="text-stone-800">{user?.email}</strong>. La cave est partagée par tous les comptes du foyer.
-            </p>
-            <ChangePasswordForm />
-        </div>
-
-        <Section title="Intelligence Artificielle" icon={Cpu}>
-             <div className="space-y-6">
-                 {backendProviders && (
-                     <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-xs text-indigo-900">
-                         <div className="flex items-center gap-2 font-bold mb-2">
-                             <Sparkles size={12} /> Sommelier v2 — Providers backend
-                         </div>
-                         <div className="space-y-1">
-                             <div className="flex items-center gap-2">
-                                 <span className={backendProviders.providers.gemini ? 'text-green-600' : 'text-stone-400'}>●</span>
-                                 Gemini : {backendProviders.providers.gemini ? 'configuré' : 'GEMINI_API_KEY manquante'}
-                             </div>
-                             <div className="flex items-center gap-2">
-                                 <span className={backendProviders.providers.claude ? 'text-green-600' : 'text-stone-400'}>●</span>
-                                 Claude : {backendProviders.providers.claude ? 'configuré' : 'ANTHROPIC_API_KEY manquante'}
-                             </div>
-                         </div>
-                         <p className="mt-2 text-[10px] opacity-70">
-                             Configurez ces clés dans le fichier <code>.env</code> du backend pour activer le sommelier v2 (decomposition + 3 propositions).
-                         </p>
-                     </div>
-                 )}
-
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                     {(['GEMINI', 'OPENAI', 'MISTRAL', 'CLAUDE'] as AIProvider[]).map(p => (
-                         <button
-                            key={p}
-                            onClick={() => setLocalConfig({...localConfig, provider: p})}
-                            className={`py-3 rounded-lg text-sm font-bold border transition-all ${
-                                localConfig.provider === p
-                                ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : 'bg-stone-50 border-stone-200 text-stone-500 hover:text-stone-800'
-                            }`}
-                         >
-                             {p === 'GEMINI' ? 'Google Gemini' : p === 'OPENAI' ? 'OpenAI' : p === 'MISTRAL' ? 'Mistral AI' : 'Claude'}
-                         </button>
-                     ))}
-                 </div>
-
-                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex gap-2">
-                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                     <span>
-                         Ces clés restent dans ce navigateur (localStorage) : elles servent aux fonctions IA exécutées côté navigateur et, en secours, au sommelier si le serveur n'a pas de clé.
-                         Elles sont lisibles par tout script injecté dans la page : préférez les variables d'environnement du serveur et utilisez des clés avec un plafond de dépenses.
-                     </span>
-                 </div>
-
-                 <div className="space-y-4">
-                     <div>
-                         <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API Google Gemini</label>
-                         <input 
-                            type="password"
-                            value={localConfig.keys.gemini}
-                            onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, gemini: e.target.value}})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
-                            placeholder="sk-..."
-                         />
-                     </div>
-                     <div>
-                         <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API OpenAI (GPT-4o)</label>
-                         <input 
-                            type="password"
-                            value={localConfig.keys.openai}
-                            onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, openai: e.target.value}})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
-                            placeholder="sk-..."
-                         />
-                     </div>
-                     <div>
-                         <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API Mistral (La Plateforme)</label>
-                         <input
-                            type="password"
-                            value={localConfig.keys.mistral}
-                            onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, mistral: e.target.value}})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
-                            placeholder="key..."
-                         />
-                     </div>
-                     <div>
-                         <label className="text-xs uppercase text-stone-500 font-bold mb-1 block">Clé API Claude (Anthropic)</label>
-                         <input
-                            type="password"
-                            value={localConfig.keys.claude || ''}
-                            onChange={(e) => setLocalConfig({...localConfig, keys: {...localConfig.keys, claude: e.target.value}})}
-                            className="w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none"
-                            placeholder="sk-ant-..."
-                         />
-                     </div>
-                 </div>
-
-                 <button 
-                    onClick={handleSaveConfig}
-                    className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-stone-900 text-white hover:bg-stone-800"
-                 >
-                     {saved ? <Check size={18}/> : <Server size={18}/>}
-                     {saved ? 'Configuration Enregistrée' : 'Sauvegarder les Clés'}
-                 </button>
-             </div>
+      <div className="space-y-4">
+        {/* ───── Compte ───── */}
+        <Section
+          label="Compte"
+          title="Mon compte"
+          hint={<>Connecté en tant que <strong className="text-stone-800 break-all">{user?.email}</strong>. La cave est partagée par tous les comptes du foyer.</>}
+        >
+          <ChangePasswordForm />
         </Section>
 
-        <Section title="Sommelier — Enrichissement de la cave" icon={Wand2}>
-            <div className="space-y-4">
-                <p className="text-sm text-stone-500">
-                    Recherche sur le web le profil aromatique et la fenêtre d'apogée des vins qui n'en ont pas encore, avec les sources citées.
-                    Chaque fiche indique sur quoi elle repose (cette cuvée et ce millésime, un autre millésime, le producteur, l'appellation ou une règle générique).
-                    Les fiches sont ensuite revérifiées automatiquement.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        onClick={handleEnrich}
-                        disabled={enriching}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-5 rounded-lg flex items-center gap-2 disabled:opacity-50"
-                    >
-                        {enriching ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                        Enrichir les vins sans profil
-                    </button>
+        {/* ───── IA ───── */}
+        <Section label="Intelligence artificielle" title="Fournisseurs et clés">
+          {loading || !localConfig ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-2/3" />
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {backendProviders && (
+                <div className="rounded-md border border-stone-200 bg-stone-50 p-3">
+                  <MonoLabel>Serveur · sommelier</MonoLabel>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge tone={backendProviders.providers.claude ? 'success' : 'neutral'}>
+                      Claude · {backendProviders.providers.claude ? 'configuré' : 'ANTHROPIC_API_KEY manquante'}
+                    </Badge>
+                    <Badge tone={backendProviders.providers.gemini ? 'success' : 'neutral'}>
+                      Gemini · {backendProviders.providers.gemini ? 'configuré' : 'GEMINI_API_KEY manquante'}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-xs text-stone-500">
+                    Ces clés se règlent dans le fichier <code className="mono">.env</code> du serveur ; ce sont elles que le sommelier utilise en priorité.
+                  </p>
                 </div>
-                {enrichResult && (
-                    <div className="bg-green-50 border border-green-200 p-3 rounded-lg text-sm text-green-700">
-                        ✓ {enrichResult.queued} vin(s) mis en file. Comptez 1 à 2 minutes par vin ; les fiches se mettent à jour au fil de l'eau.
-                    </div>
-                )}
+              )}
 
-                <div className="border-t border-stone-200 pt-4">
-                    <p className="text-sm text-stone-500 mb-2">
-                        Audit des profils faibles ou suspects.
-                    </p>
-                    <button
-                        onClick={handleAudit}
-                        disabled={auditing}
-                        className="bg-stone-100 hover:bg-stone-200 text-stone-900 py-2 px-4 rounded-lg flex items-center gap-2 text-sm disabled:opacity-50"
-                    >
-                        {auditing ? <Loader2 className="animate-spin" size={14} /> : <Search size={14} />}
-                        Auditer
-                    </button>
-                    {auditResult && (
-                        <div className="mt-3 text-sm">
-                            <div className="font-bold mb-2">{auditResult.count} vins suspects</div>
-                            {auditResult.wines.slice(0, 10).map(w => (
-                                <div key={w.id} className="flex items-center justify-between py-1 border-b border-stone-100 text-xs">
-                                    <span>{w.name} {w.vintage}</span>
-                                    <span className="text-stone-500">
-                                        {w.aromaProfile ? `${w.aromaProfile.length} arômes` : 'pas de profil'} · {w.aromaConfidence || '?'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+              <div>
+                <div className="mono text-[10px] tracking-widest text-stone-500 uppercase mb-1.5">Fournisseur côté navigateur</div>
+                <div role="radiogroup" aria-label="Fournisseur IA" className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {PROVIDERS.map(p => {
+                    const active = localConfig.provider === p.key;
+                    return (
+                      <button
+                        key={p.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setLocalConfig({ ...localConfig, provider: p.key })}
+                        className={`h-11 md:h-9 rounded-md border text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-wine-600/40 ${
+                          active ? 'bg-wine-700 border-wine-700 text-white' : 'bg-white border-stone-300 text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
                 </div>
+              </div>
+
+              <Notice tone="warning">
+                Ces clés restent dans ce navigateur (localStorage) : elles servent aux fonctions IA exécutées côté navigateur et, en secours, au sommelier si le serveur n'a pas de clé.
+                Elles sont lisibles par tout script injecté dans la page : préférez les variables d'environnement du serveur et des clés avec un plafond de dépenses.
+              </Notice>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {KEY_FIELDS.map(f => (
+                  <Input
+                    key={f.key}
+                    label={f.label}
+                    type="password"
+                    autoComplete="off"
+                    value={localConfig.keys[f.key] || ''}
+                    onChange={e => setLocalConfig({ ...localConfig, keys: { ...localConfig.keys, [f.key]: e.target.value } })}
+                    placeholder={f.placeholder}
+                  />
+                ))}
+              </div>
+
+              <Button onClick={handleSaveConfig} disabled={savingConfig}>
+                {savingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
+                Enregistrer la configuration
+              </Button>
             </div>
+          )}
         </Section>
 
-        <Section title="Nettoyage de la Cave" icon={Trash2}>
-            <div className="space-y-4">
-                <p className="text-sm text-stone-500">
-                    Détectez et supprimez les bouteilles orphelines (vin parent supprimé) ou les données de test restantes.
-                </p>
+        {/* ───── Enrichissement ───── */}
+        <Section
+          label="Sommelier"
+          title="Enrichissement de la cave"
+          hint="Recherche sur le web le profil aromatique et la fenêtre d'apogée des vins qui n'en ont pas encore, avec les sources citées. Chaque fiche indique sur quoi elle repose (cette cuvée et ce millésime, un autre millésime, le producteur, l'appellation ou une règle générique), puis est revérifiée automatiquement."
+        >
+          <div className="space-y-3">
+            <Button onClick={handleEnrich} disabled={enriching}>
+              {enriching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              Enrichir les vins sans profil
+            </Button>
+            {enrichResult && (
+              <Notice tone="success">
+                {enrichResult.queued} vin(s) mis en file{enrichResult.engine ? <> · moteur <span className="mono text-xs">{enrichResult.engine}</span></> : null}.
+                Comptez 1 à 2 minutes par vin ; les fiches se mettent à jour au fil de l'eau.
+              </Notice>
+            )}
+          </div>
 
-                <button
-                    onClick={handleScanGhosts}
-                    disabled={isScanning}
-                    className="w-full bg-stone-100 hover:bg-stone-200 text-stone-800 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 disabled:opacity-50"
-                >
-                    {isScanning ? <Loader2 className="animate-spin" size={18} /> : <Search size={18} />}
-                    {isScanning ? 'Analyse en cours...' : 'Scanner les anomalies'}
-                </button>
-
-                {orphanedBottles !== null && orphanedBottles.length === 0 && (
-                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-sm flex items-center gap-2">
-                        <Check size={18} /> Aucune anomalie détectée. Votre cave est propre !
-                    </div>
-                )}
-
-                {orphanedBottles !== null && orphanedBottles.length > 0 && (
-                    <div className="space-y-3">
-                        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-700 text-sm flex items-center gap-2">
-                            <AlertTriangle size={18} />
-                            <span><strong>{orphanedBottles.length}</strong> bouteille(s) orpheline(s) détectée(s)</span>
-                        </div>
-                        <button
-                            onClick={handleCleanup}
-                            disabled={isCleaning}
-                            className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-3 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold"
-                        >
-                            {isCleaning ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} />}
-                            {isCleaning ? 'Nettoyage...' : `Supprimer ${orphanedBottles.length} bouteille(s)`}
-                        </button>
-                    </div>
-                )}
-
-                {cleanupResult && (
-                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-sm flex items-center gap-2">
-                        <Check size={18} /> {cleanupResult.cleaned}/{cleanupResult.orphaned} bouteille(s) nettoyée(s) avec succès.
-                    </div>
-                )}
+          <div className="border-t border-stone-100 mt-5 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <MonoLabel>Audit</MonoLabel>
+                <p className="text-sm text-stone-500 mt-0.5">Profils absents, faibles ou anciens.</p>
+              </div>
+              <Button variant="outline" onClick={handleAudit} disabled={auditing}>
+                {auditing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                Auditer
+              </Button>
             </div>
-        </Section>
-
-        <Section title="Gestion des Données" icon={Server}>
-            <div className="flex flex-col gap-4">
-                <div className="flex gap-3 flex-wrap">
-                    <button
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="flex-1 min-w-[140px] bg-stone-100 hover:bg-stone-200 text-stone-800 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-stone-200 disabled:opacity-50"
-                    >
-                        {isExporting ? <Loader2 className="animate-spin" size={18}/> : <Download size={18} />}
-                        {isExporting ? 'Export...' : 'Sauvegarde (JSON)'}
-                    </button>
-                    <button
-                        onClick={handleCsvExport}
-                        disabled={isExportingCsv}
-                        className="flex-1 min-w-[140px] bg-green-50 hover:bg-green-100 text-green-700 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-green-200 disabled:opacity-50"
-                    >
-                        {isExportingCsv ? <Loader2 className="animate-spin" size={18}/> : <FileSpreadsheet size={18} />}
-                        {isExportingCsv ? 'Export...' : 'Export (CSV)'}
-                    </button>
-                    <label className="flex-1 min-w-[140px] bg-wine-50 hover:bg-wine-100 text-wine-600 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-wine-100 cursor-pointer">
-                        <Upload size={18} /> Restaurer
-                        <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                    </label>
+            {auditResult && (
+              auditResult.count === 0 ? (
+                <EmptyState title="Aucun profil suspect" hint="Toutes les fiches sont solides" className="!py-6" />
+              ) : (
+                <div className="mt-3">
+                  <div className="text-sm text-stone-700 mb-1">
+                    <strong>{auditResult.count}</strong> vin(s) à revoir{auditResult.wines.length > 10 ? ' · 10 premiers' : ''}
+                  </div>
+                  <ul className="divide-y divide-stone-100 border-y border-stone-100">
+                    {auditResult.wines.slice(0, 10).map(w => (
+                      <li key={w.id} className="flex items-center justify-between gap-3 py-2 min-h-[44px]">
+                        <WineLink id={w.id} className="text-sm text-stone-900 min-w-0 truncate">
+                          {w.name} {w.vintage || ''}
+                          {w.producer && <span className="text-stone-500"> · {w.producer}</span>}
+                        </WineLink>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <Badge tone={w.aromaProfile?.length ? 'neutral' : 'warning'}>
+                            {w.aromaProfile?.length ? `${w.aromaProfile.length} arômes` : 'sans profil'}
+                          </Badge>
+                          {w.aromaConfidence && <Badge tone={w.aromaConfidence === 'LOW' ? 'warning' : 'neutral'}>{w.aromaConfidence}</Badge>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                {importStatus && <p className="text-center text-sm font-bold text-wine-600 mt-2">{importStatus}</p>}
-            </div>
+              )
+            )}
+          </div>
         </Section>
+
+        {/* ───── Nettoyage ───── */}
+        <Section
+          label="Maintenance"
+          title="Nettoyage de la cave"
+          hint="Détecte les bouteilles orphelines (vin parent supprimé) ou les données de test restantes."
+        >
+          <div className="space-y-3">
+            <Button variant="outline" onClick={handleScanGhosts} disabled={isScanning}>
+              {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              {isScanning ? 'Analyse en cours…' : 'Scanner les anomalies'}
+            </Button>
+
+            {orphanedBottles !== null && orphanedBottles.length === 0 && (
+              <Notice tone="success">Aucune anomalie détectée. La cave est propre.</Notice>
+            )}
+
+            {orphanedBottles !== null && orphanedBottles.length > 0 && (
+              <div className="space-y-3">
+                <Notice tone="warning"><strong>{orphanedBottles.length}</strong> bouteille(s) orpheline(s) détectée(s).</Notice>
+                <Button variant="danger" onClick={handleCleanup} disabled={isCleaning}>
+                  {isCleaning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  {isCleaning ? 'Nettoyage…' : `Supprimer ${orphanedBottles.length} bouteille(s)`}
+                </Button>
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* ───── Données ───── */}
+        <Section label="Données" title="Sauvegarde et export">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={isExporting}>
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Sauvegarde (JSON)
+            </Button>
+            <Button variant="outline" onClick={handleCsvExport} disabled={isExportingCsv}>
+              {isExportingCsv ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              Export (CSV)
+            </Button>
+            <Button variant="danger" onClick={() => importInput.current?.click()} disabled={importing}>
+              {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Restaurer…
+            </Button>
+            <input ref={importInput} type="file" accept=".json,application/json" onChange={handleImport} className="hidden" />
+          </div>
+          <p className="mt-3 text-xs text-stone-500">
+            La sauvegarde JSON contient toute la cave ; l'export CSV liste les vins en stock avec leur emplacement.
+          </p>
+        </Section>
+      </div>
     </div>
   );
 };

@@ -6,11 +6,12 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Settings, Plus, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, Plus, X, Check, ChevronLeft, ChevronRight, GlassWater, Gift, Move, Trash2, Inbox, Search, ArrowRight } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useRacks } from '../hooks/useRacks';
-import { Card, MonoLabel } from '../components/cockpit/primitives';
-import { saveRack, updateRack, deleteRack, moveBottle, reorderRack } from '../services/storageService';
+import { Card, MonoLabel, Modal, Button, Input, WineLink } from '../components/cockpit/primitives';
+import { getPeakWindow } from '../utils/peakWindow';
+import { saveRack, updateRack, deleteRack, moveBottle, reorderRack, consumeSpecificBottle, giftBottle, deleteBottle, addBottleAtLocation, fillRackWithWine } from '../services/storageService';
 import { CellarWine, Bottle, Rack, BottleLocation } from '../types';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
 
@@ -23,6 +24,18 @@ type SlotInfo = { wine: CellarWine; bottle: Bottle } | null;
 // Vin mis en évidence (?wine=<id>, ex. « Voir l'emplacement » depuis le sommelier).
 const PlanFocusContext = createContext<string | null>(null);
 const FOCUS_RING = 'ring-2 ring-wine-600 ring-offset-2 ring-offset-white z-10 animate-pulse';
+
+// Actions de la vue lecture (ex-« CellarMap ») : clic sur une bouteille =
+// fiche d'actions, clic sur un emplacement vide = ajout / placement / fin de
+// déplacement. `moving` = bouteille en cours de déplacement (au toucher).
+interface PlanActions {
+  onBottle: (info: NonNullable<SlotInfo>, addr: string) => void;
+  onEmpty: (rack: Rack, x: number, y: number, addr: string) => void;
+  onFill: (rack: Rack) => void;
+  moving: string | null;
+}
+const PlanActionsContext = createContext<PlanActions | null>(null);
+const MOVE_TARGET = 'ring-2 ring-wine-600/60 ring-offset-1 bg-wine-50';
 type DragState = { bottleId: string; wineId: string; wineName: string; wineVintage?: number; from: 'LIMBO' | { rackId: string; x: number; y: number } } | null;
 
 // Short alias from a free-form rack name. Used as the big letter on top of
@@ -269,6 +282,108 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
     refreshWines();
   };
 
+  // ───── Actions de la vue lecture (fusion de l'ancienne page CellarMap) ─────
+  const navigate = useNavigate();
+  const [sheet, setSheet] = useState<{ info: NonNullable<SlotInfo>; addr: string } | null>(null);
+  const [gift, setGift] = useState<{ recipient: string; occasion: string } | null>(null);
+  const [emptyTarget, setEmptyTarget] = useState<{ rack: Rack; x: number; y: number; addr: string } | null>(null);
+  const [moving, setMoving] = useState<{ bottle: Bottle; wine: CellarWine } | null>(null);
+  const [fillRack, setFillRack] = useState<Rack | null>(null);
+  const [pickQuery, setPickQuery] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const closeSheet = () => { setSheet(null); setGift(null); };
+  const closePicker = () => { setEmptyTarget(null); setFillRack(null); setPickQuery(''); };
+
+  const act = async (fn: () => Promise<unknown>, ok: string, fail: string, after?: () => void, okAction?: { label: string; onClick: () => void }) => {
+    setBusy(true);
+    try {
+      await fn();
+      toast.success(ok, okAction);
+      after?.();
+      await refreshWines();
+    } catch {
+      toast.error(fail);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleOpenBottle = async () => {
+    if (!sheet) return;
+    const { wine, bottle } = sheet.info;
+    if (!(await confirmAction({ title: `Ouvrir ${wine.name}${wine.vintage ? ' ' + wine.vintage : ''} ?`, message: 'Elle sera retirée du stock et notée dans le journal.', confirmLabel: 'Ouvrir' }))) return;
+    await act(() => consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage), 'Bouteille ouverte — santé !', 'La bouteille n’a pas pu être retirée du stock.', closeSheet,
+      { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
+  };
+
+  const handleGift = async () => {
+    if (!sheet || !gift?.recipient.trim()) return;
+    const { wine, bottle } = sheet.info;
+    await act(() => giftBottle(wine.id, bottle.id, gift.recipient.trim(), gift.occasion.trim(), wine.name, wine.vintage), `Bouteille offerte à ${gift.recipient.trim()}`, 'Le cadeau n’a pas pu être enregistré.', closeSheet);
+  };
+
+  const handleDeleteBottle = async () => {
+    if (!sheet) return;
+    const { wine, bottle } = sheet.info;
+    if (!(await confirmAction({ title: 'Supprimer cette bouteille ?', message: `${wine.name} — à utiliser pour une erreur de saisie. Pour une bouteille bue ou offerte, utilise plutôt « Ouvrir » ou « Offrir ».`, confirmLabel: 'Supprimer', danger: true }))) return;
+    await act(() => deleteBottle(bottle.id, wine.id, wine.name), 'Bouteille supprimée', 'La suppression a échoué.', closeSheet);
+  };
+
+  const handleToLimbo = async () => {
+    if (!sheet) return;
+    const { wine, bottle } = sheet.info;
+    await act(() => moveBottle(bottle.id, 'Non trié', wine.name, wine.vintage, wine.id), 'Bouteille remise en zone d’attente', 'Le déplacement a échoué.', closeSheet);
+  };
+
+  const startMove = () => {
+    if (!sheet) return;
+    setMoving({ bottle: sheet.info.bottle, wine: sheet.info.wine });
+    closeSheet();
+  };
+
+  const planActions: PlanActions = {
+    onBottle: (info, addr) => { if (!moving) setSheet({ info, addr }); },
+    onEmpty: (rack, x, y, addr) => {
+      if (moving) {
+        const { bottle, wine } = moving;
+        setMoving(null);
+        act(() => moveBottle(bottle.id, { rackId: rack.id, x, y }, wine.name, wine.vintage, wine.id), `Déplacée en ${addr}`, 'Le déplacement a échoué.');
+        return;
+      }
+      setEmptyTarget({ rack, x, y, addr });
+    },
+    onFill: (rack) => setFillRack(rack),
+    moving: moving?.bottle.id ?? null,
+  };
+
+  const pickWines = useMemo(() => {
+    const q = pickQuery.trim().toLowerCase();
+    return wines
+      .filter(w => !q || [w.name, w.producer, w.cuvee, w.region, w.vintage].filter(Boolean).join(' ').toLowerCase().includes(q))
+      .sort((a, b) => (b.inventoryCount > 0 ? 1 : 0) - (a.inventoryCount > 0 ? 1 : 0) || a.name.localeCompare(b.name))
+      .slice(0, 30);
+  }, [wines, pickQuery]);
+
+  // Suggestions de rangement : bouteilles en caisse ou en attente dont la
+  // fenêtre de dégustation est ouverte → à sortir sur une étagère.
+  const suggestions = useMemo(() => {
+    const boxIds = new Set(boxes.map(b => b.id));
+    const out: { wine: CellarWine; bottle: Bottle; status: string }[] = [];
+    for (const w of wines) {
+      const status = getPeakWindow(w).status;
+      if (status !== 'Boire Vite' && status !== 'À Boire' && status !== 'Apogée passée') continue;
+      for (const b of w.bottles || []) {
+        if (b.isConsumed) continue;
+        const inBox = typeof b.location === 'object' && b.location && 'rackId' in b.location && boxIds.has(b.location.rackId);
+        const inLimbo = typeof b.location === 'string' || !b.location;
+        if (inBox || inLimbo) out.push({ wine: w, bottle: b, status });
+      }
+    }
+    const rank = (st: string) => (st === 'Apogée passée' ? 0 : st === 'Boire Vite' ? 1 : 2);
+    return out.sort((a, b) => rank(a.status) - rank(b.status)).slice(0, 8);
+  }, [wines, boxes]);
+
   // Fait défiler jusqu'à la première bouteille mise en évidence.
   useEffect(() => {
     if (!focusWine) return;
@@ -281,7 +396,17 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
 
   return (
     <PlanFocusContext.Provider value={focusWineId}>
+    <PlanActionsContext.Provider value={planActions}>
     <div>
+      {moving && (
+        <div className="mb-4 sticky top-[66px] z-20 flex items-center gap-3 rounded-md border border-wine-300 bg-white shadow-md px-4 py-3">
+          <Move className="w-4 h-4 text-wine-700 shrink-0" />
+          <div className="flex-1 text-sm text-stone-800">
+            Déplacer <span className="serif-it">{moving.wine.name}</span> : touche un emplacement libre.
+          </div>
+          <button onClick={() => setMoving(null)} className="mono text-[10px] tracking-widest text-stone-600 hover:text-wine-700 h-9 px-2">ANNULER</button>
+        </div>
+      )}
       {focusWine && (
         <div className="mb-4 flex items-center gap-3 rounded-md border border-wine-200 bg-wine-50/60 px-4 py-3">
           <span className="w-2.5 h-2.5 rounded-full bg-wine-700 animate-pulse shrink-0" />
@@ -305,7 +430,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
             <div className="mono text-[10px] tracking-widest text-stone-500 mt-2">▢ PLAN · VUE DE DESSUS</div>
           </div>
           <span className="mono text-[10px] tracking-widest text-stone-500 hidden md:block">
-            {editMode ? 'GLISSE-DÉPOSE · CLIC = MODIFIER' : 'CLIC = OUVRIR LA FICHE'}
+            {editMode ? 'GLISSE-DÉPOSE · CLIC = MODIFIER' : 'CLIC = ACTIONS · CASE VIDE = RANGER'}
           </span>
         </div>
       )}
@@ -458,6 +583,128 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         </Card>
       )}
 
+      {/* Suggestions de rangement */}
+      {!editMode && suggestions.length > 0 && (
+        <Card className="mt-8 p-5">
+          <MonoLabel>◌ À SORTIR DES CAISSES</MonoLabel>
+          <p className="text-sm text-stone-600 mt-1 mb-3">Ces bouteilles sont dans leur fenêtre de dégustation mais rangées en caisse ou en attente : mieux vaut les avoir sous la main.</p>
+          <ul className="divide-y divide-stone-100">
+            {suggestions.map(({ wine, bottle, status }) => (
+              <li key={bottle.id} className="flex items-center gap-3 py-2">
+                <div className="flex-1 min-w-0">
+                  <WineLink id={wine.id} className="serif-it text-stone-900 truncate block">{wine.name} {wine.vintage || ''}</WineLink>
+                  <span className="mono text-[10px] tracking-widest text-stone-500 uppercase">{status}</span>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => { setMoving({ bottle, wine }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+                  <Move className="w-3.5 h-3.5" />Déplacer
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {/* Fiche d'actions d'une bouteille */}
+      <Modal
+        open={!!sheet}
+        onClose={closeSheet}
+        title={sheet ? `${sheet.info.wine.name}${sheet.info.wine.vintage ? ' · ' + sheet.info.wine.vintage : ''}` : ''}
+        subtitle={sheet ? `Emplacement : ${sheet.addr}` : undefined}
+        size="sm"
+      >
+        {sheet && !gift && (
+          <div className="grid grid-cols-2 gap-2">
+            <Button onClick={handleOpenBottle} disabled={busy} className="col-span-2 h-11"><GlassWater className="w-4 h-4" />Ouvrir cette bouteille</Button>
+            <Button variant="outline" onClick={startMove} disabled={busy}><Move className="w-3.5 h-3.5" />Déplacer</Button>
+            <Button variant="outline" onClick={() => setGift({ recipient: '', occasion: '' })} disabled={busy}><Gift className="w-3.5 h-3.5" />Offrir</Button>
+            {sheet.addr !== 'Zone d’attente' && (
+              <Button variant="outline" onClick={handleToLimbo} disabled={busy}><Inbox className="w-3.5 h-3.5" />En attente</Button>
+            )}
+            <Link to={`/wine/${sheet.info.wine.id}`} className={sheet.addr === 'Zone d’attente' ? 'col-span-2' : ''}>
+              <Button variant="outline" className="w-full"><ArrowRight className="w-3.5 h-3.5" />Fiche du vin</Button>
+            </Link>
+            <Button variant="danger" onClick={handleDeleteBottle} disabled={busy} className="col-span-2"><Trash2 className="w-3.5 h-3.5" />Supprimer (erreur de saisie)</Button>
+          </div>
+        )}
+        {sheet && gift && (
+          <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); handleGift(); }}>
+            <Input label="Offerte à" autoFocus value={gift.recipient} onChange={e => setGift({ ...gift, recipient: e.target.value })} placeholder="ex. Paul et Marie" />
+            <Input label="Occasion" value={gift.occasion} onChange={e => setGift({ ...gift, occasion: e.target.value })} placeholder="ex. crémaillère" />
+            <div className="flex justify-end gap-2 pt-1">
+              <Button type="button" variant="ghost" onClick={() => setGift(null)}>Retour</Button>
+              <Button type="submit" disabled={busy || !gift.recipient.trim()}><Gift className="w-3.5 h-3.5" />Offrir</Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Emplacement vide : placer une bouteille en attente ou en ajouter une */}
+      <Modal
+        open={!!emptyTarget || !!fillRack}
+        onClose={closePicker}
+        title={fillRack ? `Remplir « ${fillRack.name} »` : `Emplacement ${emptyTarget?.addr ?? ''}`}
+        subtitle={fillRack ? 'Tous les emplacements vides recevront une nouvelle bouteille du vin choisi.' : 'Place une bouteille en attente, ou ajoute une nouvelle bouteille ici.'}
+      >
+        {emptyTarget && limboBottles.length > 0 && !pickQuery && (
+          <div className="mb-4">
+            <MonoLabel>En attente · {limboBottles.length}</MonoLabel>
+            <ul className="mt-2 space-y-1">
+              {limboBottles.slice(0, 12).map(({ wine, bottle }) => (
+                <li key={bottle.id}>
+                  <button
+                    disabled={busy}
+                    onClick={() => { const t = emptyTarget; closePicker(); act(() => moveBottle(bottle.id, { rackId: t.rack.id, x: t.x, y: t.y }, wine.name, wine.vintage, wine.id), `Rangée en ${t.addr}`, 'Le rangement a échoué.'); }}
+                    className="w-full text-left flex items-center gap-2 rounded-md border border-stone-200 hover:border-wine-300 px-3 py-2.5"
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-sm border shrink-0 ${typeToCellClass[wine.type] || 'bg-stone-300 border-stone-400'}`} />
+                    <span className="serif-it text-stone-900 truncate flex-1">{wine.name}</span>
+                    <span className="mono text-[10px] text-stone-500">{wine.vintage}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <MonoLabel>{fillRack ? 'Choisir le vin' : 'Ajouter une nouvelle bouteille de…'}</MonoLabel>
+        <div className="relative mt-2 mb-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+          <input
+            value={pickQuery}
+            onChange={e => setPickQuery(e.target.value)}
+            placeholder="Rechercher un vin de la cave"
+            aria-label="Rechercher un vin"
+            className="w-full h-11 md:h-9 pl-9 pr-3 rounded-md border border-stone-300 bg-white text-sm outline-none focus:border-wine-600 focus:ring-2 focus:ring-wine-600/30"
+          />
+        </div>
+        <ul className="space-y-1 max-h-72 overflow-y-auto">
+          {pickWines.map(w => (
+            <li key={w.id}>
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  if (fillRack) {
+                    const rack = fillRack;
+                    if (!(await confirmAction({ title: `Remplir « ${rack.name} » avec ${w.name} ?`, message: 'Une bouteille sera créée dans chaque emplacement vide.', confirmLabel: 'Remplir' }))) return;
+                    closePicker();
+                    act(() => fillRackWithWine(rack.id, w.id), `« ${rack.name} » rempli`, 'Le remplissage a échoué.');
+                  } else if (emptyTarget) {
+                    const t = emptyTarget;
+                    closePicker();
+                    act(() => addBottleAtLocation(w.id, { rackId: t.rack.id, x: t.x, y: t.y }, w.name, w.vintage), `Bouteille ajoutée en ${t.addr}`, 'L’ajout a échoué.');
+                  }
+                }}
+                className="w-full text-left flex items-center gap-2 rounded-md hover:bg-stone-50 px-3 py-2.5"
+              >
+                <span className={`w-2.5 h-2.5 rounded-sm border shrink-0 ${typeToCellClass[w.type] || 'bg-stone-300 border-stone-400'}`} />
+                <span className="serif-it text-stone-900 truncate flex-1">{w.name}</span>
+                <span className="mono text-[10px] text-stone-500">{w.vintage} · ×{w.inventoryCount}</span>
+              </button>
+            </li>
+          ))}
+          {pickWines.length === 0 && <li className="text-sm text-stone-400 italic px-3 py-2">Aucun vin trouvé. <Link to="/add-wine" className="text-wine-700 underline">Créer une fiche</Link></li>}
+        </ul>
+      </Modal>
+
       <div className="mono text-[10px] text-stone-500 italic pt-3 mt-6 border-t border-stone-200">
         {editMode
           ? <>Édition en direct · clic sur un nom pour renommer · stepper pour redimensionner · drag&amp;drop pour déplacer une bouteille</>
@@ -465,6 +712,7 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
         }
       </div>
     </div>
+    </PlanActionsContext.Provider>
     </PlanFocusContext.Provider>
   );
 };
@@ -482,7 +730,7 @@ interface LimboZoneProps {
   onStartDrag: (bottle: Bottle, wine: CellarWine) => void;
 }
 const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDragOver, onDragLeave, onDrop, onStartDrag }) => {
-  const navigate = useNavigate();
+  const actions = useContext(PlanActionsContext);
   const focusWineId = useContext(PlanFocusContext);
   const dropAttempt = !!drag && isDropTarget;
   return (
@@ -524,7 +772,7 @@ const LimboZone: React.FC<LimboZoneProps> = ({ bottles, drag, isDropTarget, onDr
                 key={bottle.id}
                 draggable
                 onDragStart={() => onStartDrag(bottle, wine)}
-                onClick={() => navigate(`/wine/${wine.id}`)}
+                onClick={() => actions?.onBottle({ wine, bottle }, 'Zone d’attente')}
                 data-plan-focus={focusWineId === wine.id ? 'true' : undefined}
                 className={`flex items-center gap-2 px-2.5 py-1.5 bg-white border border-stone-300 hover:border-wine-700 rounded-md cursor-grab active:cursor-grabbing transition ${
                   isDragSrc ? 'opacity-30' : ''
@@ -569,7 +817,7 @@ interface ShelfBlockProps {
   onDelete: () => void;
 }
 const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
-  const navigate = useNavigate();
+  const actions = useContext(PlanActionsContext);
   const focusWineId = useContext(PlanFocusContext);
   const filled = Object.values(contents).filter(Boolean).length;
   const total = rack.width * rack.height;
@@ -604,8 +852,15 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
             <span className="ml-1">RNG</span>
             <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 12} />
             <button
+              onClick={() => actions?.onFill(rack)}
+              className="ml-auto h-5 px-1.5 rounded border border-stone-300 bg-white text-stone-600 hover:border-wine-700 hover:text-wine-700"
+              title="Remplir les emplacements vides avec un vin"
+            >
+              REMPLIR
+            </button>
+            <button
               onClick={onDelete}
-              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
+              className="w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
               title="Supprimer cette étagère"
             >
               <X className="w-3 h-3" />
@@ -671,7 +926,7 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
                     {...cellProps}
                     draggable
                     onDragStart={() => onStartDrag(info.bottle, info.wine, cIdx, rIdx)}
-                    onClick={() => navigate(`/wine/${info.wine.id}`)}
+                    onClick={() => actions?.onBottle(info, slotAddr)}
                     data-plan-focus={focusWineId === info.wine.id ? 'true' : undefined}
                     className={`relative w-7 h-7 rounded-sm transition cursor-grab active:cursor-grabbing ${cellClass} ${focusWineId === info.wine.id ? FOCUS_RING : ''}`}
                     title={`${slotAddr} · ${info.wine.name} ${info.wine.vintage || ''}`}
@@ -690,7 +945,8 @@ const ShelfBlock: React.FC<ShelfBlockProps> = ({ rack, contents, hover, onHover,
                 <div
                   key={cIdx}
                   {...cellProps}
-                  className={`w-7 h-7 rounded-sm transition ${cellClass}`}
+                  onClick={() => !editMode && actions?.onEmpty(rack, cIdx, rIdx, slotAddr)}
+                  className={`w-7 h-7 rounded-sm transition ${!editMode ? 'cursor-pointer' : ''} ${cellClass} ${actions?.moving ? MOVE_TARGET : ''}`}
                   title={`${slotAddr} · vide`}
                 />
               );
@@ -725,7 +981,7 @@ interface CaseBlockProps {
   onDelete: () => void;
 }
 const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, dropTarget, canMoveLeft, canMoveRight, onMoveLeft, onMoveRight, onDragOverSlot, onDropSlot, onStartDrag, onRename, onResize, onDelete }) => {
-  const navigate = useNavigate();
+  const actions = useContext(PlanActionsContext);
   const focusWineId = useContext(PlanFocusContext);
   const capacity = rack.width * rack.height;
   const isLarge = capacity >= 12;
@@ -760,8 +1016,15 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
             <span className="ml-1">RNG</span>
             <Stepper value={rack.height} onMinus={() => onResize('height', -1)} onPlus={() => onResize('height', +1)} min={rack.height <= 1} max={rack.height >= 8} />
             <button
+              onClick={() => actions?.onFill(rack)}
+              className="ml-auto h-5 px-1.5 rounded border border-stone-300 bg-white text-stone-600 hover:border-wine-700 hover:text-wine-700"
+              title="Remplir les emplacements vides avec un vin"
+            >
+              REMPLIR
+            </button>
+            <button
               onClick={onDelete}
-              className="ml-auto w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
+              className="w-5 h-5 flex items-center justify-center rounded border border-stone-300 bg-white text-stone-500 hover:border-wine-700 hover:text-wine-700 hover:bg-wine-50"
               title="Supprimer cette caisse"
             >
               <X className="w-3 h-3" />
@@ -809,7 +1072,8 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
               <div
                 key={i}
                 {...cellProps}
-                className={`w-7 h-7 rounded-sm border bg-white border-stone-200 border-dashed transition ${isDropTargetCell ? 'ring-2 ring-wine-600 ring-offset-1' : ''}`}
+                onClick={() => !editMode && actions?.onEmpty(rack, x, y, `${rack.name} · ${x + 1}-${y + 1}`)}
+                className={`w-7 h-7 rounded-sm border bg-white border-stone-200 border-dashed transition ${!editMode ? 'cursor-pointer' : ''} ${isDropTargetCell ? 'ring-2 ring-wine-600 ring-offset-1' : ''} ${actions?.moving ? MOVE_TARGET : ''}`}
               />
             );
           }
@@ -822,7 +1086,7 @@ const CaseBlock: React.FC<CaseBlockProps> = ({ rack, contents, editMode, drag, d
               {...cellProps}
               draggable
               onDragStart={() => onStartDrag(info.bottle, info.wine, x, y)}
-              onClick={() => navigate(`/wine/${info.wine.id}`)}
+              onClick={() => actions?.onBottle(info, `${rack.name} · ${x + 1}-${y + 1}`)}
               data-plan-focus={focusWineId === info.wine.id ? 'true' : undefined}
               title={`${info.wine.name} · ${info.wine.vintage || '?'}`}
               className={`w-7 h-7 rounded-sm border cursor-grab active:cursor-grabbing transition hover:ring-1 hover:ring-stone-900/40 ${fill} ${isDragSrc ? 'opacity-30' : ''} ${focusWineId === info.wine.id ? FOCUS_RING : ''}`}

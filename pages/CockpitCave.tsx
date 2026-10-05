@@ -5,11 +5,12 @@
 
 import React, { useMemo, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, MoreHorizontal, List, Map, TrendingUp } from 'lucide-react';
+import { Plus, MoreHorizontal, List, Map, TrendingUp, Columns3 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { getPeakWindow } from '../utils/peakWindow';
-import { Card, Badge, MonoLabel, Button, Tabs, EmptyState } from '../components/cockpit/primitives';
+import { Card, Badge, MonoLabel, Button, Tabs, EmptyState, Modal } from '../components/cockpit/primitives';
+import { WineComparison } from '../components/cockpit/WineComparison';
 import { CellarWine } from '../types';
 
 const CockpitPlan = lazy(() => import('./CockpitPlan').then(m => ({ default: m.CockpitPlan })));
@@ -62,6 +63,7 @@ const CaveList: React.FC = () => {
   const [filterRegion, setFilterRegion] = useState<string>('all');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [comparing, setComparing] = useState(false);
 
   const inStock = wines.filter(w => (w.inventoryCount || 0) > 0);
 
@@ -183,17 +185,35 @@ const CaveList: React.FC = () => {
         </Link>
       </header>
 
-      {/* Bulk actions strip */}
+      {/* Barre de sélection : comparer 2 ou 3 vins */}
       {selected.size > 0 && (
-        <div className="bg-stone-900 text-white px-5 h-12 flex items-center gap-3">
+        <div className="bg-stone-900 text-white px-4 md:px-5 min-h-12 py-2 flex items-center gap-3 fixed md:static inset-x-0 bottom-16 z-40 shadow-lg md:shadow-none">
           <span className="mono text-[11px] tracking-widest">{selected.size} SÉLECTIONNÉ{selected.size > 1 ? 'S' : ''}</span>
-          <button onClick={() => setSelected(new Set())} className="mono text-[10px] tracking-widest text-stone-400 hover:text-white">
-            DÉSÉLECTIONNER
+          <button onClick={() => setSelected(new Set())} className="mono text-[10px] tracking-widest text-stone-400 hover:text-white py-2">
+            EFFACER
           </button>
           <div className="flex-1" />
-          <span className="text-xs text-stone-500 italic">Actions bulk — bientôt</span>
+          {selected.size > 3 && <span className="hidden sm:inline text-xs text-stone-400">3 vins maximum pour comparer</span>}
+          <button
+            onClick={() => setComparing(true)}
+            disabled={selected.size < 2 || selected.size > 3}
+            title={selected.size < 2 ? 'Sélectionne 2 ou 3 vins' : selected.size > 3 ? '3 vins maximum' : undefined}
+            className="h-9 px-3 rounded-md bg-white text-stone-900 text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <Columns3 className="w-3.5 h-3.5" />Comparer
+          </button>
         </div>
       )}
+
+      <Modal
+        open={comparing}
+        onClose={() => setComparing(false)}
+        title="Comparer"
+        subtitle={`${selected.size} vins côte à côte`}
+        size="lg"
+      >
+        <WineComparison wines={wines.filter(w => selected.has(w.id))} />
+      </Modal>
 
       {/* Table */}
       {loading ? (
@@ -208,8 +228,17 @@ const CaveList: React.FC = () => {
             const days = peakDays(w);
             const rating = ratings[w.id];
             return (
-              <li key={w.id}>
-                <Link to={`/wine/${w.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-stone-50">
+              <li key={w.id} className={`flex items-center ${selected.has(w.id) ? 'bg-wine-50/40' : ''}`}>
+                <label className="pl-4 pr-1 self-stretch flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(w.id)}
+                    onChange={() => toggleOne(w.id)}
+                    aria-label={`Sélectionner ${w.name}`}
+                    className="w-5 h-5 accent-wine-700"
+                  />
+                </label>
+                <Link to={`/wine/${w.id}`} className="flex-1 min-w-0 flex items-center gap-3 pl-2 pr-4 py-3 active:bg-stone-50">
                   <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${colorDot(w.type)}`} />
                   <div className="flex-1 min-w-0">
                     <div className="serif-it text-stone-900 truncate">{w.name}</div>

@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+// Outils du sommelier — modes avancés rendus comme onglets de la page
+// Sommelier (/sommelier?outil=<clé>). Chaque outil est exporté pour que
+// CockpitSommelier les affiche ; `SommelierTools` ne fait plus que rediriger.
+
+import React, { useRef, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Sparkles, Wine, Utensils, Layers, Eye, GitCompareArrows, BookOpen,
-  Camera, Loader2, Check, RefreshCw, ArrowLeft,
+  Sparkles, Wine as WineIcon, Utensils, Layers, Eye, GitCompareArrows, BookOpen,
+  Camera, RefreshCw, Copy, ArrowRight, Trophy,
 } from 'lucide-react';
-import { useWines } from '../hooks/useWines';
-import { CellarWine } from '../types';
+import { CellarWine, WineType } from '../types';
 import {
   sommelierReversePair,
   sommelierMenu,
@@ -15,132 +18,174 @@ import {
   sommelierExplain,
   extractWineFromImage,
 } from '../services/storageService';
+import {
+  AiLoading, Badge, Button, EmptyState, Input, MonoLabel, Select, WineLink,
+} from '../components/cockpit/primitives';
+import { useToast } from '../components/cockpit/feedback';
 
-type Tool =
-  | 'REVERSE'
-  | 'MENU'
-  | 'VERTICAL'
-  | 'BLIND'
-  | 'COMPARE'
-  | 'EXPLAIN'
-  | 'OCR';
+// ──────────────────────────────────────────
+// Catalogue des outils (clé = valeur de ?outil=)
+// ──────────────────────────────────────────
+export type SommelierToolKey = 'plats' | 'menu' | 'verticale' | 'aveugle' | 'comparer' | 'expliquer' | 'etiquette';
 
-interface ToolCard {
-  id: Tool;
+export interface SommelierToolDef {
+  key: SommelierToolKey;
+  label: string;
   title: string;
   subtitle: string;
-  icon: React.FC<any>;
-  color: string;
+  icon: React.FC<{ className?: string }>;
 }
 
-const TOOLS: ToolCard[] = [
-  { id: 'REVERSE', title: 'Pairing inversé', subtitle: 'Voici un vin → quoi cuisiner', icon: Wine, color: 'wine' },
-  { id: 'MENU', title: 'Menu complet', subtitle: 'Entrée → plat → dessert avec progression', icon: Utensils, color: 'amber' },
-  { id: 'VERTICAL', title: 'Verticale', subtitle: 'Plusieurs millésimes du même domaine', icon: Layers, color: 'indigo' },
-  { id: 'BLIND', title: 'Mode aveugle', subtitle: "L'app cache, vous dégustez, on révèle", icon: Eye, color: 'stone' },
-  { id: 'COMPARE', title: 'Decision assistant', subtitle: 'J\'hésite entre 2 vins pour ce plat', icon: GitCompareArrows, color: 'green' },
-  { id: 'EXPLAIN', title: 'Explique-moi', subtitle: 'Pourquoi cet accord fonctionne', icon: BookOpen, color: 'wine' },
-  { id: 'OCR', title: 'Scanner étiquette', subtitle: 'Photo → ajout automatique', icon: Camera, color: 'cyan' },
+export const SOMMELIER_TOOLS: SommelierToolDef[] = [
+  { key: 'plats', label: 'Quoi cuisiner', title: 'Voici un vin, que cuisiner ?', subtitle: 'Cinq plats suggérés pour une bouteille de la cave', icon: WineIcon },
+  { key: 'menu', label: 'Menu', title: 'Menu complet', subtitle: "Un vin par plat, en gardant la progression du repas", icon: Utensils },
+  { key: 'verticale', label: 'Verticale', title: 'Verticale', subtitle: 'Plusieurs millésimes du même domaine, dans le bon ordre', icon: Layers },
+  { key: 'aveugle', label: 'À l’aveugle', title: 'Dégustation à l’aveugle', subtitle: "L'app pioche un vin de la cave, vous devinez", icon: Eye },
+  { key: 'comparer', label: 'A ou B', title: 'A ou B ?', subtitle: "J'hésite entre deux vins pour ce plat", icon: GitCompareArrows },
+  { key: 'expliquer', label: 'Expliquer', title: 'Explique-moi cet accord', subtitle: "Pourquoi ce vin fonctionne (ou non) avec ce plat", icon: BookOpen },
+  { key: 'etiquette', label: 'Étiquette', title: 'Scanner une étiquette', subtitle: "Photo de l'étiquette → fiche pré-remplie", icon: Camera },
 ];
 
-const COLORS: Record<string, string> = {
-  wine:   'bg-wine-50 text-wine-700 border-wine-100',
-  amber:  'bg-amber-50 text-amber-700 border-amber-100',
-  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  stone:  'bg-stone-100 text-stone-700 border-stone-200',
-  green:  'bg-green-50 text-green-700 border-green-100',
-  cyan:   'bg-cyan-50 text-cyan-700 border-cyan-100',
+export const isSommelierToolKey = (k: string | null): k is SommelierToolKey =>
+  !!k && SOMMELIER_TOOLS.some(t => t.key === k);
+
+/** Ancienne route /sommelier-tools : redirige vers l'onglet correspondant. */
+export const SommelierTools: React.FC = () => {
+  const [params] = useSearchParams();
+  const outil = params.get('outil');
+  return <Navigate to={`/sommelier?outil=${isSommelierToolKey(outil) ? outil : 'plats'}`} replace />;
 };
 
-export const SommelierTools: React.FC = () => {
-  const navigate = useNavigate();
-  const { wines } = useWines();
-  const [active, setActive] = useState<Tool | null>(null);
+/** Rend l'outil demandé. */
+export const SommelierToolPanel: React.FC<{ tool: SommelierToolKey; wines: CellarWine[] }> = ({ tool, wines }) => {
+  switch (tool) {
+    case 'plats': return <ReverseTool wines={wines} />;
+    case 'menu': return <MenuTool wines={wines} />;
+    case 'verticale': return <VerticalTool wines={wines} />;
+    case 'aveugle': return <BlindTool />;
+    case 'comparer': return <CompareTool wines={wines} />;
+    case 'expliquer': return <ExplainTool wines={wines} />;
+    case 'etiquette': return <OcrTool />;
+  }
+};
 
+// ──────────────────────────────────────────
+// Helpers partagés
+// ──────────────────────────────────────────
+const TYPE_LABELS: Record<WineType, string> = {
+  RED: 'Rouge', WHITE: 'Blanc', ROSE: 'Rosé', SPARKLING: 'Effervescent', DESSERT: 'Liquoreux', FORTIFIED: 'Muté',
+};
+const typeLabel = (t?: string | null) => (t && (TYPE_LABELS as Record<string, string>)[t]) || t || '—';
+
+const errMsg = (e: unknown) => (e instanceof Error && e.message ? e.message : 'erreur inconnue');
+
+const wineTitle = (w: { name?: string; cuvee?: string | null }) =>
+  `${w.name || 'Vin'}${w.cuvee && w.cuvee !== w.name ? ` · ${w.cuvee}` : ''}`;
+
+const wineOptionLabel = (w: CellarWine) =>
+  [w.producer, wineTitle(w), w.vintage || null].filter(Boolean).join(' · ');
+
+/** Bloc vin cliquable → fiche. */
+const WineBlock: React.FC<{ wine: { id: string; name?: string; cuvee?: string | null; producer?: string; vintage?: number | null }; prefix?: React.ReactNode; className?: string }> = ({ wine, prefix, className = '' }) => (
+  <Link
+    to={`/wine/${wine.id}`}
+    className={`group flex items-center gap-3 -mx-2 px-2 py-1.5 min-h-[44px] rounded hover:bg-stone-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-wine-600/40 ${className}`}
+  >
+    {prefix}
+    <div className="flex-1 min-w-0">
+      <div className="serif text-base text-stone-900 group-hover:text-wine-800 leading-snug break-words">{wineTitle(wine)}</div>
+      <div className="text-xs text-stone-500">{[wine.producer, wine.vintage || null].filter(Boolean).join(' · ')}</div>
+    </div>
+    <span className="mono text-[9px] tracking-widest text-wine-700 shrink-0 md:opacity-0 md:group-hover:opacity-100 transition">FICHE →</span>
+  </Link>
+);
+
+const ToolIntro: React.FC<{ tool: SommelierToolKey }> = ({ tool }) => {
+  const def = SOMMELIER_TOOLS.find(t => t.key === tool)!;
   return (
-    <div className="max-w-4xl mx-auto pb-10 animate-fade-in">
-      <div className="flex items-center gap-3 mb-2">
-        <Sparkles className="text-indigo-500" size={20} />
-        <h2 className="text-3xl font-serif text-stone-900">Boîte à outils du sommelier</h2>
-      </div>
-      <p className="text-stone-500 text-sm mb-8">7 modes d'accord et d'analyse, au-delà du pairing classique.</p>
-
-      {!active && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TOOLS.map(tool => (
-            <button
-              key={tool.id}
-              onClick={() => setActive(tool.id)}
-              className={`text-left p-5 rounded-2xl border ${COLORS[tool.color]} hover:shadow-lg transition-all group`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <tool.icon size={22} />
-              </div>
-              <h3 className="font-serif text-lg text-stone-900 mb-1">{tool.title}</h3>
-              <p className="text-sm opacity-80">{tool.subtitle}</p>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {active && (
-        <div>
-          <button onClick={() => setActive(null)} className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-900 mb-4">
-            <ArrowLeft size={14} /> Retour
-          </button>
-          <div className="bg-white border border-stone-200 rounded-2xl p-6">
-            {active === 'REVERSE'  && <ReverseTool wines={wines} />}
-            {active === 'MENU'     && <MenuTool wines={wines} />}
-            {active === 'VERTICAL' && <VerticalTool wines={wines} />}
-            {active === 'BLIND'    && <BlindTool />}
-            {active === 'COMPARE'  && <CompareTool wines={wines} />}
-            {active === 'EXPLAIN'  && <ExplainTool wines={wines} />}
-            {active === 'OCR'      && <OcrTool onAdded={(id) => navigate(`/wine/${id}`)} />}
-          </div>
-        </div>
-      )}
+    <div className="mb-4">
+      <MonoLabel>◌ {def.label}</MonoLabel>
+      <h2 className="serif text-xl text-stone-900 leading-tight mt-1">{def.title}</h2>
+      <p className="text-sm text-stone-500 mt-0.5">{def.subtitle}</p>
     </div>
   );
 };
 
+const WineSelect: React.FC<{ wines: CellarWine[]; value: string; onChange: (id: string) => void; label?: string; placeholder?: string; exclude?: string }> = ({ wines, value, onChange, label = 'Vin', placeholder = 'Choisissez un vin…', exclude }) => {
+  const options = wines
+    .filter(w => w.inventoryCount > 0 && w.id !== exclude)
+    .sort((a, b) => wineOptionLabel(a).localeCompare(wineOptionLabel(b), 'fr'));
+  return (
+    <Select label={label} value={value} onChange={e => onChange(e.target.value)} wrapperClassName="flex-1 min-w-0">
+      <option value="">{placeholder}</option>
+      {options.map(w => <option key={w.id} value={w.id}>{wineOptionLabel(w)}</option>)}
+    </Select>
+  );
+};
+
+const Advice: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-sm text-stone-600 italic border-l-2 border-wine-200 pl-3">{children}</p>
+);
+
+const NoStock: React.FC = () => {
+  const navigate = useNavigate();
+  return (
+    <EmptyState
+      title="Pas assez de bouteilles en cave"
+      hint="Ajoutez des vins pour utiliser cet outil"
+      action={<Button variant="outline" onClick={() => navigate('/add-wine')}>Ajouter un vin</Button>}
+    />
+  );
+};
+
 // ──────────────────────────────────────────
-// Reverse pairing
+// Quoi cuisiner (pairing inversé)
 // ──────────────────────────────────────────
-const ReverseTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+export const ReverseTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+  const toast = useToast();
   const [wineId, setWineId] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const wine = wines.find(w => w.id === wineId);
 
-  const run = async () => {
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!wineId) return;
     setLoading(true);
+    setResult(null);
     try { setResult(await sommelierReversePair(wineId)); }
+    catch (err) { toast.error(`Suggestion impossible : ${errMsg(err)}`); }
     finally { setLoading(false); }
   };
 
+  if (!wines.some(w => w.inventoryCount > 0)) return <><ToolIntro tool="plats" /><NoStock /></>;
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Voici un vin, qu'est-ce que je cuisine ?</h3>
-      <WineSelect wines={wines} value={wineId} onChange={setWineId} />
-      <button onClick={run} disabled={!wineId || loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-        Suggérer 5 plats
-      </button>
-      {result?.suggestions && (
-        <ul className="space-y-3 mt-4">
-          {result.suggestions.map((s: any, i: number) => (
-            <li key={i} className="bg-stone-50 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs uppercase font-bold text-wine-600">{s.type}</span>
-              </div>
-              <div className="font-medium">{s.dish}</div>
-              <div className="text-sm text-stone-500 italic mt-1">{s.reason}</div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {result?.global_advice && (
-        <div className="text-sm text-stone-500 italic">💡 {result.global_advice}</div>
+    <div>
+      <ToolIntro tool="plats" />
+      <form onSubmit={run} className="flex flex-col sm:flex-row sm:items-end gap-3">
+        <WineSelect wines={wines} value={wineId} onChange={setWineId} label="Bouteille" />
+        <Button type="submit" disabled={!wineId || loading} className="shrink-0">
+          <Sparkles className="w-4 h-4" /> Suggérer 5 plats
+        </Button>
+      </form>
+
+      {loading && <AiLoading className="mt-4" />}
+
+      {result?.suggestions?.length > 0 && (
+        <div className="mt-5 space-y-3">
+          {wine && <WineBlock wine={wine} />}
+          <ul className="divide-y divide-stone-100 border-y border-stone-100">
+            {result.suggestions.map((s: any, i: number) => (
+              <li key={i} className="py-3">
+                <Badge tone="neutral" className="uppercase">{s.type}</Badge>
+                <div className="serif text-base text-stone-900 mt-1">{s.dish}</div>
+                <div className="text-sm text-stone-600 mt-0.5 leading-relaxed">{s.reason}</div>
+              </li>
+            ))}
+          </ul>
+          {result.global_advice && <Advice>{result.global_advice}</Advice>}
+        </div>
       )}
     </div>
   );
@@ -149,62 +194,77 @@ const ReverseTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 // ──────────────────────────────────────────
 // Menu complet
 // ──────────────────────────────────────────
-const wineLabel = (w: Partial<CellarWine>) =>
-  [w.producer, w.cuvee || w.name, w.vintage].filter(Boolean).join(' ');
+const MENU_PLACEHOLDERS = ['Entrée (ex : foie gras)', 'Plat (ex : agneau de pré-salé)', 'Dessert (ex : tarte aux figues)'];
+const MENU_LABELS = ['Entrée', 'Plat', 'Dessert'];
+const MENU_PICKS: { key: 'safe' | 'personal' | 'creative'; label: string }[] = [
+  { key: 'safe', label: 'Sûr' },
+  { key: 'personal', label: 'Personnel' },
+  { key: 'creative', label: 'Audacieux' },
+];
 
-const MenuTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+export const MenuTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+  const toast = useToast();
   const [dishes, setDishes] = useState(['', '', '']);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const filled = dishes.filter(d => d.trim());
 
-  const run = async () => {
-    const filtered = dishes.filter(d => d.trim());
-    if (filtered.length === 0) return;
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (filled.length === 0) return;
     setLoading(true);
-    try { setResult(await sommelierMenu(filtered)); }
+    setResult(null);
+    try { setResult(await sommelierMenu(filled.map(d => d.trim()))); }
+    catch (err) { toast.error(`Menu impossible : ${errMsg(err)}`); }
     finally { setLoading(false); }
   };
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Menu complet — accord par plat</h3>
-      <p className="text-sm text-stone-500">Renseignez 1 à 3 plats. L'app accordera chacun en gardant la cohérence du repas.</p>
-      {dishes.map((d, i) => (
-        <input
-          key={i}
-          type="text"
-          value={d}
-          onChange={e => setDishes(ds => ds.map((x, j) => j === i ? e.target.value : x))}
-          placeholder={['Entrée (ex: foie gras)', 'Plat (ex: agneau de pré-salé)', 'Dessert (ex: tarte aux figues)'][i]}
-          className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
-        />
-      ))}
-      <button onClick={run} disabled={loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <Utensils size={16} />}
-        Construire le menu
-      </button>
+    <div>
+      <ToolIntro tool="menu" />
+      <form onSubmit={run} className="space-y-3">
+        {dishes.map((d, i) => (
+          <Input
+            key={i}
+            label={MENU_LABELS[i]}
+            value={d}
+            onChange={e => setDishes(ds => ds.map((x, j) => (j === i ? e.target.value : x)))}
+            placeholder={MENU_PLACEHOLDERS[i]}
+          />
+        ))}
+        <Button type="submit" disabled={filled.length === 0 || loading}>
+          <Utensils className="w-4 h-4" /> Construire le menu
+        </Button>
+      </form>
+
+      {loading && <AiLoading className="mt-4" hint="Un accord par plat : comptez jusqu'à une minute" />}
+
       {result?.courses && (
-        <div className="space-y-4 mt-4">
-          {result.courses.map((c: any, i: number) => (
-            <div key={i} className="border-l-4 border-wine-500 pl-4">
-              <div className="text-xs uppercase text-stone-500 font-bold">Service {i + 1}</div>
-              <div className="font-medium mb-2">{c.dish}</div>
-              {c.picks?.safe ? (() => {
-                const w = wines.find(x => x.id === c.picks.safe.wine_id);
-                return (
-                  <div className="text-sm text-stone-700">
-                    {w && (
-                      <Link to={`/wine/${w.id}`} className="block font-serif text-base text-wine-700 hover:underline mb-1">
-                        {wineLabel(w)} →
-                      </Link>
-                    )}
-                    {c.picks.safe.reason}
+        <ol className="mt-5 space-y-4">
+          {result.courses.map((c: any, i: number) => {
+            const picks = MENU_PICKS
+              .map(p => ({ ...p, pick: c.picks?.[p.key], wine: wines.find(w => w.id === c.picks?.[p.key]?.wine_id) }))
+              .filter(p => p.pick && p.wine);
+            return (
+              <li key={i} className="border-l-2 border-wine-600 pl-4">
+                <MonoLabel>Service {i + 1}</MonoLabel>
+                <div className="serif text-lg text-stone-900 leading-tight mt-0.5">{c.dish}</div>
+                {picks.length === 0 ? (
+                  <div className="serif-it text-sm text-stone-400 mt-1">Pas d'accord trouvé dans la cave</div>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {picks.map(p => (
+                      <div key={p.key}>
+                        <WineBlock wine={p.wine!} prefix={<Badge tone={p.key === 'safe' ? 'urgent' : 'neutral'} className="uppercase shrink-0 w-[72px] justify-center">{p.label}</Badge>} />
+                        <p className="text-sm text-stone-600 leading-relaxed">{p.pick.reason}</p>
+                      </div>
+                    ))}
                   </div>
-                );
-              })() : <div className="text-sm text-stone-400 italic">Pas d'accord trouvé</div>}
-            </div>
-          ))}
-        </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
       )}
     </div>
   );
@@ -213,101 +273,134 @@ const MenuTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 // ──────────────────────────────────────────
 // Verticale
 // ──────────────────────────────────────────
-const VerticalTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
-  const producers = Array.from(new Set(wines.map(w => w.producer).filter(Boolean))).sort();
+export const VerticalTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+  const toast = useToast();
+  // Seuls les producteurs avec au moins 2 millésimes en cave permettent une verticale.
+  const producers = (() => {
+    const counts = new Map<string, Set<number>>();
+    wines.filter(w => w.inventoryCount > 0 && w.producer && w.vintage).forEach(w => {
+      if (!counts.has(w.producer)) counts.set(w.producer, new Set());
+      counts.get(w.producer)!.add(w.vintage);
+    });
+    return Array.from(counts.entries()).filter(([, v]) => v.size >= 2).map(([p, v]) => ({ name: p, count: v.size }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  })();
   const [producer, setProducer] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  const run = async () => {
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!producer) return;
     setLoading(true);
+    setResult(null);
     try { setResult(await sommelierVertical(producer)); }
+    catch (err) { toast.error(`Verticale impossible : ${errMsg(err)}`); }
     finally { setLoading(false); }
   };
 
+  if (producers.length === 0) {
+    return (
+      <div>
+        <ToolIntro tool="verticale" />
+        <EmptyState title="Aucun domaine avec plusieurs millésimes" hint="Il faut au moins deux millésimes d'un même producteur en cave" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Verticale — plusieurs millésimes du même domaine</h3>
-      <select
-        value={producer}
-        onChange={e => setProducer(e.target.value)}
-        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
-      >
-        <option value="">Choisissez un producteur...</option>
-        {producers.map(p => <option key={p} value={p}>{p}</option>)}
-      </select>
-      <button onClick={run} disabled={!producer || loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <Layers size={16} />}
-        Construire la verticale
-      </button>
-      {result?.wines && result.wines.length > 0 && (
-        <ol className="space-y-2 mt-4">
+    <div>
+      <ToolIntro tool="verticale" />
+      <form onSubmit={run} className="flex flex-col sm:flex-row sm:items-end gap-3">
+        <Select label="Producteur" value={producer} onChange={e => { setProducer(e.target.value); setResult(null); }} wrapperClassName="flex-1 min-w-0">
+          <option value="">Choisissez un producteur…</option>
+          {producers.map(p => <option key={p.name} value={p.name}>{p.name} ({p.count} millésimes)</option>)}
+        </Select>
+        <Button type="submit" disabled={!producer || loading} className="shrink-0">
+          <Layers className="w-4 h-4" /> Construire la verticale
+        </Button>
+      </form>
+
+      {result?.wines?.length > 0 && (
+        <ol className="mt-5 space-y-1">
           {result.wines.map((w: any, i: number) => (
             <li key={w.id}>
-              <Link to={`/wine/${w.id}`} className="flex items-center gap-3 p-3 bg-stone-50 hover:bg-stone-100 rounded-lg">
-                <span className="w-7 h-7 rounded-full bg-wine-600 text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
-                <div className="flex-1">
-                  <div className="font-medium">{w.cuvee || w.name} <span className="text-stone-500">{w.vintage}</span></div>
-                  <div className="text-xs text-stone-500">{w.peak?.status}</div>
-                </div>
-                <span className="text-stone-400 text-xs">Fiche →</span>
-              </Link>
+              <WineBlock
+                wine={{ ...w, producer: result.producer }}
+                prefix={<span className="w-7 h-7 rounded-full bg-wine-700 text-white mono text-xs flex items-center justify-center shrink-0">{i + 1}</span>}
+              />
+              {w.peak?.status && <div className="pl-10 -mt-1 mb-1"><Badge tone={w.peak.status === 'À Boire' ? 'success' : w.peak.status === 'Garde' ? 'neutral' : 'warning'}>{w.peak.status}</Badge></div>}
             </li>
           ))}
         </ol>
       )}
-      {result?.note && <p className="text-sm text-stone-500 italic">{result.note}</p>}
+      {result?.note && <div className="mt-4"><Advice>{result.note}</Advice></div>}
     </div>
   );
 };
 
 // ──────────────────────────────────────────
-// Mode aveugle
+// À l'aveugle
 // ──────────────────────────────────────────
-const BlindTool: React.FC = () => {
+export const BlindTool: React.FC = () => {
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [tasting, setTasting] = useState<any>(null);
   const [revealed, setRevealed] = useState(false);
 
   const start = async () => {
-    setLoading(true); setRevealed(false);
+    setLoading(true);
+    setRevealed(false);
     try { setTasting(await sommelierBlind()); }
+    catch (err) { toast.error(`Impossible de tirer un vin : ${errMsg(err)}`); }
     finally { setLoading(false); }
   };
 
+  const clues = tasting?.blind_clues;
+  const sp = clues?.sensory_profile;
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Mode aveugle — entraînez votre palais</h3>
-      <p className="text-sm text-stone-500">L'app pioche un vin au hasard de votre cave. À vous de deviner.</p>
-      <button onClick={start} disabled={loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
-        {tasting ? 'Nouveau vin' : 'Démarrer'}
-      </button>
-      {tasting && (
-        <div className="space-y-4 mt-4">
-          <div className="bg-stone-50 rounded-lg p-4 space-y-2">
-            <div className="text-xs uppercase text-stone-500 font-bold">Indices</div>
-            <div className="text-sm">Type: <strong>{tasting.blind_clues.type}</strong></div>
-            {tasting.blind_clues.country && <div className="text-sm">Pays: <strong>{tasting.blind_clues.country}</strong></div>}
-            {tasting.blind_clues.vintage_range && <div className="text-sm">Décennie: <strong>{tasting.blind_clues.vintage_range[0]}s</strong></div>}
-            {tasting.blind_clues.sensory_profile && (
-              <div className="text-sm text-stone-500">
-                Corps {tasting.blind_clues.sensory_profile.body}/100 ·
-                Acidité {tasting.blind_clues.sensory_profile.acidity}/100 ·
-                Tanin {tasting.blind_clues.sensory_profile.tannin}/100
+    <div>
+      <ToolIntro tool="aveugle" />
+      <Button onClick={start} disabled={loading} variant={tasting ? 'outline' : 'default'}>
+        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> {tasting ? 'Un autre vin' : 'Tirer un vin'}
+      </Button>
+
+      {clues && (
+        <div className="mt-5 space-y-4">
+          <div className="rounded-md border border-stone-200 bg-stone-50 p-4">
+            <MonoLabel>Indices</MonoLabel>
+            <dl className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              <Clue label="Couleur" value={typeLabel(clues.type)} />
+              {clues.country && <Clue label="Pays" value={clues.country} />}
+              {clues.vintage_range && <Clue label="Décennie" value={`Années ${clues.vintage_range[0]}`} />}
+            </dl>
+            {sp && (
+              <div className="mt-3 space-y-1.5">
+                {([['Corps', sp.body], ['Acidité', sp.acidity], ['Tanins', sp.tannin]] as [string, number | undefined][])
+                  .filter(([, v]) => v != null)
+                  .map(([l, v]) => (
+                    <div key={l} className="flex items-center gap-3 text-xs">
+                      <span className="w-14 text-stone-500">{l}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-stone-200 overflow-hidden"><div className="h-full bg-wine-600" style={{ width: `${Math.max(0, Math.min(100, v!))}%` }} /></div>
+                      <span className="mono text-[10px] text-stone-500 w-8 text-right">{v}</span>
+                    </div>
+                  ))}
               </div>
             )}
           </div>
+
           {!revealed ? (
-            <button onClick={() => setRevealed(true)} className="bg-stone-200 hover:bg-stone-300 px-5 py-2 rounded-lg flex items-center gap-2">
-              <Eye size={16} /> Révéler
-            </button>
+            <Button variant="subtle" onClick={() => setRevealed(true)}>
+              <Eye className="w-4 h-4" /> Révéler
+            </Button>
           ) : (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-xs uppercase font-bold text-green-700 mb-1">C'était</div>
-              <Link to={`/wine/${tasting.reveal.id}`} className="block text-lg font-serif hover:text-wine-700 hover:underline">{tasting.reveal.producer} - {tasting.reveal.cuvee || tasting.reveal.name} {tasting.reveal.vintage}</Link>
-              <div className="text-sm text-stone-500">{tasting.reveal.appellation || tasting.reveal.region}</div>
+            <div className="rounded-md border border-emerald-200 bg-emerald-50/50 p-4 animate-fade-in">
+              <MonoLabel className="text-emerald-700">C'était</MonoLabel>
+              <WineBlock wine={tasting.reveal} className="mt-1" />
+              {(tasting.reveal.appellation || tasting.reveal.region) && (
+                <div className="text-xs text-stone-500">{tasting.reveal.appellation || tasting.reveal.region}</div>
+              )}
             </div>
           )}
         </div>
@@ -316,68 +409,84 @@ const BlindTool: React.FC = () => {
   );
 };
 
+const Clue: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div>
+    <dt className="mono text-[10px] tracking-widest text-stone-500 uppercase">{label}</dt>
+    <dd className="text-stone-900 mt-0.5">{value}</dd>
+  </div>
+);
+
 // ──────────────────────────────────────────
-// Decision assistant
+// A ou B
 // ──────────────────────────────────────────
-const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+export const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+  const toast = useToast();
   const [dish, setDish] = useState('');
   const [a, setA] = useState('');
   const [b, setB] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [asked, setAsked] = useState<{ a: string; b: string } | null>(null);
 
-  const run = async () => {
-    if (!dish || !a || !b) return;
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dish.trim() || !a || !b) return;
     setLoading(true);
-    try { setResult(await sommelierCompare(dish, a, b)); }
+    setResult(null);
+    try {
+      setResult(await sommelierCompare(dish.trim(), a, b));
+      setAsked({ a, b });
+    } catch (err) { toast.error(`Comparaison impossible : ${errMsg(err)}`); }
     finally { setLoading(false); }
   };
 
+  if (wines.filter(w => w.inventoryCount > 0).length < 2) return <><ToolIntro tool="comparer" /><NoStock /></>;
+
+  const wa = asked && wines.find(w => w.id === asked.a);
+  const wb = asked && wines.find(w => w.id === asked.b);
+  const winner = result?.winner === 'A' ? wa : result?.winner === 'B' ? wb : null;
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Decision assistant — A ou B ?</h3>
-      <input
-        type="text" value={dish} onChange={e => setDish(e.target.value)}
-        placeholder="Plat (ex: gigot d'agneau aux herbes)"
-        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <WineSelect wines={wines} value={a} onChange={setA} placeholder="Vin A" />
-        <WineSelect wines={wines} value={b} onChange={setB} placeholder="Vin B" />
-      </div>
-      <button onClick={run} disabled={!dish || !a || !b || loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <GitCompareArrows size={16} />}
-        Comparer
-      </button>
+    <div>
+      <ToolIntro tool="comparer" />
+      <form onSubmit={run} className="space-y-3">
+        <Input label="Plat" value={dish} onChange={e => setDish(e.target.value)} placeholder="ex : gigot d'agneau aux herbes" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <WineSelect wines={wines} value={a} onChange={setA} label="Vin A" exclude={b} />
+          <WineSelect wines={wines} value={b} onChange={setB} label="Vin B" exclude={a} />
+        </div>
+        <Button type="submit" disabled={!dish.trim() || !a || !b || loading}>
+          <GitCompareArrows className="w-4 h-4" /> Comparer
+        </Button>
+      </form>
+
+      {loading && <AiLoading className="mt-4" />}
+
       {result && (
-        <div className="space-y-3 mt-4">
-          <div className={`p-4 rounded-xl ${result.winner === 'A' ? 'bg-green-50 border border-green-300' : result.winner === 'B' ? 'bg-blue-50 border border-blue-300' : 'bg-stone-50'}`}>
-            <div className="text-xs uppercase font-bold mb-2">
-              Gagnant : {result.winner === 'tie' ? 'Match nul' : `Vin ${result.winner}`}
+        <div className="mt-5 space-y-4">
+          <div className="rounded-md border border-wine-100 bg-wine-50/40 p-4">
+            <div className="flex items-center gap-2 text-wine-700">
+              <Trophy className="w-4 h-4" />
+              <MonoLabel className="text-wine-700">{result.winner === 'tie' ? 'Match nul' : `Vin ${result.winner} retenu`}</MonoLabel>
             </div>
-            {result.winner !== 'tie' && (() => {
-              const w = wines.find(x => x.id === (result.winner === 'A' ? a : b));
-              return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-base text-wine-700 hover:underline mb-1">{wineLabel(w)} →</Link> : null;
-            })()}
-            <p className="text-sm">{result.reasoning}</p>
+            {winner && <WineBlock wine={winner} className="mt-1" />}
+            <p className="text-sm text-stone-700 leading-relaxed mt-1">{result.reasoning}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              {(() => { const w = wines.find(x => x.id === a); return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-stone-900 hover:text-wine-700 hover:underline mb-1 truncate">A · {wineLabel(w)}</Link> : null; })()}
-              <div className="font-bold mb-1 text-green-600">A — Forces</div>
-              <p className="text-stone-700">{result.wine_a_strengths}</p>
-              <div className="font-bold mt-2 mb-1 text-orange-600">A — Faiblesses</div>
-              <p className="text-stone-700">{result.wine_a_weaknesses}</p>
-            </div>
-            <div>
-              {(() => { const w = wines.find(x => x.id === b); return w ? <Link to={`/wine/${w.id}`} className="block font-serif text-stone-900 hover:text-wine-700 hover:underline mb-1 truncate">B · {wineLabel(w)}</Link> : null; })()}
-              <div className="font-bold mb-1 text-green-600">B — Forces</div>
-              <p className="text-stone-700">{result.wine_b_strengths}</p>
-              <div className="font-bold mt-2 mb-1 text-orange-600">B — Faiblesses</div>
-              <p className="text-stone-700">{result.wine_b_weaknesses}</p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([['A', wa, result.wine_a_strengths, result.wine_a_weaknesses], ['B', wb, result.wine_b_strengths, result.wine_b_weaknesses]] as const).map(([k, w, s, f]) => (
+              <div key={k} className={`rounded-md border p-4 ${result.winner === k ? 'border-wine-200' : 'border-stone-200'}`}>
+                <MonoLabel>Vin {k}</MonoLabel>
+                {w && <WineBlock wine={w} />}
+                <div className="mt-2 text-sm">
+                  <div className="mono text-[10px] tracking-widest uppercase text-emerald-700">Forces</div>
+                  <p className="text-stone-700 leading-relaxed">{s}</p>
+                  <div className="mono text-[10px] tracking-widest uppercase text-amber-700 mt-2">Faiblesses</div>
+                  <p className="text-stone-700 leading-relaxed">{f}</p>
+                </div>
+              </div>
+            ))}
           </div>
-          {result.advice && <div className="text-sm text-stone-500 italic">💡 {result.advice}</div>}
+          {result.advice && <Advice>{result.advice}</Advice>}
         </div>
       )}
     </div>
@@ -387,34 +496,45 @@ const CompareTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 // ──────────────────────────────────────────
 // Explique-moi
 // ──────────────────────────────────────────
-const ExplainTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+export const ExplainTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
+  const toast = useToast();
   const [dish, setDish] = useState('');
   const [wineId, setWineId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{ text: string; wineId: string } | null>(null);
+  const explained = result && wines.find(w => w.id === result.wineId);
 
-  const run = async () => {
-    if (!dish || !wineId) return;
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!dish.trim() || !wineId) return;
     setLoading(true);
+    setResult(null);
     try {
-      const r = await sommelierExplain(dish, wineId);
-      setResult(r.explanation);
-    } finally { setLoading(false); }
+      const r = await sommelierExplain(dish.trim(), wineId);
+      setResult({ text: r.explanation, wineId });
+    } catch (err) { toast.error(`Explication impossible : ${errMsg(err)}`); }
+    finally { setLoading(false); }
   };
 
+  if (!wines.some(w => w.inventoryCount > 0)) return <><ToolIntro tool="expliquer" /><NoStock /></>;
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Explique-moi cet accord</h3>
-      <p className="text-sm text-stone-500">Le sommelier détaille en 4 paragraphes le mécanisme et les axes d'accord.</p>
-      <input type="text" value={dish} onChange={e => setDish(e.target.value)} placeholder="Plat" className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3" />
-      <WineSelect wines={wines} value={wineId} onChange={setWineId} />
-      <button onClick={run} disabled={!dish || !wineId || loading} className="bg-wine-600 hover:bg-wine-700 text-white px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50">
-        {loading ? <Loader2 className="animate-spin" size={16} /> : <BookOpen size={16} />}
-        Expliquer
-      </button>
+    <div>
+      <ToolIntro tool="expliquer" />
+      <form onSubmit={run} className="space-y-3">
+        <Input label="Plat" value={dish} onChange={e => setDish(e.target.value)} placeholder="ex : saint-jacques au beurre blanc" />
+        <WineSelect wines={wines} value={wineId} onChange={setWineId} />
+        <Button type="submit" disabled={!dish.trim() || !wineId || loading}>
+          <BookOpen className="w-4 h-4" /> Expliquer
+        </Button>
+      </form>
+
+      {loading && <AiLoading className="mt-4" />}
+
       {result && (
-        <div className="bg-stone-50 rounded-xl p-4 mt-4 prose prose-sm max-w-none whitespace-pre-wrap">
-          {result}
+        <div className="mt-5">
+          {explained && <WineBlock wine={explained} />}
+          <div className="mt-2 text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">{result.text}</div>
         </div>
       )}
     </div>
@@ -422,65 +542,173 @@ const ExplainTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 };
 
 // ──────────────────────────────────────────
-// OCR
+// Scanner une étiquette
 // ──────────────────────────────────────────
-const OcrTool: React.FC<{ onAdded: (id: string) => void }> = ({ onAdded }) => {
+interface OcrResult {
+  producer: string | null;
+  name: string | null;
+  cuvee: string | null;
+  vintage: number | null;
+  region: string | null;
+  appellation: string | null;
+  country: string | null;
+  type: WineType | null;
+  abv: number | null;
+  format: string | null;
+  grape_varieties: string[];
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  notes: string | null;
+}
+
+const CONFIDENCE: Record<OcrResult['confidence'], { label: string; tone: 'success' | 'warning' | 'neutral' }> = {
+  HIGH: { label: 'Lecture fiable', tone: 'success' },
+  MEDIUM: { label: 'Lecture partielle', tone: 'neutral' },
+  LOW: { label: 'Lecture incertaine', tone: 'warning' },
+};
+
+/** Réduit la photo (≤ 1600 px, JPEG) pour alléger l'envoi. */
+const loadImage = (file: File): Promise<{ base64: string; mimeType: string; preview: string }> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const img = new Image();
+      img.onerror = () => resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
+      img.onload = () => {
+        const max = 1600;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        if (scale >= 1) return resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const out = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({ base64: out.split(',')[1], mimeType: 'image/jpeg', preview: out });
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+
+/** Texte libre attendu par la page d'ajout (« Pommard 1er Cru Rugiens 2018 »). */
+const ocrToAddText = (r: OcrResult) => {
+  const parts = [r.producer, r.appellation && r.appellation !== r.name ? r.appellation : null, r.name, r.cuvee && r.cuvee !== r.name ? r.cuvee : null, r.vintage];
+  const seen = new Set<string>();
+  return parts.filter(p => {
+    if (p == null || p === '') return false;
+    const k = String(p).toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).join(' ');
+};
+
+export const OcrTool: React.FC = () => {
+  const toast = useToast();
+  const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
-  const [extracted, setExtracted] = useState<any>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [extracted, setExtracted] = useState<OcrResult | null>(null);
 
   const handleFile = async (file: File) => {
     setLoading(true);
+    setExtracted(null);
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const dataUrl = e.target?.result as string;
-        const base64 = dataUrl.split(',')[1];
-        const result = await extractWineFromImage(base64, file.type);
-        setExtracted(result);
-        setLoading(false);
-      };
-      reader.readAsDataURL(file);
+      const img = await loadImage(file);
+      setPreview(img.preview);
+      setExtracted(await extractWineFromImage(img.base64, img.mimeType));
     } catch (err) {
-      console.error(err);
+      toast.error(`Lecture de l'étiquette impossible : ${errMsg(err)}`);
+    } finally {
       setLoading(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
+  const addText = extracted ? ocrToAddText(extracted) : '';
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(addText);
+      toast.success('Texte copié : collez-le dans le champ d’ajout');
+    } catch {
+      toast.error('Copie impossible : sélectionnez le texte manuellement');
+    }
+  };
+
+  const fields: [string, React.ReactNode][] = extracted ? ([
+    ['Producteur', extracted.producer],
+    ['Vin', extracted.name],
+    ['Cuvée', extracted.cuvee],
+    ['Millésime', extracted.vintage],
+    ['Appellation', extracted.appellation],
+    ['Région', extracted.region],
+    ['Pays', extracted.country],
+    ['Couleur', extracted.type ? typeLabel(extracted.type) : null],
+    ['Degré', extracted.abv != null ? `${String(extracted.abv).replace('.', ',')} %` : null],
+    ['Format', extracted.format],
+  ] as [string, React.ReactNode][]).filter(([, v]) => v != null && v !== '') : [];
+
   return (
-    <div className="space-y-4">
-      <h3 className="font-serif text-xl">Scanner une étiquette</h3>
-      <p className="text-sm text-stone-500">Prenez une photo de l'étiquette, l'IA en extrait les infos.</p>
-      <label className="block bg-stone-50 border-2 border-dashed border-stone-200 rounded-xl p-8 text-center cursor-pointer hover:bg-stone-100">
-        <input type="file" accept="image/*" capture="environment" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} className="hidden" />
-        <Camera className="mx-auto mb-2 text-stone-500" size={32} />
-        <div className="text-sm text-stone-500">Cliquez pour choisir une photo</div>
+    <div>
+      <ToolIntro tool="etiquette" />
+      <label className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-stone-300 bg-stone-50 px-4 py-8 text-center cursor-pointer hover:bg-stone-100 hover:border-wine-300 transition-colors focus-within:ring-2 focus-within:ring-wine-600/40 ${loading ? 'pointer-events-none opacity-60' : ''}`}>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
+          className="sr-only"
+          disabled={loading}
+        />
+        <Camera className="w-7 h-7 text-stone-500" />
+        <span className="text-sm text-stone-700">{extracted ? 'Scanner une autre étiquette' : 'Prendre ou choisir une photo'}</span>
+        <span className="mono text-[10px] tracking-widest text-stone-400 uppercase">Étiquette de face, bien éclairée</span>
       </label>
-      {loading && <div className="flex items-center gap-2 text-sm text-stone-500"><Loader2 className="animate-spin" size={16} /> Analyse de l'étiquette...</div>}
-      {extracted && (
-        <div className="bg-stone-50 rounded-xl p-4 space-y-2">
-          <div className="font-medium">Détecté :</div>
-          <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(extracted, null, 2)}</pre>
-          <p className="text-xs text-stone-500 italic">Copiez ces infos dans le formulaire d'ajout pour créer le vin.</p>
+
+      {loading && <AiLoading className="mt-4" label="Lecture de l'étiquette…" hint="Quelques secondes" />}
+
+      {extracted && !loading && (
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-4">
+          {preview && <img src={preview} alt="Étiquette scannée" className="w-28 sm:w-full rounded-md border border-stone-200 object-cover" />}
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <MonoLabel>Détecté</MonoLabel>
+              <Badge tone={CONFIDENCE[extracted.confidence]?.tone || 'neutral'}>{CONFIDENCE[extracted.confidence]?.label || extracted.confidence}</Badge>
+            </div>
+            {fields.length === 0 ? (
+              <div className="serif-it text-stone-400 mt-2">Rien de lisible sur cette photo.</div>
+            ) : (
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                {fields.map(([l, v]) => <Clue key={l} label={l} value={v} />)}
+              </dl>
+            )}
+            {extracted.grape_varieties?.length > 0 && (
+              <div className="mt-3">
+                <div className="mono text-[10px] tracking-widest text-stone-500 uppercase">Cépages</div>
+                <div className="flex flex-wrap gap-1 mt-1">{extracted.grape_varieties.map(g => <Badge key={g}>{g}</Badge>)}</div>
+              </div>
+            )}
+            {extracted.notes && <p className="mt-3 text-sm text-stone-600 italic">{extracted.notes}</p>}
+
+            {addText && (
+              <div className="mt-4 rounded-md border border-stone-200 p-3">
+                <MonoLabel>À coller dans « Ajouter un vin »</MonoLabel>
+                <div className="serif text-base text-stone-900 mt-1 select-all break-words">{addText}</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={copy}><Copy className="w-4 h-4" /> Copier</Button>
+                  <Button onClick={() => navigate('/add-wine', { state: { text: addText, prefill: { producer: extracted.producer || undefined, type: extracted.type || undefined, vintage: extracted.vintage || undefined } } })}>Créer la fiche <ArrowRight className="w-4 h-4" /></Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 };
-
-// ──────────────────────────────────────────
-// Wine selector
-// ──────────────────────────────────────────
-const WineSelect: React.FC<{ wines: CellarWine[]; value: string; onChange: (id: string) => void; placeholder?: string }> = ({ wines, value, onChange, placeholder = 'Choisissez un vin...' }) => (
-  <select
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    className="w-full bg-stone-50 border border-stone-200 rounded-lg px-4 py-3"
-  >
-    <option value="">{placeholder}</option>
-    {wines.filter(w => w.inventoryCount > 0).map(w => (
-      <option key={w.id} value={w.id}>
-        {w.producer ? `${w.producer} - ` : ''}{w.name} {w.vintage || ''}
-      </option>
-    ))}
-  </select>
-);
