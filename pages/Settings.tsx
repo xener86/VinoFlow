@@ -3,12 +3,64 @@ import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottle
 import { useAIConfig } from '../hooks/useAIConfig'; // ✅ Hook Async
 import { AIConfig, AIProvider, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
-import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, Wand2 } from 'lucide-react';
+import { Download, Upload, Server, Cpu, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, Wand2, KeyRound } from 'lucide-react';
+import { customAuth } from '../services/customAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
+
+const PASSWORD_MIN_LENGTH = 10;
+
+// Formulaire isolé dans son propre composant pour garder son état local.
+const ChangePasswordForm: React.FC = () => {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    if (next !== confirm) {
+      setMessage({ ok: false, text: 'Les deux nouveaux mots de passe ne correspondent pas.' });
+      return;
+    }
+    setBusy(true);
+    try {
+      await customAuth.changePassword(current, next);
+      setCurrent(''); setNext(''); setConfirm('');
+      setMessage({ ok: true, text: 'Mot de passe modifié. Les autres appareils ont été déconnectés.' });
+    } catch (err: any) {
+      setMessage({ ok: false, text: err.message || 'Échec du changement de mot de passe.' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputClass = 'w-full bg-stone-50 border border-stone-200 rounded-lg p-3 text-stone-900 focus:border-indigo-500 outline-none';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <input type="password" value={current} onChange={e => setCurrent(e.target.value)} placeholder="Mot de passe actuel" autoComplete="current-password" required className={inputClass} />
+      <input type="password" value={next} onChange={e => setNext(e.target.value)} placeholder={`Nouveau mot de passe (${PASSWORD_MIN_LENGTH} caractères min.)`} autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required className={inputClass} />
+      <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} required className={inputClass} />
+      {message && (
+        <div className={`p-3 rounded-lg text-sm border ${message.ok ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
+          {message.text}
+        </div>
+      )}
+      <button type="submit" disabled={busy} className="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50">
+        {busy ? <Loader2 className="animate-spin" size={18} /> : <KeyRound size={18} />}
+        Changer mon mot de passe
+      </button>
+    </form>
+  );
+};
 
 export const Settings: React.FC = () => {
   // ✅ Utilisation du Hook
   const { config, loading, saveConfig } = useAIConfig();
+  const { user } = useAuth();
   const [localConfig, setLocalConfig] = useState<AIConfig | null>(null);
   
   const [importStatus, setImportStatus] = useState<string>('');
@@ -178,6 +230,18 @@ export const Settings: React.FC = () => {
     <div className="max-w-2xl mx-auto pb-20 animate-fade-in">
         <h2 className="text-3xl font-serif text-stone-900 mb-6">Paramètres</h2>
 
+        {/* Pas de <Section> ici : elle est recréée à chaque rendu et remonterait le formulaire. */}
+        <div className="bg-white border border-stone-200 rounded-xl p-6 mb-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4 text-stone-500 border-b border-stone-200 pb-2">
+                <KeyRound size={18} />
+                <h3 className="font-serif text-lg text-stone-900">Mon compte</h3>
+            </div>
+            <p className="text-sm text-stone-500 mb-4">
+                Connecté en tant que <strong className="text-stone-800">{user?.email}</strong>. La cave est partagée par tous les comptes du foyer.
+            </p>
+            <ChangePasswordForm />
+        </div>
+
         <Section title="Intelligence Artificielle" icon={Cpu}>
              <div className="space-y-6">
                  {backendProviders && (
@@ -215,6 +279,14 @@ export const Settings: React.FC = () => {
                              {p === 'GEMINI' ? 'Google Gemini' : p === 'OPENAI' ? 'OpenAI' : p === 'MISTRAL' ? 'Mistral AI' : 'Claude'}
                          </button>
                      ))}
+                 </div>
+
+                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex gap-2">
+                     <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                     <span>
+                         Ces clés restent dans ce navigateur (localStorage) : elles servent aux fonctions IA exécutées côté navigateur et, en secours, au sommelier si le serveur n'a pas de clé.
+                         Elles sont lisibles par tout script injecté dans la page : préférez les variables d'environnement du serveur et utilisez des clés avec un plafond de dépenses.
+                     </span>
                  </div>
 
                  <div className="space-y-4">
