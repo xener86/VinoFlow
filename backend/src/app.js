@@ -20,6 +20,7 @@ import cellarRouter from './routes/cellar.js';
 import aiRouter from './routes/ai.js';
 import enrichmentRouter from './routes/enrichment.js';
 import cocktailsRouter from './routes/cocktails.js';
+import importRouter from './routes/import.js';
 
 const app = express();
 
@@ -30,7 +31,10 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 // HSTS : à poser sur le reverse proxy TLS (le backend ne voit que du HTTP).
 app.use(helmet({ strictTransportSecurity: false }));
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
+// POST /api/import (sauvegarde complète) a son propre parseur, plus large, monté
+// après l'authentification : un anonyme ne peut pas envoyer 25 Mo.
+const jsonParser = express.json({ limit: '1mb' });
+app.use((req, res, next) => (req.path === '/api/import' ? next() : jsonParser(req, res, next)));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -73,5 +77,6 @@ app.use('/api', cellarRouter);
 app.use('/api', aiRouter);
 app.use('/api', enrichmentRouter);
 app.use('/api', cocktailsRouter);
+app.use('/api', importRouter);
 
 export default app;
