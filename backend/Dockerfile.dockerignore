@@ -7,3 +7,4 @@ backend/node_modules
 backend/**/*.test.js
 backend/tests
 backend/*.tmp.*
+backend/vitest.config.js

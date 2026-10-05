@@ -24,12 +24,14 @@ Self-hosted wine cellar & bar app. Deployed with Docker Compose (db + backend + 
 
 ```bash
 npm run typecheck   # tsc --noEmit (frontend only; backend/mcp-server are excluded)
+npm test            # vitest — utils/*.test.ts
 npm run build       # vite build
+cd backend && npm test   # vitest — tests/unit (pure) + tests/api (supertest, only if TEST_DATABASE_URL is set; that DB is WIPED)
 docker compose up -d --build
 cd mcp-server && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`): backend `node --check`, frontend typecheck + build, Docker image builds. No automated tests yet.
+CI (`.github/workflows/ci.yml`): backend `node --check` + Vitest (unit + API tests on a pgvector Postgres service), frontend typecheck + Vitest + build, Docker image builds. Known bugs are pinned with `it.fails` (budget / CSV prices) — remove `.fails` when fixing them.
 
 ## Conventions
 

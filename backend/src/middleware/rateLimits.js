@@ -1,6 +1,10 @@
-import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator, MemoryStore } from 'express-rate-limit';
 
 // ========== Rate limiting ==========
+// Stores en mémoire explicites : remis à zéro entre deux tests (resetRateLimits).
+const stores = { auth: new MemoryStore(), refresh: new MemoryStore(), ai: new MemoryStore() };
+export const resetRateLimits = () => Object.values(stores).forEach((store) => store.resetAll());
+
 const rateLimitHandler = (req, res, next, options) =>
   res.status(options.statusCode).json({ msg: 'Trop de tentatives, réessayez dans quelques minutes.' });
 
@@ -10,6 +14,7 @@ export const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: stores.auth,
   handler: rateLimitHandler,
 });
 
@@ -19,6 +24,7 @@ export const refreshLimiter = rateLimit({
   limit: 60,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: stores.refresh,
   handler: rateLimitHandler,
 });
 
@@ -28,6 +34,7 @@ export const aiLimiter = rateLimit({
   limit: 60,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  store: stores.ai,
   keyGenerator: (req) => req.user?.userId || ipKeyGenerator(req.ip),
   // Les lectures GET /api/sommelier/* n'appellent pas de LLM (alertes, profil
   // de goût…) : elles ne sont pas comptées.

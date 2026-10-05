@@ -8,8 +8,22 @@ on:
 
 jobs:
   backend:
-    name: Backend syntax check
+    name: Backend checks + tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: vinoflow
+          POSTGRES_PASSWORD: vinoflow
+          POSTGRES_DB: vinoflow_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vinoflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,12 +34,17 @@ jobs:
       - name: Install backend deps
         working-directory: backend
         run: npm ci
-      - name: Syntax check server.js
+      - name: Syntax check
         working-directory: backend
-        run: node --check src/server.js
+        run: find src -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Tests (unitaires + API sur Postgres)
+        working-directory: backend
+        env:
+          TEST_DATABASE_URL: postgresql://vinoflow:vinoflow@localhost:5432/vinoflow_test
+        run: npm test
 
   frontend-build:
-    name: Frontend build
+    name: Frontend typecheck + tests + build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +56,8 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Tests
+        run: npm test
       - name: Build
         run: npm run build
 
