@@ -11,6 +11,7 @@ import { isNewsletterDue, notifyTz } from './schedule.js';
 import { availableChannels, deliver } from './channels.js';
 import { renderAlert, renderNewsletter } from './render.js';
 import { composeNewsletter } from './newsletter.js';
+import { syncMenuflow } from '../menuflow/sync.js';
 import {
   listAllSettings, loadAlertStates, applyAlertChanges, markNewsletterSent, logDeliveries, purgeOldLog,
 } from './store.js';
@@ -53,6 +54,8 @@ export const runNotificationTick = async ({ now = new Date(), tz = notifyTz() } 
     const { rows } = await client.query('SELECT pg_try_advisory_lock($1) AS ok', [LOCK_KEY]);
     if (!rows[0].ok) return { skipped: true };
     try {
+      // Passerelle MenuFlow d'abord : la newsletter s'appuie sur les dîners synchronisés.
+      await syncMenuflow({ now, tz });
       const all = await listAllSettings();
       if (all.length === 0) return { users: 0 };
       const inventory = await loadInventory();
