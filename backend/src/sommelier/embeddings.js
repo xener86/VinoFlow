@@ -108,27 +108,3 @@ export const updateMissingEmbeddings = async (pool, options = {}) => {
 
   return { processed: result.rows.length, updated: updated.length, errors };
 };
-
-/**
- * Search wines closest to a query (criteria from LLM1 transformed into text).
- */
-export const semanticSearch = async (pool, queryText, topN = 8) => {
-  let hasColumn = true;
-  try {
-    await pool.query(`SELECT embedding FROM wines LIMIT 1`);
-  } catch {
-    hasColumn = false;
-  }
-  if (!hasColumn) return null;
-
-  const queryVec = await computeEmbedding(queryText);
-  const result = await pool.query(`
-    SELECT *, embedding <=> $1::vector AS distance
-      FROM wines
-     WHERE embedding IS NOT NULL
-     ORDER BY embedding <=> $1::vector
-     LIMIT $2
-  `, [`[${queryVec.join(',')}]`, topN]);
-
-  return result.rows;
-};

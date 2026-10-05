@@ -1,0 +1,10 @@
+# Utilisé à la place de /.dockerignore pour le build de backend/Dockerfile
+# (contexte = racine du dépôt) : on n'envoie que backend/ et db/.
+*
+!backend/
+!db/
+backend/node_modules
+backend/**/*.test.js
+backend/tests
+backend/*.tmp.*
+backend/vitest.config.js

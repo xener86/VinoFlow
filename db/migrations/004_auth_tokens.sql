@@ -3,8 +3,7 @@
 -- de mot de passe. Seuls les hash SHA-256 des jetons sont stockés.
 -- Idempotent : peut être rejoué sans risque sur une base existante.
 --
--- Base existante :
---   docker compose exec -T db psql -U vinoflow vinoflow < db/migrations/004_auth_tokens.sql
+-- Appliquée automatiquement au démarrage du backend (backend/src/migrations.js).
 
 -- Horodatage du dernier changement de mot de passe (traçabilité).
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at timestamp with time zone;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTastingNotes } from '../services/storageService';
-import { TastingNote } from '../components/TastingNoteEditor';
+import { TastingNote } from '../types';
 
 export const useTastingNotes = () => {
   const [notes, setNotes] = useState<TastingNote[]>([]);

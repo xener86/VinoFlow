@@ -78,67 +78,10 @@ export const Card: React.FC<CardProps> = ({ className = '', children, ...rest })
 );
 
 // ────────────────────────────────────────────
-// Section labels — mono uppercase
-// ────────────────────────────────────────────
-export const SectionLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <div className={`mono text-[10px] tracking-[0.18em] uppercase text-stone-500 ${className}`}>{children}</div>
-);
-
-export const SectionTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <h3 className={`text-[15px] font-medium text-stone-900 mt-0.5 ${className}`}>{children}</h3>
-);
-
-// ────────────────────────────────────────────
 // MonoLabel — for breadcrumbs, status bars
 // ────────────────────────────────────────────
 export const MonoLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
   <span className={`mono text-[10px] tracking-widest text-stone-500 uppercase ${className}`}>{children}</span>
-);
-
-// ────────────────────────────────────────────
-// KPI — large number stat block with sub-info
-// ────────────────────────────────────────────
-interface KpiProps {
-  label: string;
-  value: React.ReactNode;
-  unit?: string;          // discreet `.X` notation after the value
-  hint?: React.ReactNode; // small line below
-  trend?: React.ReactNode; // mini chart, sparkline, or progress bar
-  className?: string;
-}
-
-export const Kpi: React.FC<KpiProps> = ({ label, value, unit, hint, trend, className = '' }) => (
-  <div className={`rounded-md border border-stone-200 bg-white px-5 py-4 ${className}`}>
-    <MonoLabel className="mb-1.5">{label}</MonoLabel>
-    <div className="flex items-baseline gap-1 mt-1">
-      <span className="serif text-4xl text-stone-900 leading-none">{value}</span>
-      {unit && <span className="serif text-xl text-stone-400 leading-none">.{unit}</span>}
-    </div>
-    {hint && <div className="mt-2 text-xs text-stone-500">{hint}</div>}
-    {trend && <div className="mt-2">{trend}</div>}
-  </div>
-);
-
-// ────────────────────────────────────────────
-// PageHeader — breadcrumb + title row
-// ────────────────────────────────────────────
-interface PageHeaderProps {
-  breadcrumb: string[];   // e.g. ["VINOFLOW", "DASHBOARD"]
-  title: string;
-  subtitle?: string;
-  rightSlot?: React.ReactNode;
-  className?: string;
-}
-
-export const PageHeader: React.FC<PageHeaderProps> = ({ breadcrumb, title, subtitle, rightSlot, className = '' }) => (
-  <div className={`flex items-end justify-between gap-4 ${className}`}>
-    <div>
-      <MonoLabel>{breadcrumb.join(' · ')}</MonoLabel>
-      <h1 className="serif text-3xl md:text-4xl text-stone-900 mt-1 leading-tight">{title}</h1>
-      {subtitle && <p className="mt-1.5 text-sm text-stone-500">{subtitle}</p>}
-    </div>
-    {rightSlot && <div className="flex items-center gap-2">{rightSlot}</div>}
-  </div>
 );
 
 // ────────────────────────────────────────────
@@ -166,17 +109,4 @@ export const Chip: React.FC<ChipProps> = ({ active = false, className = '', chil
   >
     {children}
   </button>
-);
-
-// ────────────────────────────────────────────
-// PulseDot — live status indicator
-// ────────────────────────────────────────────
-export const PulseDot: React.FC<{ children?: React.ReactNode; className?: string }> = ({ children, className = '' }) => (
-  <span className={`inline-flex items-center gap-1.5 ${className}`}>
-    <span className="relative flex h-1.5 w-1.5">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-wine-600 opacity-75"></span>
-      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-wine-700"></span>
-    </span>
-    {children && <span className="mono text-[10px] tracking-widest uppercase text-stone-600">{children}</span>}
-  </span>
 );

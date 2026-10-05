@@ -3,9 +3,9 @@
 -- it — use pgvector/pgvector:pg16 image (or install the extension manually).
 --
 -- This migration is intentionally separate so deployments without pgvector
--- can skip it without breaking the rest of the app.
-
-BEGIN;
+-- can skip it without breaking the rest of the app : le runner l'ignore (avec
+-- un avertissement) si l'extension est indisponible.
+-- vinoflow:optional
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -16,4 +16,3 @@ ALTER TABLE wines ADD COLUMN IF NOT EXISTS embedding vector(768);
 CREATE INDEX IF NOT EXISTS idx_wines_embedding ON wines
     USING hnsw (embedding vector_cosine_ops);
 
-COMMIT;

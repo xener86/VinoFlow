@@ -8,9 +8,6 @@
 
 import crypto from 'crypto';
 
-const TTL_LEVEL1_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const TTL_LEVEL2_MS = 24 * 60 * 60 * 1000;      // 24 hours
-
 const normalizeDish = (dish) => String(dish || '').toLowerCase().trim().replace(/\s+/g, ' ');
 
 export const computeCaveHash = (wines) => {
@@ -56,8 +53,4 @@ export const setResultCache = async (pool, dish, caveHash, userId, payload) => {
     VALUES ($1, $2, $3, $4, now() + interval '24 hours')
     ON CONFLICT DO NOTHING
   `, [normalizeDish(dish), caveHash, userId, payload]);
-};
-
-export const purgeExpired = async (pool) => {
-  await pool.query(`DELETE FROM pairing_cache WHERE expires_at IS NOT NULL AND expires_at < now()`);
 };

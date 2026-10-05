@@ -155,13 +155,11 @@ docker compose up -d --build
 
 Your database is persisted in a Docker volume, so updates won't lose your data.
 
-SQL migrations in `db/migrations/` only run automatically on a **fresh** database. On an existing install, apply new ones by hand (they are idempotent):
+Database migrations are applied **automatically** when the backend starts: `db/init.sql` on an empty database, then every missing file of `db/migrations/` in order, each in its own transaction (tracked in the `schema_migrations` table). Nothing to run by hand. Watch them with `docker compose logs backend | grep Migration`.
 
-```bash
-docker compose exec -T db psql -U vinoflow vinoflow < db/migrations/004_auth_tokens.sql
-```
+On a database created before the migration runner, migrations already present (001-004) are detected from the schema and only recorded. If a migration fails, the backend stops (and Docker restarts it) instead of serving on an incomplete schema — check `docker compose logs backend`.
 
-> **Upgrading to the session/refresh-token release (migration 004):** apply the migration *before* restarting the backend, otherwise login fails. Everyone is logged out once (old 30-day tokens are rejected), and the MCP server must switch to `VINOFLOW_EMAIL` / `VINOFLOW_PASSWORD`.
+> **Upgrading to the session/refresh-token release (migration 004):** everyone is logged out once (old 30-day tokens are rejected), and the MCP server must switch to `VINOFLOW_EMAIL` / `VINOFLOW_PASSWORD`.
 
 ## Backup & Restore
 
@@ -217,9 +215,9 @@ Set it in your `.env` and restart: `docker compose up -d`.
 
 The app renews sessions automatically; a 401 that sends you back to the login page means the refresh token expired (30 days of inactivity) or was revoked (logout, password change). Log in again.
 
-### Login returns 500 after an update
+### The backend keeps restarting after an update
 
-Migration `004_auth_tokens.sql` was not applied — see [Updating](#updating).
+A database migration probably failed: `docker compose logs backend | grep -i migration` shows which one and why.
 
 ### "Trop de tentatives" (HTTP 429)
 

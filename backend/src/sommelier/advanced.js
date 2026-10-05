@@ -1,6 +1,6 @@
 // Phase 10 + 11 — Advanced sommelier modes.
 
-import { generateJson, generateText } from '../services/aiService.js';
+import { generateJson } from '../services/aiService.js';
 import { getPeakWindow } from './peakWindow.js';
 
 /**

@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, ShoppingListItem, UserTasteProfile, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem } from '../types';
 import { customAuth, clearSession } from './customAuth';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
 
@@ -156,28 +156,6 @@ export const updateWine = async (id: string, updates: Partial<Wine>): Promise<vo
   await handleResponse(response);
 };
 
-export const deleteWine = async (id: string): Promise<void> => {
-  const response = await apiFetch(`${API_URL}/wines/${id}`, {
-    method: 'DELETE',
-    headers: getHeaders()
-  });
-  await handleResponse(response);
-};
-
-export const updateAromaProfile = async (
-  id: string,
-  aromaProfile: string[],
-  source: 'USER' | 'AI',
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW'
-): Promise<void> => {
-  const response = await apiFetch(`${API_URL}/wines/${id}/aroma-profile`, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify({ aromaProfile, source, confidence }),
-  });
-  await handleResponse(response);
-};
-
 // Sommelier v2 API
 export const sommelierPair = async (dish: string, context?: any, skipCache = false) => {
   const response = await apiFetch(`${API_URL}/sommelier/pair`, {
@@ -204,12 +182,6 @@ export const sommelierFeedback = async (params: {
   await handleResponse(response);
 };
 
-export const getRemoteTasteProfile = async () => {
-  const response = await apiFetch(`${API_URL}/sommelier/taste-profile`, { headers: getHeaders() });
-  if (response.status === 401) return null;
-  return handleResponse(response);
-};
-
 export const getAvailableAIProviders = async () => {
   const response = await apiFetch(`${API_URL}/ai/providers`, { headers: getHeaders() });
   return handleResponse(response);
@@ -227,14 +199,6 @@ export const enrichAromaProfilesBatch = async (params: { onlyMissing?: boolean; 
 
 export const auditWines = async () => {
   const response = await apiFetch(`${API_URL}/wines/audit`, { headers: getHeaders() });
-  return handleResponse(response);
-};
-
-export const refreshAromaFromTastings = async (wineId: string) => {
-  const response = await apiFetch(`${API_URL}/wines/${wineId}/refresh-from-tastings`, {
-    method: 'POST',
-    headers: getHeaders(),
-  });
   return handleResponse(response);
 };
 
@@ -284,15 +248,6 @@ export const getDrinkBeforeAlerts = async (horizonMonths = 12) => {
   return handleResponse(response);
 };
 
-export const getAnticipationForEvent = async (eventDate: string, limit = 5) => {
-  const response = await apiFetch(`${API_URL}/sommelier/anticipation`, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ eventDate, limit }),
-  });
-  return handleResponse(response);
-};
-
 export const getPurchaseSuggestions = async () => {
   const response = await apiFetch(`${API_URL}/sommelier/purchase-suggestions`, { headers: getHeaders() });
   return handleResponse(response);
@@ -319,22 +274,6 @@ export const sommelierCompare = async (dish: string, wineAId: string, wineBId: s
 
 export const sommelierBlind = async () => {
   const response = await apiFetch(`${API_URL}/sommelier/blind`, { headers: getHeaders() });
-  return handleResponse(response);
-};
-
-// Phase 11 - Wine lifecycle
-export const getAgingRecommendations = async () => {
-  const response = await apiFetch(`${API_URL}/wines/aging-recommendations`, { headers: getHeaders() });
-  return handleResponse(response);
-};
-
-export const findWineDuplicates = async () => {
-  const response = await apiFetch(`${API_URL}/wines/duplicates`, { headers: getHeaders() });
-  return handleResponse(response);
-};
-
-export const getCellarProjection = async (yearsAhead = 5) => {
-  const response = await apiFetch(`${API_URL}/cellar/projection?yearsAhead=${yearsAhead}`, { headers: getHeaders() });
   return handleResponse(response);
 };
 
@@ -551,38 +490,6 @@ export const fillRackWithWine = async (rackId: string, wineId: string): Promise<
     await Promise.all(promises);
 };
 
-export const findNextAvailableSlot = async (): Promise<{ location: BottleLocation; rackName: string } | null> => {
-    // Cette fonction ne peut pas être facilement asynchrone sans tout charger.
-    // On va charger racks et bottles ici.
-    // Attention aux performances si la cave est énorme.
-    const [racks, bottles] = await Promise.all([getRacks(), getBottles()]);
-
-    for (const rack of racks) {
-        // Skip BOXes if needed? Assuming racks are shelves first
-        if (rack.type === 'BOX') continue;
-
-        for (let y = 0; y < rack.height; y++) {
-            for (let x = 0; x < rack.width; x++) {
-                const isOccupied = bottles.some(b => 
-                    !b.isConsumed && 
-                    typeof b.location !== 'string' && 
-                    b.location.rackId === rack.id && 
-                    b.location.x === x && 
-                    b.location.y === y
-                );
-                
-                if (!isOccupied) {
-                    return {
-                        location: { rackId: rack.id, x, y },
-                        rackName: rack.name
-                    };
-                }
-            }
-        }
-    }
-    return null;
-};
-
 // --- RACK FUNCTIONS ---
 
 export const getRacks = async (): Promise<Rack[]> => {
@@ -719,13 +626,6 @@ export const saveTastingNote = async (note: any): Promise<void> => {
     });
 };
 
-export const deleteTastingNote = async (id: string): Promise<void> => {
-    await apiFetch(`${API_URL}/tasting-notes/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-    });
-};
-
 // --- JOURNAL / HISTORY ---
 
 export const getCellarJournal = async (): Promise<JournalEntry[]> => {
@@ -787,13 +687,6 @@ export const cleanupGhostBottles = async (): Promise<{ orphaned: number; cleaned
 };
 
 // --- USER & CONFIG (Local Storage for Config, API for Profile) ---
-
-export const getUserTasteProfile = (): UserTasteProfile | null => {
-  // Le profil utilisateur est souvent stocké en base, mais pour simplifier la migration
-  // on peut le garder en local ou le fetcher.
-  const stored = localStorage.getItem('vf_taste_profile');
-  return stored ? JSON.parse(stored) : null;
-};
 
 // AI Config reste local pour la sécurité des clés
 export const getAIConfig = (): AIConfig => {
