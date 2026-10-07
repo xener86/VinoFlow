@@ -1,7 +1,7 @@
 // Rafale : une photo d'étiquette par vin, à la suite (carton, salon). Le
 // brouillon reste sur le téléphone ; les photos sont lues dès que possible ;
 // tout est enregistré d'un coup (cave, envies, dégustations).
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Check, Loader2 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
@@ -23,6 +23,13 @@ export const CockpitQuickAdd: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const s = summarize(q.lines);
 
+  // Écran ouvert hors ligne : la cave est rechargée au retour du réseau pour le rapprochement.
+  useEffect(() => {
+    const reload = () => { refresh(); };
+    window.addEventListener('online', reload);
+    return () => window.removeEventListener('online', reload);
+  }, [refresh]);
+
   const onPhoto = async (files: FileList | null) => {
     for (const file of Array.from(files || [])) {
       try {
@@ -41,10 +48,12 @@ export const CockpitQuickAdd: React.FC = () => {
       const res = await saveQuickAdd(buildPayload(q.meta, q.lines));
       if (res.ok && res.result) {
         const r = res.result.summary;
-        await q.clearAll();
+        // Seules les lignes enregistrées disparaissent ; une photo prise pendant l'envoi reste.
+        const remaining = await q.finishSave(res.result);
         await refresh();
-        toast.success(`Rafale enregistrée : ${r.bottlesAdded} bouteille(s), ${r.wishlistAdded} envie(s), ${r.tastingsAdded} dégustation(s).`, { label: 'Ranger', onClick: () => navigate('/plan') });
-        navigate('/add-wine');
+        if (res.result.replay) toast.info('Cette rafale avait déjà été enregistrée : les changements faits depuis sur ces lignes n’ont pas été pris en compte.');
+        else toast.success(`Rafale enregistrée : ${r.bottlesAdded} bouteille(s), ${r.wishlistAdded} envie(s), ${r.tastingsAdded} dégustation(s).`, { label: 'Ranger', onClick: () => navigate('/plan') });
+        if (remaining === 0) navigate('/add-wine');
         return;
       }
       for (const l of res.lines || []) await q.update(l.clientId, { error: l.message });
@@ -77,12 +86,12 @@ export const CockpitQuickAdd: React.FC = () => {
 
       {q.lines.length === 0
         ? <EmptyState title="Aucune photo pour l’instant" hint="Prends l’étiquette de chaque vin, l’une après l’autre." />
-        : <div className="space-y-3">{ordered.map(line => (
-            <QuickAddCard key={line.id} line={line} wines={wines} onChange={change => q.update(line.id, change)} onRemove={() => q.remove(line.id)} />
+        : <div className={`space-y-3 ${saving ? 'pointer-events-none opacity-60' : ''}`}>{ordered.map(line => (
+            <QuickAddCard key={line.id} line={line} wines={wines} onChange={change => q.update(line.id, change)} onEdit={patch => q.editLine(line.id, patch)} onRemove={() => q.remove(line.id)} />
           ))}</div>}
 
       <div className="fixed md:sticky inset-x-0 bottom-16 md:bottom-0 z-30 bg-white/95 backdrop-blur border-t border-stone-200 px-4 py-3 space-y-2">
-        <label className={`flex items-center justify-center gap-2 h-11 rounded-md border border-stone-300 bg-white text-stone-800 cursor-pointer ${!q.ready ? 'opacity-50 pointer-events-none' : ''}`}>
+        <label className={`flex items-center justify-center gap-2 h-11 rounded-md border border-stone-300 bg-white text-stone-800 cursor-pointer ${!q.ready || saving ? 'opacity-50 pointer-events-none' : ''}`}>
           <Camera className="w-4 h-4" /> Photo suivante
           <input ref={photoInput} type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={e => onPhoto(e.target.files)} />
         </label>

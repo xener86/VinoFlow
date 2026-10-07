@@ -1,5 +1,6 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
 import type { ReadOutcome } from '../utils/quickAddQueue';
+import { withTimeout } from '../utils/labelImage';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -237,10 +238,22 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
 
 // Lecture d'étiquette pour la rafale : jamais d'exception, l'issue est décrite
 // (réseau, HTTP + Retry-After) pour que la file sache s'il faut réessayer.
-export const readLabel = async (base64: string): Promise<ReadOutcome> => {
+// Délai maximal d'une lecture : au-delà (réseau de salon qui ne répond plus), la
+// photo repasse en attente au lieu de bloquer toute la file.
+const READ_TIMEOUT_MS = 60_000;
+
+export const readLabel = (base64: string): Promise<ReadOutcome> => {
+  const controller = new AbortController();
+  return withTimeout(fetchLabel(base64, controller.signal), READ_TIMEOUT_MS, () => {
+    controller.abort();
+    return { kind: 'network' };
+  });
+};
+
+const fetchLabel = async (base64: string, signal: AbortSignal): Promise<ReadOutcome> => {
   try {
     const response = await apiFetch(`${API_URL}/wines/extract-from-image`, {
-      method: 'POST', headers: getHeaders(), body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }),
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }), signal,
     });
     if (response.ok) return { kind: 'ok', ocr: await response.json() };
     const data = await response.json().catch(() => null);
@@ -252,6 +265,7 @@ export const readLabel = async (base64: string): Promise<ReadOutcome> => {
 
 export interface QuickAddResult {
   batchId: string;
+  replay?: boolean; // rafale déjà enregistrée : réponse rejouée, rien de réécrit
   summary: { winesCreated: number; bottlesAdded: number; wishlistAdded: number; tastingsAdded: number };
   lines: { clientId: string; wineId: string | null; created: boolean }[];
 }

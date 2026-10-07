@@ -103,7 +103,9 @@ describe.skipIf(!hasDb)('API ajout rapide', () => {
     const first = await client.post('/api/quick-add', batch);
     const again = await client.post('/api/quick-add', batch);
     expect(again.status).toBe(200);
-    expect(again.body).toEqual(first.body);
+    // Le renvoi le signale : le téléphone sait que les modifications faites depuis n'ont pas été prises.
+    expect(first.body.replay).toBe(false);
+    expect(again.body).toEqual({ ...first.body, replay: true });
     expect(await count('bottles')).toBe(2);
     expect(vi.mocked(requestEnrichment)).toHaveBeenCalledTimes(1);
   });

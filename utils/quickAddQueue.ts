@@ -1,4 +1,5 @@
-import type { OcrResult, WineType } from '../types';
+import type { CellarWine, OcrResult, WineType } from '../types';
+import { autoMatch } from './findExisting';
 
 // Rafale d'ajout : une ligne par photo, lue par l'OCR serveur dès que possible.
 // Fonctions pures : le hook useQuickAddQueue s'occupe du stockage et du réseau.
@@ -136,3 +137,53 @@ export const buildPayload = (meta: DraftMeta, lines: DraftLine[]) => ({
     return { ...base, rating: l.rating ?? undefined, comment: opt(l.comment) };
   }),
 });
+
+/**
+ * Résultat d'une lecture, appliqué seulement si la ligne attend toujours cette
+ * lecture-là : une photo reprise ou une saisie manuelle entre-temps l'emporte.
+ */
+export const applyReadResult = (current: DraftLine, read: DraftLine, outcome: ReadOutcome, now: number): DraftLine | null => {
+  if (current.status !== 'READING' || current.photo !== read.photo) return null;
+  return nextState(current, outcome, now);
+};
+
+/** Lignes restantes après un enregistrement : seules celles envoyées et enregistrées disparaissent. */
+export const afterSave = (lines: DraftLine[], result: { lines: { clientId: string }[] }): DraftLine[] => {
+  const saved = new Set(result.lines.map(l => l.clientId));
+  return lines.filter(l => !saved.has(l.id));
+};
+
+const IDENTITY_FIELDS: (keyof WineDraft)[] = ['name', 'producer', 'vintage'];
+
+/** Correction du vin d'une ligne ; si le nom, le producteur ou le millésime change, le rapprochement est refait. */
+export const editWine = (line: DraftLine, patch: Partial<WineDraft>, wines: CellarWine[]): DraftLine => {
+  const updated = { ...line, edits: { ...line.edits, ...patch } };
+  if (line.forceNew || !IDENTITY_FIELDS.some(f => f in patch)) return updated;
+  return { ...updated, matchWineId: autoMatch(wines, wineOf(updated))?.id ?? null };
+};
+
+/** Lignes lues sans rapprochement (cave pas encore chargée) qui trouvent maintenant leur vin. */
+export const rematch = (lines: DraftLine[], wines: CellarWine[]): DraftLine[] =>
+  lines
+    .filter(l => (l.status === 'READY' || l.status === 'REVIEW') && !l.matchWineId && !l.forceNew)
+    .map(l => ({ l, match: autoMatch(wines, wineOf(l)) }))
+    .filter(({ match }) => match)
+    .map(({ l, match }) => ({ ...l, matchWineId: match!.id }));
+
+/** Une seule lecture à la fois, toujours libérée (même si l'enregistrement local échoue). */
+export const makeRunner = () => {
+  let busy = false;
+  return {
+    get busy() { return busy; },
+    async run(task: () => Promise<void>): Promise<boolean> {
+      if (busy) return false;
+      busy = true;
+      try {
+        await task();
+      } finally {
+        busy = false;
+      }
+      return true;
+    },
+  };
+};

@@ -55,3 +55,29 @@ export const ocrToAddText = (r: OcrResult) => {
     return true;
   }).join(' ');
 };
+
+/**
+ * Champs lus sur la photo, à garder pour l'enregistrement tant que le texte
+ * vient d'elle : si l'utilisateur retape le vin, l'ancienne photo ne compte plus.
+ */
+export const labelExtras = (label: OcrResult | null, text: string) => {
+  if (!label || text.trim() !== ocrToAddText(label)) return {};
+  return {
+    ...(label.appellation ? { appellation: label.appellation } : {}),
+    ...(label.region ? { region: label.region } : {}),
+    ...(label.country ? { country: label.country } : {}),
+    ...(label.cuvee ? { cuvee: label.cuvee } : {}),
+    ...(label.format ? { format: label.format } : {}),
+    ...(label.grape_varieties?.length ? { grapeVarieties: label.grape_varieties } : {}),
+  };
+};
+
+/** La promesse, ou la valeur de repli si elle ne répond pas à temps. */
+export const withTimeout = <T>(promise: Promise<T>, ms: number, fallback: () => T): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => resolve(fallback()), ms);
+    promise.then(
+      value => { clearTimeout(timer); resolve(value); },
+      error => { clearTimeout(timer); reject(error); },
+    );
+  });

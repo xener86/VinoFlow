@@ -11,7 +11,7 @@ const router = Router();
 router.post('/quick-add', async (req, res) => {
   try {
     const batch = validateBatch(req.body);
-    const { result, enrich } = await withTransaction((client) => applyBatch(client, batch, req.user?.userId ?? null));
+    const { result, enrich, replay } = await withTransaction((client) => applyBatch(client, batch, req.user?.userId ?? null));
     for (const wineId of enrich) {
       try {
         requestEnrichment(wineId, 'manual');
@@ -19,7 +19,8 @@ router.post('/quick-add', async (req, res) => {
         console.error('Quick add enrichment request failed:', error);
       }
     }
-    return res.json(result);
+    // replay : rafale déjà enregistrée (réponse perdue) — rien n'a été réécrit.
+    return res.json({ ...result, replay });
   } catch (error) {
     if (error instanceof BatchError) return res.status(400).json({ error: error.message, lines: error.lines });
     console.error('Quick add error:', error);

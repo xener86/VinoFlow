@@ -24,17 +24,18 @@ interface Props {
   line: DraftLine;
   wines: CellarWine[];
   onChange: (change: Partial<DraftLine> | ((l: DraftLine) => DraftLine)) => void;
+  onEdit: (patch: Partial<WineDraft>) => void;
   onRemove: () => void;
 }
 
 // Une photo de la rafale : état de lecture, vin lu (modifiable), destination.
-export const QuickAddCard: React.FC<Props> = ({ line, wines, onChange, onRemove }) => {
+export const QuickAddCard: React.FC<Props> = ({ line, wines, onChange, onEdit, onRemove }) => {
   const retake = useRef<HTMLInputElement>(null);
   const wine = wineOf(line);
   const status = STATUS[line.status];
   const match = line.matchWineId ? wines.find(w => w.id === line.matchWineId) : null;
   const problem = lineProblem(line);
-  const edit = (patch: Partial<WineDraft>) => onChange(l => ({ ...l, edits: { ...l.edits, ...patch } }));
+  const edit = onEdit;
 
   const onRetake = async (file: File) => {
     const img = await loadLabelImage(file);

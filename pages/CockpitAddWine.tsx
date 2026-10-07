@@ -14,7 +14,7 @@ import { CellarWine, Wine, WineType, OcrResult } from '../types';
 import { Card, MonoLabel, Button, Skeleton, Badge, Input } from '../components/cockpit/primitives';
 import { useToast } from '../components/cockpit/feedback';
 import { parseFreeText, findExisting } from '../utils/findExisting';
-import { loadLabelImage, ocrToAddText } from '../utils/labelImage';
+import { loadLabelImage, ocrToAddText, labelExtras } from '../utils/labelImage';
 import { openDraftStore } from '../utils/quickAddDraft';
 
 const EXAMPLES = [
@@ -151,16 +151,8 @@ export const CockpitAddWine: React.FC = () => {
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
-    // La lecture de l'étiquette prime sur l'identification au texte pour les champs qu'elle a lus.
-    const a: Partial<Wine> = {
-      ...(analysis || {}),
-      ...(label?.appellation ? { appellation: label.appellation } : {}),
-      ...(label?.region ? { region: label.region } : {}),
-      ...(label?.country ? { country: label.country } : {}),
-      ...(label?.cuvee ? { cuvee: label.cuvee } : {}),
-      ...(label?.format ? { format: label.format } : {}),
-      ...(label?.grape_varieties?.length ? { grapeVarieties: label.grape_varieties } : {}),
-    };
+    // La lecture de l'étiquette prime sur l'identification au texte, tant que le texte vient d'elle.
+    const a: Partial<Wine> = { ...(analysis || {}), ...labelExtras(label, text) };
     try {
       const wine: Wine = {
         id: crypto.randomUUID(),
