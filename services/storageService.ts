@@ -1,4 +1,5 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
+import type { ReadOutcome } from '../utils/quickAddQueue';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -232,6 +233,40 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
     body: JSON.stringify({ image: base64, mimeType }),
   });
   return handleResponse(response);
+};
+
+// Lecture d'étiquette pour la rafale : jamais d'exception, l'issue est décrite
+// (réseau, HTTP + Retry-After) pour que la file sache s'il faut réessayer.
+export const readLabel = async (base64: string): Promise<ReadOutcome> => {
+  try {
+    const response = await apiFetch(`${API_URL}/wines/extract-from-image`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }),
+    });
+    if (response.ok) return { kind: 'ok', ocr: await response.json() };
+    const data = await response.json().catch(() => null);
+    return { kind: 'http', status: response.status, retryAfter: Number(response.headers.get('Retry-After')) || null, message: data?.error || data?.msg };
+  } catch {
+    return { kind: 'network' };
+  }
+};
+
+export interface QuickAddResult {
+  batchId: string;
+  summary: { winesCreated: number; bottlesAdded: number; wishlistAdded: number; tastingsAdded: number };
+  lines: { clientId: string; wineId: string | null; created: boolean }[];
+}
+export interface QuickAddResponse { ok: boolean; status: number; error?: string; lines?: { clientId: string; message: string }[]; result?: QuickAddResult }
+
+/** Enregistre une rafale (POST /api/quick-add). */
+export const saveQuickAdd = async (body: object): Promise<QuickAddResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/quick-add`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}`, lines: data?.lines };
+    return { ok: true, status: response.status, result: data };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable : la rafale reste sur le téléphone, réessaie.' };
+  }
 };
 
 // --- Assistant de saisie (IA côté serveur) ---
