@@ -21,6 +21,7 @@ import aiRouter from './routes/ai.js';
 import enrichmentRouter from './routes/enrichment.js';
 import cocktailsRouter from './routes/cocktails.js';
 import importRouter from './routes/import.js';
+import quickAddRouter from './routes/quickAdd.js';
 
 const app = express();
 
@@ -81,5 +82,6 @@ app.use('/api', aiRouter);
 app.use('/api', enrichmentRouter);
 app.use('/api', cocktailsRouter);
 app.use('/api', importRouter);
+app.use('/api', quickAddRouter);
 
 export default app;
