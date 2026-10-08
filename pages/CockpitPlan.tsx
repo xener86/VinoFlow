@@ -14,6 +14,7 @@ import { getPeakWindow } from '../utils/peakWindow';
 import { saveRack, updateRack, deleteRack, moveBottle, reorderRack, consumeSpecificBottle, giftBottle, deleteBottle, addBottleAtLocation, fillRackWithWine } from '../services/storageService';
 import { CellarWine, Bottle, Rack, BottleLocation } from '../types';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { useOpenBottleConfirm } from '../components/cockpit/openBottle';
 
 interface CockpitPlanProps {
   embedded?: boolean;
@@ -129,6 +130,7 @@ const Stepper: React.FC<{ value: number; onMinus: () => void; onPlus: () => void
 // ────────────────────────────────────────────
 export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) => {
   const confirmAction = useConfirm();
+  const confirmOpen = useOpenBottleConfirm();
   const toast = useToast();
   const { wines, refresh: refreshWines } = useWines();
   const { racks, refresh: refreshRacks } = useRacks();
@@ -312,8 +314,9 @@ export const CockpitPlan: React.FC<CockpitPlanProps> = ({ embedded = false }) =>
   const handleOpenBottle = async () => {
     if (!sheet) return;
     const { wine, bottle } = sheet.info;
-    if (!(await confirmAction({ title: `Ouvrir ${wine.name}${wine.vintage ? ' ' + wine.vintage : ''} ?`, message: 'Elle sera retirée du stock et notée dans le journal.', confirmLabel: 'Ouvrir' }))) return;
-    await act(() => consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage), 'Bouteille ouverte — santé !', 'La bouteille n’a pas pu être retirée du stock.', closeSheet,
+    const choice = await confirmOpen(`${wine.name}${wine.vintage ? ' ' + wine.vintage : ''}`);
+    if (!choice) return;
+    await act(() => consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage, choice.forDinner), 'Bouteille ouverte — santé !', 'La bouteille n’a pas pu être retirée du stock.', closeSheet,
       { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
   };
 

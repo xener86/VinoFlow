@@ -110,6 +110,7 @@ export interface JournalEntry {
   occasion?: string;
   note?: string;
   userId?: string;
+  forDinner?: boolean | null;
 }
 
 // Note de dégustation telle que renvoyée par /api/tasting-notes (table
@@ -287,3 +288,75 @@ export interface CsvImportPlan {
   planHash: string;
 }
 export interface CsvImportApplied { updated: number; peaks: number; pricedBottles: number; created: number; createdBottles: number }
+// ─── Notifications (alertes « à boire avant » + newsletter) ───
+export type NotificationChannel = 'gotify' | 'email';
+export type NewsletterFrequency = 'off' | 'weekly' | 'monthly';
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  gotifyEnabled: boolean;
+  gotifyUrl: string | null;
+  gotifyTokenSet: boolean;
+  alertsEnabled: boolean;
+  alertReady: boolean;
+  alertClosing: boolean;
+  alertPast: boolean;
+  horizonMonths: number;
+  newsletterFrequency: NewsletterFrequency;
+  newsletterWeekday: number;
+  newsletterHour: number;
+  newsletterAi: boolean;
+  lastNewsletterAt: string | null;
+}
+
+export interface NotificationLogEntry {
+  kind: 'alert' | 'newsletter' | 'test';
+  channel: NotificationChannel;
+  ok: boolean;
+  error: string | null;
+  summary: string | null;
+  sentAt: string;
+}
+
+export interface NotificationSettingsResponse extends NotificationSettings {
+  email: string;
+  mailConfigured: boolean;
+  aiConfigured: boolean;
+  recent: NotificationLogEntry[];
+}
+
+export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'gotifyTokenSet' | 'lastNewsletterAt'>> & {
+  gotifyToken?: string | null;
+};
+
+export interface NewsletterPreview { subject: string; html: string; markdown: string; }
+
+// ─── Passerelle MenuFlow ───
+export interface MenuflowStatus { configured: boolean; lastSyncAt: string | null; lastError: string | null; }
+export interface TonightWine { wineId: string; wine: string; vintage: number | null; reason?: string | null; location?: string | null; }
+export type TonightResponse =
+  | { configured: false }
+  | {
+      configured: true;
+      dinner: { date: string; title: string; verdicts: { author: string; rating: string }[] } | null;
+      suggested: TonightWine | null;
+      opened: TonightWine[];
+    };
+
+// ─── Valeur de la cave ───
+/** `value` est null tant qu'aucune bouteille en cave n'a de cote à cette date. */
+export interface CellarValuePoint { month: string; invested: number; value: number | null; estimatedPurchase: number; }
+export interface ValueMover { wineId: string; name: string; vintage: number | null; price: number; avgPurchase: number; gainPerBottle: number; gainTotal: number; }
+export interface CellarValue {
+  series: CellarValuePoint[];
+  today: { invested: number; estimatedPurchase: number; value: number; gain: number; gainPct: number | null };
+  coverage: { bottles: number; withPrice: number; withValuation: number };
+  movers: { up: ValueMover[]; down: ValueMover[] };
+}
+export interface ValuationSource { url: string; title: string; quote: string; price_eur: number; format_ml: number; status: 'verified' | 'not_found' | 'unreachable'; counted?: boolean; }
+export interface WineValuation {
+  id: number; wineId: string; valuedAt: string; priceEur: number; lowEur: number | null; highEur: number | null;
+  basis: 'EXACT' | 'AUTRE_MILLESIME' | 'USER'; basisVintage: number | null; sources: ValuationSource[]; engine: string | null; note: string | null;
+}
+export interface WineValuations { latest: WineValuation | null; history: WineValuation[]; status: 'OK' | 'NONE' | 'ERROR' | null; nextCheckAt: string | null; }
+export interface MissingPriceRow { wineId: string; name: string; cuvee: string | null; vintage: number | null; format: string | null; missing: number; suggestedPrice: number | null; }

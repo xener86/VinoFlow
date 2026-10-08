@@ -21,6 +21,9 @@ import aiRouter from './routes/ai.js';
 import enrichmentRouter from './routes/enrichment.js';
 import cocktailsRouter from './routes/cocktails.js';
 import importRouter from './routes/import.js';
+import notificationsRouter from './routes/notifications.js';
+import menuflowRouter from './routes/menuflow.js';
+import valuationRouter from './routes/valuation.js';
 
 const app = express();
 
@@ -61,6 +64,8 @@ app.use(
     '/api/ai/identify-wine',
     '/api/ai/enrich-spirit',
     '/api/ai/cocktail',
+    '/api/menuflow/tonight/resuggest',
+    '/api/wines/:id/valuations/refresh',
   ],
   aiLimiter
 );
@@ -82,5 +87,8 @@ app.use('/api', aiRouter);
 app.use('/api', enrichmentRouter);
 app.use('/api', cocktailsRouter);
 app.use('/api', importRouter);
+app.use('/api', notificationsRouter);
+app.use('/api', menuflowRouter);
+app.use('/api', valuationRouter);
 
 export default app;

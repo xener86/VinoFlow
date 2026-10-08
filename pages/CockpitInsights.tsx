@@ -1,20 +1,23 @@
 // Cockpit Insights — temporal view of the cellar.
-// 3 lenses: Garde (Gantt timeline), Inventaire (composition), Achats (spend / suggestions).
+// 4 lenses: Garde (Gantt timeline), Inventaire (composition), Achats (spend / suggestions),
+// Valeur (cote, investi, plus-value).
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ValueView } from '../components/cockpit/valuation/ValueView';
 import { useWines } from '../hooks/useWines';
 import { getPeakWindow } from '../utils/peakWindow';
 import { MonoLabel, Card, Badge } from '../components/cockpit/primitives';
 import { CellarWine, SensoryProfile } from '../types';
 import { FlavorRadar } from '../components/FlavorRadar';
 
-type Lens = 'GARDE' | 'INVENTAIRE' | 'ACHATS';
+type Lens = 'GARDE' | 'INVENTAIRE' | 'ACHATS' | 'VALEUR';
 
 const LENS_META: Record<Lens, { label: string; desc: string }> = {
   GARDE:      { label: 'Garde',      desc: 'Fenêtres de pic et urgences temporelles' },
   INVENTAIRE: { label: 'Inventaire', desc: 'Composition par couleur, région, millésime' },
   ACHATS:     { label: 'Achats',     desc: 'Dépense, rotation, flux entrée/sortie' },
+  VALEUR:     { label: 'Valeur',     desc: 'Cote, investi et plus-value latente' },
 };
 
 const NOW_YEAR = new Date().getFullYear();
@@ -28,7 +31,8 @@ interface CockpitInsightsProps {
 }
 
 export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = false }) => {
-  const [lens, setLens] = useState<Lens>('GARDE');
+  const [params] = useSearchParams();
+  const [lens, setLens] = useState<Lens>(() => (params.get('lens') === 'VALEUR' ? 'VALEUR' : 'GARDE'));
 
   return (
     <div>
@@ -43,7 +47,7 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
       {/* Lens picker (bg-white card style, matches insights-hifi.jsx) */}
       <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
         <div className="flex gap-1 bg-white border border-stone-200 rounded-md p-1">
-          {(['GARDE', 'INVENTAIRE', 'ACHATS'] as Lens[]).map(l => (
+          {(['GARDE', 'INVENTAIRE', 'ACHATS', 'VALEUR'] as Lens[]).map(l => (
             <button
               key={l}
               onClick={() => setLens(l)}
@@ -65,6 +69,7 @@ export const CockpitInsights: React.FC<CockpitInsightsProps> = ({ embedded = fal
       {lens === 'GARDE' && <GardeTimeline />}
       {lens === 'INVENTAIRE' && <InventoryView />}
       {lens === 'ACHATS' && <AchatsView />}
+      {lens === 'VALEUR' && <ValueView openCatchup={params.get('rattrapage') === '1'} />}
     </div>
   );
 };

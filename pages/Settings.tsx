@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
 import { Badge, Button, Card, EmptyState, Input, MonoLabel, Skeleton, WineLink } from '../components/cockpit/primitives';
+import { NotificationSettings } from '../components/cockpit/NotificationSettings';
 
 const PASSWORD_MIN_LENGTH = 10;
 
@@ -297,7 +298,7 @@ export const Settings: React.FC = () => {
       <div className="mb-5">
         <MonoLabel>VINOFLOW · RÉGLAGES</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Paramètres</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">Compte, intelligence artificielle, enrichissement et données</div>
+        <div className="text-[12px] text-stone-500 mt-0.5">Compte, notifications, intelligence artificielle, enrichissement et données</div>
       </div>
 
       <div className="space-y-4">
@@ -308,6 +309,15 @@ export const Settings: React.FC = () => {
           hint={<>Connecté en tant que <strong className="text-stone-800 break-all">{user?.email}</strong>. La cave est partagée par tous les comptes du foyer.</>}
         >
           <ChangePasswordForm />
+        </Section>
+
+        {/* ───── Notifications ───── */}
+        <Section
+          label="Notifications"
+          title="Alertes et newsletter"
+          hint="Propres à votre compte : chaque membre du foyer choisit ses canaux. Les alertes signalent un vin qui entre en apogée, dont la fenêtre se referme ou dont l'apogée est dépassée."
+        >
+          <NotificationSettings />
         </Section>
 
         {/* ───── IA ───── */}

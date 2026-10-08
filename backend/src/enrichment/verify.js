@@ -52,6 +52,17 @@ export const excerptMatches = (excerpt, pageText) => {
   return total > 0 && hits / total >= 0.85;
 };
 
+/**
+ * Variante stricte (passe « cote ») : l'extrait doit figurer tel quel après
+ * normalisation, borné aux mots — « 45 00 » ne correspond pas à « 145 00 », et
+ * une longue citation au montant modifié n'est pas acceptée.
+ */
+export const strictExcerptMatches = (excerpt, pageText) => {
+  const ex = normalizeText(excerpt);
+  if (!ex || ex.split(' ').length < 4) return false;
+  return ` ${normalizeText(pageText)} `.includes(` ${ex} `);
+};
+
 const defaultFetch = async (url) => {
   const res = await fetch(url, {
     redirect: 'follow',
@@ -71,7 +82,8 @@ const defaultFetch = async (url) => {
  * @param {Array<{url, excerpt}>} sources
  * @returns {Promise<Array<source & {check: 'verified'|'not_found'|'unreachable', domain}>>}
  */
-export const verifySources = async (sources, { fetchPage = defaultFetch } = {}) => {
+export const verifySources = async (sources, { fetchPage = defaultFetch, strict = false } = {}) => {
+  const matches = strict ? strictExcerptMatches : excerptMatches;
   const cache = new Map();
   return Promise.all(sources.map(async (source) => {
     let domain = null;
@@ -83,7 +95,7 @@ export const verifySources = async (sources, { fetchPage = defaultFetch } = {}) 
     try {
       if (!cache.has(source.url)) cache.set(source.url, fetchPage(source.url).then(htmlToText));
       const text = await cache.get(source.url);
-      return { ...source, domain, check: excerptMatches(source.excerpt, text) ? 'verified' : 'not_found' };
+      return { ...source, domain, check: matches(source.excerpt, text) ? 'verified' : 'not_found' };
     } catch {
       return { ...source, domain, check: 'unreachable' };
     }
