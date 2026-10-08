@@ -91,6 +91,9 @@ const TASK_DEFAULTS = {
     provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 1500, effort: 'low',
     fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
   },
+  // Cote d'un vin (repli API de la passe « cote », avec recherche web) ; moteur
+  // principal : Claude Code sur l'abonnement (valuation/service.js).
+  valuation: { provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 4000, effort: 'low' },
   embedding: { provider: 'gemini', model: MODELS.GEMINI_EMBEDDING },
 };
 

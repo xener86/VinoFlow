@@ -22,6 +22,7 @@ import { JournalEntry, Bottle } from '../types';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
 import { useOpenBottleConfirm } from '../components/cockpit/openBottle';
 import { ProvenancePanel, ProvenanceBadge } from '../components/cockpit/ProvenancePanel';
+import { WineValuationCard } from '../components/cockpit/valuation/WineValuationCard';
 
 const typeLabel = (type: string) => {
   switch (type) {
@@ -122,6 +123,10 @@ export const CockpitWineDetails: React.FC = () => {
 
   // Bottles by location
   const activeBottles = wine.bottles?.filter(b => !b.isConsumed) || [];
+  const pricedBottles = activeBottles.filter((b) => (b.purchasePrice ?? 0) > 0);
+  const avgPurchase = pricedBottles.length
+    ? pricedBottles.reduce((s, b) => s + (b.purchasePrice ?? 0), 0) / pricedBottles.length
+    : null;
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
@@ -288,6 +293,8 @@ export const CockpitWineDetails: React.FC = () => {
         </Card>
 
         {/* ───── Bouteilles & emplacements ───── */}
+        <WineValuationCard wineId={wine.id} avgPurchase={avgPurchase} className="col-span-12" />
+
         <Card id="bouteilles" className="col-span-12 lg:col-span-7 p-6 scroll-mt-20">
           <MonoLabel>◌ Bouteilles · {activeBottles.length}</MonoLabel>
           <h3 className="serif-it text-xl text-stone-900 mt-0.5 mb-3">Emplacements</h3>

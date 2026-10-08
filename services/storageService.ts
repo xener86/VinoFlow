@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -394,6 +394,38 @@ export const sendNewsletterNow = async (): Promise<{ results: { channel: Notific
   const response = await apiFetch(`${API_URL}/notifications/newsletter/send-now`, {
     method: 'POST', headers: getHeaders(), body: JSON.stringify({}),
   });
+  return handleResponse(response);
+};
+
+// --- VALEUR DE LA CAVE ---
+
+export const getCellarValue = async (months = 24): Promise<CellarValue> => {
+  const response = await apiFetch(`${API_URL}/cellar/value?months=${months}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getWineValuations = async (wineId: string): Promise<WineValuations> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveWineValuation = async (wineId: string, body: { priceEur: number; lowEur?: number | null; highEur?: number | null; note?: string | null }): Promise<WineValuation> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+  return handleResponse(response);
+};
+
+export const refreshWineValuation = async (wineId: string): Promise<{ queued: boolean; position: number }> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations/refresh`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+export const getMissingPrices = async (): Promise<MissingPriceRow[]> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveMissingPrices = async (items: { wineId: string; priceEur: number }[]): Promise<{ updated: number }> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(items) });
   return handleResponse(response);
 };
 
