@@ -61,6 +61,26 @@ jobs:
       - name: Build
         run: npm run build
 
+  mcp-server:
+    name: Serveur MCP — tests + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+      - name: Install deps
+        working-directory: mcp-server
+        run: npm ci
+      - name: Tests
+        working-directory: mcp-server
+        run: npm test
+      - name: Build
+        working-directory: mcp-server
+        run: npm run build
+
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest

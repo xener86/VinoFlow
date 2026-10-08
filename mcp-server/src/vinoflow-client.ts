@@ -63,11 +63,24 @@ async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
 
     if (!response.ok) {
         const text = await response.text();
+        // Express répond « Cannot POST /api/… » quand la route n'existe pas : backend
+        // plus ancien que ce serveur MCP.
+        if (response.status === 404 && /Cannot (GET|POST|PUT|PATCH|DELETE) /.test(text)) {
+            throw new Error(`Cette fonction n'est pas disponible sur ce serveur VinoFlow (mettre à jour le backend) : ${options?.method || 'GET'} ${path}`);
+        }
         throw new Error(`API ${response.status}: ${text}`);
     }
 
     if (response.status === 204) return null as T;
     return response.json();
+}
+
+/** Appel générique à l'API (corps sérialisé en JSON). */
+export async function apiRequest<T = any>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<T> {
+    return fetchJSON<T>(path, {
+        method,
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
 }
 
 // --- Types (mirroring frontend types) ---
@@ -205,15 +218,16 @@ export async function addWine(wine: Partial<Wine>, quantity: number = 1): Promis
         ...wine
     } as Wine;
 
-    await fetchJSON('/wines', { method: 'POST', body: JSON.stringify(newWine) });
+    // L'identifiant est attribué par le serveur (celui généré ici est ignoré) : on
+    // rattache les bouteilles au vin réellement créé.
+    const created = await fetchJSON<Wine>('/wines', { method: 'POST', body: JSON.stringify(newWine) });
+    const wineId = created?.id || newWine.id;
 
-    // Add bottles
     for (let i = 0; i < quantity; i++) {
         await fetchJSON('/bottles', {
             method: 'POST',
             body: JSON.stringify({
-                id: crypto.randomUUID(),
-                wineId: newWine.id,
+                wineId,
                 location: 'Non trié',
                 purchaseDate: new Date().toISOString(),
                 isConsumed: false,
@@ -222,7 +236,21 @@ export async function addWine(wine: Partial<Wine>, quantity: number = 1): Promis
         });
     }
 
-    return newWine.id;
+    if (quantity > 0) {
+        await fetchJSON('/history', {
+            method: 'POST',
+            body: JSON.stringify({
+                type: 'IN',
+                wineId,
+                wineName: newWine.name,
+                wineVintage: newWine.vintage,
+                quantity,
+                description: `Ajout de ${quantity} bouteille(s) (MCP)`,
+            })
+        });
+    }
+
+    return wineId;
 }
 
 export async function consumeBottle(wineId: string, bottleId?: string): Promise<boolean> {
@@ -236,6 +264,19 @@ export async function consumeBottle(wineId: string, bottleId?: string): Promise<
     await fetchJSON(`/bottles/${bottleId}`, {
         method: 'PUT',
         body: JSON.stringify({ isConsumed: true, consumedDate: new Date().toISOString() })
+    });
+    // Sortie au journal, comme l'app : bilans, newsletter et passerelle MenuFlow s'y fient.
+    const wine = await fetchJSON<Wine | null>(`/wines/${wineId}`).catch(() => null);
+    await fetchJSON('/history', {
+        method: 'POST',
+        body: JSON.stringify({
+            type: 'OUT',
+            wineId,
+            wineName: wine?.name || 'Vin inconnu',
+            wineVintage: wine?.vintage,
+            quantity: 1,
+            description: `Consommation - ${wine?.name || 'Vin'} ${wine?.vintage || ''}`.trim(),
+        })
     });
     return true;
 }
