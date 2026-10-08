@@ -1,5 +1,10 @@
 import express, { Router } from 'express';
-import { withTransaction } from '../db.js';
+import { pool, withTransaction } from '../db.js';
+import { parseCsv, CsvFormatError } from '../csvImport/parse.js';
+import { toPatches } from '../csvImport/rows.js';
+import { buildPlan } from '../csvImport/plan.js';
+import { loadCellar, applyPlan } from '../csvImport/apply.js';
+import { MAX_ROWS as MAX_CSV_ROWS } from '../csvImport/columns.js';
 
 const router = Router();
 
@@ -181,6 +186,41 @@ router.post('/import', importBodyParser, async (req, res) => {
     }
     console.error('Error importing backup:', error);
     res.status(500).json({ error: 'Failed to import backup' });
+  }
+});
+
+// ========== IMPORT CSV (aller-retour avec l'export) ==========
+//
+// { csv, dryRun: true }  → { plan } : aperçu, aucune écriture.
+// { csv, dryRun: false, planHash } → le plan est recalculé sur la cave actuelle ;
+// s'il diffère de l'aperçu (planHash) → 409, sinon application en une transaction.
+const MAX_CSV_BYTES = 2 * 1024 * 1024;
+export const csvBodyParser = express.json({ limit: '4mb' });
+
+router.post('/import/csv', csvBodyParser, async (req, res) => {
+  const { csv, dryRun, planHash } = req.body || {};
+  if (typeof csv !== 'string') return res.status(400).json({ error: 'Fichier CSV manquant.' });
+  if (Buffer.byteLength(csv, 'utf8') > MAX_CSV_BYTES) {
+    return res.status(413).json({ error: 'Fichier trop volumineux (2 Mo maximum).' });
+  }
+  try {
+    const table = parseCsv(csv);
+    if (table.rows.length > MAX_CSV_ROWS) return res.status(400).json({ error: `Trop de lignes (${MAX_CSV_ROWS} maximum).` });
+    const { patches, errors } = toPatches(table);
+
+    if (dryRun !== false) {
+      return res.json({ plan: buildPlan(patches, await loadCellar(pool), errors) });
+    }
+    const applied = await withTransaction(async (client) => {
+      const plan = buildPlan(patches, await loadCellar(client), errors);
+      return plan.planHash === planHash ? applyPlan(client, plan, req.user?.userId ?? null) : null;
+    });
+    if (!applied) return res.status(409).json({ error: 'La cave a changé depuis l’aperçu, relance-le.' });
+    return res.json({ applied });
+  } catch (error) {
+    if (error instanceof CsvFormatError) return res.status(400).json({ error: error.message });
+    console.error('CSV import error:', error);
+    return res.status(500).json({ error: 'L’import CSV a échoué ; rien n’a été modifié.' });
   }
 });
 

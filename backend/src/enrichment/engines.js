@@ -50,14 +50,16 @@ export class EnrichmentEngineError extends Error {}
  * Exécute `claude -p` et renvoie { data, searches, usage }.
  * @param {(args: string[], input: string, cwd: string) => Promise<{stdout, code}>} [runner] - injectable pour les tests
  */
-export const runClaudeCode = async (userPrompt, { runner = defaultRunner } = {}) => {
+export const runClaudeCode = async (userPrompt, {
+  runner = defaultRunner, schema = ENRICHMENT_SCHEMA, systemPrompt = SYSTEM_PROMPT, task = 'enrich-wine',
+} = {}) => {
   const model = enrichModel();
   const args = [
     '-p',
     '--model', model,
     '--output-format', 'json',
-    '--json-schema', JSON.stringify(ENRICHMENT_SCHEMA),
-    '--append-system-prompt', SYSTEM_PROMPT,
+    '--json-schema', JSON.stringify(schema),
+    '--append-system-prompt', systemPrompt,
     '--tools', 'WebSearch,WebFetch',
     '--allowedTools', 'WebSearch WebFetch',
     '--no-session-persistence',
@@ -86,10 +88,10 @@ export const runClaudeCode = async (userPrompt, { runner = defaultRunner } = {})
       webSearches: u.server_tool_use?.web_search_requests
         || Object.values(out.modelUsage || {}).reduce((n, m) => n + (m.webSearchRequests || 0), 0),
     };
-    logAiCall({ task: 'enrich-wine', provider: 'claude-code', model, ok: true, latencyMs: Date.now() - started, ...usage });
+    logAiCall({ task, provider: 'claude-code', model, ok: true, latencyMs: Date.now() - started, ...usage });
     return { data: out.structured_output, usage, engine: 'claude-code', model, equivalentCostUsd: out.total_cost_usd ?? null };
   } catch (error) {
-    logAiCall({ task: 'enrich-wine', provider: 'claude-code', model, ok: false, latencyMs: Date.now() - started, error: error.message });
+    logAiCall({ task, provider: 'claude-code', model, ok: false, latencyMs: Date.now() - started, error: error.message });
     throw error;
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true });
@@ -115,11 +117,11 @@ const defaultRunner = (args, input, cwd) => new Promise((resolve, reject) => {
 });
 
 /** Repli : Messages API avec l'outil serveur de recherche web. */
-export const runApi = async (userPrompt) => {
-  const result = await generateStructured('enrich-wine', {
-    system: SYSTEM_PROMPT,
+export const runApi = async (userPrompt, { schema = ENRICHMENT_SCHEMA, systemPrompt = SYSTEM_PROMPT, task = 'enrich-wine' } = {}) => {
+  const result = await generateStructured(task, {
+    system: systemPrompt,
     user: userPrompt,
-    schema: ENRICHMENT_SCHEMA,
+    schema,
     tools: [
       { type: 'web_search_20260209', name: 'web_search', max_uses: 8, blocked_domains: BLOCKED_DOMAINS },
       { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 6, blocked_domains: BLOCKED_DOMAINS },
@@ -128,6 +130,6 @@ export const runApi = async (userPrompt) => {
   return { data: result.data, usage: result.usage, engine: 'api', model: result.model, searchedSources: result.sources };
 };
 
-export const runEngine = (engine, userPrompt, options) => (engine === 'claude-code'
+export const runEngine = (engine, userPrompt, options = {}) => (engine === 'claude-code'
   ? runClaudeCode(userPrompt, options)
-  : runApi(userPrompt));
+  : runApi(userPrompt, options));

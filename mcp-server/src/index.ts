@@ -16,6 +16,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as client from './vinoflow-client.js';
+import { registerAll } from './tools/index.js';
 
 const server = new McpServer({
     name: 'vinoflow',
@@ -658,6 +659,10 @@ server.tool(
         }
     }
 );
+
+// --- Outils par domaine : bar, dégustations, écritures de cave, enrichissement,
+// valeur de la cave, accord du soir (src/tools/) ---
+registerAll(server);
 
 // --- Start Server ---
 async function main() {

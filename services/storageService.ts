@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
 import type { ReadOutcome } from '../utils/quickAddQueue';
 import { withTimeout } from '../utils/labelImage';
 import { customAuth, clearSession } from './customAuth';
@@ -396,6 +396,88 @@ export const getCellarBudget = async (months = 12) => {
   return handleResponse(response);
 };
 
+// --- MENUFLOW ---
+
+export const getMenuflowStatus = async (): Promise<MenuflowStatus> => {
+  const response = await apiFetch(`${API_URL}/menuflow/status`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getTonight = async ({ remote = true }: { remote?: boolean } = {}): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight${remote ? '' : '?remote=0'}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const resuggestTonight = async (): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight/resuggest`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+// --- NOTIFICATIONS ---
+
+export const getNotificationSettings = async (): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveNotificationSettings = async (patch: NotificationSettingsPatch): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, {
+    method: 'PUT', headers: getHeaders(), body: JSON.stringify(patch),
+  });
+  return handleResponse(response);
+};
+
+export const sendTestNotification = async (channel: NotificationChannel): Promise<{ channel: NotificationChannel; ok: boolean; error?: string }> => {
+  const response = await apiFetch(`${API_URL}/notifications/test`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({ channel }),
+  });
+  return handleResponse(response);
+};
+
+export const previewNewsletter = async (withAi = false): Promise<NewsletterPreview> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/preview${withAi ? '?ai=1' : ''}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const sendNewsletterNow = async (): Promise<{ results: { channel: NotificationChannel; ok: boolean; error?: string }[] }> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/send-now`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({}),
+  });
+  return handleResponse(response);
+};
+
+// --- VALEUR DE LA CAVE ---
+
+export const getCellarValue = async (months = 24): Promise<CellarValue> => {
+  const response = await apiFetch(`${API_URL}/cellar/value?months=${months}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getWineValuations = async (wineId: string): Promise<WineValuations> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveWineValuation = async (wineId: string, body: { priceEur: number; lowEur?: number | null; highEur?: number | null; note?: string | null }): Promise<WineValuation> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+  return handleResponse(response);
+};
+
+export const refreshWineValuation = async (wineId: string): Promise<{ queued: boolean; position: number }> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations/refresh`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+export const getMissingPrices = async (): Promise<MissingPriceRow[]> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveMissingPrices = async (items: { wineId: string; priceEur: number }[]): Promise<{ updated: number }> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(items) });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça
@@ -461,7 +543,8 @@ export const consumeSpecificBottle = async (
   wineId: string,
   bottleId: string,
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  forDinner: boolean | null = null
 ): Promise<void> => {
   const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
@@ -479,7 +562,8 @@ export const consumeSpecificBottle = async (
       wineName,
       wineVintage,
       quantity: 1,
-      description: `Consommation - ${wineName} ${wineVintage || ''}`
+      description: `Consommation - ${wineName} ${wineVintage || ''}`,
+      forDinner
   });
 };
 
@@ -969,3 +1053,24 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
     return { ok: false, error: "Serveur injoignable." };
   }
 };
+
+// ─── Import CSV (aller-retour avec l'export) ───
+// status 409 à l'application : la cave a changé depuis l'aperçu.
+export interface CsvImportResponse { ok: boolean; status: number; error?: string; plan?: CsvImportPlan; applied?: CsvImportApplied }
+
+const postCsvImport = async (body: object): Promise<CsvImportResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/import/csv`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}` };
+    return { ok: true, status: response.status, plan: data?.plan, applied: data?.applied };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable.' };
+  }
+};
+
+/** Aperçu : ce que l'import ferait, sans rien écrire. */
+export const previewCsvImport = (csv: string) => postCsvImport({ csv, dryRun: true });
+
+/** Application de l'aperçu identifié par planHash. */
+export const applyCsvImport = (csv: string, planHash: string) => postCsvImport({ csv, dryRun: false, planHash });

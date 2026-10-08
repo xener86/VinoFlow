@@ -22,6 +22,9 @@ import enrichmentRouter from './routes/enrichment.js';
 import cocktailsRouter from './routes/cocktails.js';
 import importRouter from './routes/import.js';
 import quickAddRouter from './routes/quickAdd.js';
+import notificationsRouter from './routes/notifications.js';
+import menuflowRouter from './routes/menuflow.js';
+import valuationRouter from './routes/valuation.js';
 
 const app = express();
 
@@ -32,10 +35,11 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 // HSTS : à poser sur le reverse proxy TLS (le backend ne voit que du HTTP).
 app.use(helmet({ strictTransportSecurity: false }));
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
-// POST /api/import (sauvegarde complète) a son propre parseur, plus large, monté
-// après l'authentification : un anonyme ne peut pas envoyer 25 Mo.
+// POST /api/import (sauvegarde) et /api/import/csv ont leur propre parseur, plus
+// large, monté après l'authentification : un anonyme ne peut pas envoyer 25 Mo.
 const jsonParser = express.json({ limit: '1mb' });
-app.use((req, res, next) => (req.path === '/api/import' ? next() : jsonParser(req, res, next)));
+const OWN_PARSER = new Set(['/api/import', '/api/import/csv']);
+app.use((req, res, next) => (OWN_PARSER.has(req.path) ? next() : jsonParser(req, res, next)));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -61,6 +65,8 @@ app.use(
     '/api/ai/identify-wine',
     '/api/ai/enrich-spirit',
     '/api/ai/cocktail',
+    '/api/menuflow/tonight/resuggest',
+    '/api/wines/:id/valuations/refresh',
   ],
   aiLimiter
 );
@@ -83,5 +89,8 @@ app.use('/api', enrichmentRouter);
 app.use('/api', cocktailsRouter);
 app.use('/api', importRouter);
 app.use('/api', quickAddRouter);
+app.use('/api', notificationsRouter);
+app.use('/api', menuflowRouter);
+app.use('/api', valuationRouter);
 
 export default app;
