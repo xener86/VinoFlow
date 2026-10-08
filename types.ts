@@ -274,6 +274,20 @@ export interface WineEnrichment {
   log: EnrichmentLogEntry[];
 }
 
+// ─── Import CSV (POST /api/import/csv) ───
+export interface CsvPeak { start: number; end: number }
+export interface CsvImportPlan {
+  updates: { line: number; wineId: string; label: string; changes: { field: string; before: unknown; after: unknown }[] }[];
+  peaks: { line: number; wineId: string; label: string; before: CsvPeak | null; after: CsvPeak | null }[];
+  prices: { line: number; wineId: string; label: string; price: number; bottleCount: number }[];
+  creates: { line: number; label: string; peak: CsvPeak | null; price: number | null; bottles: number }[];
+  unchanged: number;
+  errors: { line: number; message: string }[];
+  warnings: { line: number; message: string }[];
+  changeCount: number;
+  planHash: string;
+}
+export interface CsvImportApplied { updated: number; peaks: number; pricedBottles: number; created: number; createdBottles: number }
 // ─── Notifications (alertes « à boire avant » + newsletter) ───
 export type NotificationChannel = 'gotify' | 'email';
 export type NewsletterFrequency = 'off' | 'weekly' | 'monthly';

@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -1004,3 +1004,24 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
     return { ok: false, error: "Serveur injoignable." };
   }
 };
+
+// ─── Import CSV (aller-retour avec l'export) ───
+// status 409 à l'application : la cave a changé depuis l'aperçu.
+export interface CsvImportResponse { ok: boolean; status: number; error?: string; plan?: CsvImportPlan; applied?: CsvImportApplied }
+
+const postCsvImport = async (body: object): Promise<CsvImportResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/import/csv`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}` };
+    return { ok: true, status: response.status, plan: data?.plan, applied: data?.applied };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable.' };
+  }
+};
+
+/** Aperçu : ce que l'import ferait, sans rien écrire. */
+export const previewCsvImport = (csv: string) => postCsvImport({ csv, dryRun: true });
+
+/** Application de l'aperçu identifié par planHash. */
+export const applyCsvImport = (csv: string, planHash: string) => postCsvImport({ csv, dryRun: false, planHash });

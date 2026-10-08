@@ -34,10 +34,11 @@ app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 // HSTS : à poser sur le reverse proxy TLS (le backend ne voit que du HTTP).
 app.use(helmet({ strictTransportSecurity: false }));
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
-// POST /api/import (sauvegarde complète) a son propre parseur, plus large, monté
-// après l'authentification : un anonyme ne peut pas envoyer 25 Mo.
+// POST /api/import (sauvegarde) et /api/import/csv ont leur propre parseur, plus
+// large, monté après l'authentification : un anonyme ne peut pas envoyer 25 Mo.
 const jsonParser = express.json({ limit: '1mb' });
-app.use((req, res, next) => (req.path === '/api/import' ? next() : jsonParser(req, res, next)));
+const OWN_PARSER = new Set(['/api/import', '/api/import/csv']);
+app.use((req, res, next) => (OWN_PARSER.has(req.path) ? next() : jsonParser(req, res, next)));
 
 // Health check
 app.get('/health', (req, res) => {
