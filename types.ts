@@ -274,6 +274,22 @@ export interface WineEnrichment {
   log: EnrichmentLogEntry[];
 }
 
+// Lecture d'étiquette (POST /api/wines/extract-from-image, OCR_SCHEMA côté serveur).
+export interface OcrResult {
+  producer: string | null;
+  name: string | null;
+  cuvee: string | null;
+  vintage: number | null;
+  region: string | null;
+  appellation: string | null;
+  country: string | null;
+  type: WineType | null;
+  abv: number | null;
+  format: string | null;
+  grape_varieties: string[];
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  notes: string | null;
+}
 // ─── Import CSV (POST /api/import/csv) ───
 export interface CsvPeak { start: number; end: number }
 export interface CsvImportPlan {

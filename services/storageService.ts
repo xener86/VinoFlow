@@ -1,4 +1,6 @@
 import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
+import type { ReadOutcome } from '../utils/quickAddQueue';
+import { withTimeout } from '../utils/labelImage';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -232,6 +234,53 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
     body: JSON.stringify({ image: base64, mimeType }),
   });
   return handleResponse(response);
+};
+
+// Lecture d'étiquette pour la rafale : jamais d'exception, l'issue est décrite
+// (réseau, HTTP + Retry-After) pour que la file sache s'il faut réessayer.
+// Délai maximal d'une lecture : au-delà (réseau de salon qui ne répond plus), la
+// photo repasse en attente au lieu de bloquer toute la file.
+const READ_TIMEOUT_MS = 60_000;
+
+export const readLabel = (base64: string): Promise<ReadOutcome> => {
+  const controller = new AbortController();
+  return withTimeout(fetchLabel(base64, controller.signal), READ_TIMEOUT_MS, () => {
+    controller.abort();
+    return { kind: 'network' };
+  });
+};
+
+const fetchLabel = async (base64: string, signal: AbortSignal): Promise<ReadOutcome> => {
+  try {
+    const response = await apiFetch(`${API_URL}/wines/extract-from-image`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }), signal,
+    });
+    if (response.ok) return { kind: 'ok', ocr: await response.json() };
+    const data = await response.json().catch(() => null);
+    return { kind: 'http', status: response.status, retryAfter: Number(response.headers.get('Retry-After')) || null, message: data?.error || data?.msg };
+  } catch {
+    return { kind: 'network' };
+  }
+};
+
+export interface QuickAddResult {
+  batchId: string;
+  replay?: boolean; // rafale déjà enregistrée : réponse rejouée, rien de réécrit
+  summary: { winesCreated: number; bottlesAdded: number; wishlistAdded: number; tastingsAdded: number };
+  lines: { clientId: string; wineId: string | null; created: boolean }[];
+}
+export interface QuickAddResponse { ok: boolean; status: number; error?: string; lines?: { clientId: string; message: string }[]; result?: QuickAddResult }
+
+/** Enregistre une rafale (POST /api/quick-add). */
+export const saveQuickAdd = async (body: object): Promise<QuickAddResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/quick-add`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}`, lines: data?.lines };
+    return { ok: true, status: response.status, result: data };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable : la rafale reste sur le téléphone, réessaie.' };
+  }
 };
 
 // --- Assistant de saisie (IA côté serveur) ---
