@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { decodeCsvBytes } from './decodeCsv';
+import { decodeCsvBytes, fixCp1252 } from './decodeCsv';
+
+describe('fixCp1252', () => {
+  it('rétablit les caractères 0x80–0x9F quand le décodeur ne connaît que latin-1 (Node sans ICU complet)', () => {
+    expect(fixCp1252('12\u0080 \u0092 \u009c')).toBe('12€ ’ œ');
+    expect(fixCp1252('Rosé')).toBe('Rosé');
+  });
+});
 
 const bytes = (...b: number[]) => new Uint8Array(b).buffer;
 
