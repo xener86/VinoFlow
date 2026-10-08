@@ -110,6 +110,7 @@ export interface JournalEntry {
   occasion?: string;
   note?: string;
   userId?: string;
+  forDinner?: boolean | null;
 }
 
 // Note de dégustation telle que renvoyée par /api/tasting-notes (table
@@ -272,3 +273,58 @@ export interface WineEnrichment {
   queuePosition: number | null;
   log: EnrichmentLogEntry[];
 }
+
+// ─── Notifications (alertes « à boire avant » + newsletter) ───
+export type NotificationChannel = 'gotify' | 'email';
+export type NewsletterFrequency = 'off' | 'weekly' | 'monthly';
+
+export interface NotificationSettings {
+  emailEnabled: boolean;
+  gotifyEnabled: boolean;
+  gotifyUrl: string | null;
+  gotifyTokenSet: boolean;
+  alertsEnabled: boolean;
+  alertReady: boolean;
+  alertClosing: boolean;
+  alertPast: boolean;
+  horizonMonths: number;
+  newsletterFrequency: NewsletterFrequency;
+  newsletterWeekday: number;
+  newsletterHour: number;
+  newsletterAi: boolean;
+  lastNewsletterAt: string | null;
+}
+
+export interface NotificationLogEntry {
+  kind: 'alert' | 'newsletter' | 'test';
+  channel: NotificationChannel;
+  ok: boolean;
+  error: string | null;
+  summary: string | null;
+  sentAt: string;
+}
+
+export interface NotificationSettingsResponse extends NotificationSettings {
+  email: string;
+  mailConfigured: boolean;
+  aiConfigured: boolean;
+  recent: NotificationLogEntry[];
+}
+
+export type NotificationSettingsPatch = Partial<Omit<NotificationSettings, 'gotifyTokenSet' | 'lastNewsletterAt'>> & {
+  gotifyToken?: string | null;
+};
+
+export interface NewsletterPreview { subject: string; html: string; markdown: string; }
+
+// ─── Passerelle MenuFlow ───
+export interface MenuflowStatus { configured: boolean; lastSyncAt: string | null; lastError: string | null; }
+export interface TonightWine { wineId: string; wine: string; vintage: number | null; reason?: string | null; location?: string | null; }
+export type TonightResponse =
+  | { configured: false }
+  | {
+      configured: true;
+      dinner: { date: string; title: string; verdicts: { author: string; rating: string }[] } | null;
+      suggested: TonightWine | null;
+      opened: TonightWine[];
+    };

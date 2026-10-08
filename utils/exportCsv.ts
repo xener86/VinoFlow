@@ -26,7 +26,7 @@ export const exportWinesToCsv = (wines: CellarWine[], racks: Rack[]) => {
     const avgPrice = pricedBottles.length > 0
       ? pricedBottles.reduce((sum, b) => sum + (b.purchasePrice || 0), 0) / pricedBottles.length
       : '';
-    const peak = getPeakWindow(w.vintage, w.type);
+    const peak = getPeakWindow(w);
 
     return [
       w.name,

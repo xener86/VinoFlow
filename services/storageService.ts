@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -347,6 +347,56 @@ export const getCellarBudget = async (months = 12) => {
   return handleResponse(response);
 };
 
+// --- MENUFLOW ---
+
+export const getMenuflowStatus = async (): Promise<MenuflowStatus> => {
+  const response = await apiFetch(`${API_URL}/menuflow/status`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getTonight = async ({ remote = true }: { remote?: boolean } = {}): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight${remote ? '' : '?remote=0'}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const resuggestTonight = async (): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight/resuggest`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+// --- NOTIFICATIONS ---
+
+export const getNotificationSettings = async (): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveNotificationSettings = async (patch: NotificationSettingsPatch): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, {
+    method: 'PUT', headers: getHeaders(), body: JSON.stringify(patch),
+  });
+  return handleResponse(response);
+};
+
+export const sendTestNotification = async (channel: NotificationChannel): Promise<{ channel: NotificationChannel; ok: boolean; error?: string }> => {
+  const response = await apiFetch(`${API_URL}/notifications/test`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({ channel }),
+  });
+  return handleResponse(response);
+};
+
+export const previewNewsletter = async (withAi = false): Promise<NewsletterPreview> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/preview${withAi ? '?ai=1' : ''}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const sendNewsletterNow = async (): Promise<{ results: { channel: NotificationChannel; ok: boolean; error?: string }[] }> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/send-now`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({}),
+  });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça
@@ -412,7 +462,8 @@ export const consumeSpecificBottle = async (
   wineId: string,
   bottleId: string,
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  forDinner: boolean | null = null
 ): Promise<void> => {
   const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
@@ -430,7 +481,8 @@ export const consumeSpecificBottle = async (
       wineName,
       wineVintage,
       quantity: 1,
-      description: `Consommation - ${wineName} ${wineVintage || ''}`
+      description: `Consommation - ${wineName} ${wineVintage || ''}`,
+      forDinner
   });
 };
 

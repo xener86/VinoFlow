@@ -7,6 +7,7 @@ import { Sparkles, ArrowRight, Music, ChevronRight } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { useJournal } from '../hooks/useJournal';
+import { TonightCard } from '../components/cockpit/TonightCard';
 import { useWishlist } from '../hooks/useWishlist';
 import { useAuth } from '../contexts/AuthContext';
 import { getDrinkBeforeAlerts, getCellarBudget } from '../services/storageService';
@@ -180,6 +181,9 @@ export const CockpitDashboard: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* ───── Ce soir (MenuFlow) ───── */}
+      <TonightCard className="col-span-12" />
 
       {/* ───── 4 KPI tiles ───── */}
       <section className="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">

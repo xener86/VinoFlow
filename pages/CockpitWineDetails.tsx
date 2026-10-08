@@ -20,6 +20,7 @@ import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
 import { Card, MonoLabel, Button, Badge } from '../components/cockpit/primitives';
 import { JournalEntry, Bottle } from '../types';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
+import { useOpenBottleConfirm } from '../components/cockpit/openBottle';
 import { ProvenancePanel, ProvenanceBadge } from '../components/cockpit/ProvenancePanel';
 
 const typeLabel = (type: string) => {
@@ -49,6 +50,7 @@ export const CockpitWineDetails: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const confirmAction = useConfirm();
+  const confirmOpen = useOpenBottleConfirm();
   const { wines, loading: loadingWines, refresh: refreshWines } = useWines();
   const { notes: allTastingNotes, refresh: refreshNotes } = useTastingNotes();
   const { racks } = useRacks();
@@ -80,9 +82,10 @@ export const CockpitWineDetails: React.FC = () => {
 
   const handleConsume = async (bottle: Bottle) => {
     if (!wine) return;
-    if (!(await confirmAction({ title: `Ouvrir une bouteille de ${wine.name} ?`, message: 'Elle sera retirée du stock et notée dans le journal.', confirmLabel: 'Ouvrir' }))) return;
+    const choice = await confirmOpen(wine.name);
+    if (!choice) return;
     try {
-      await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage);
+      await consumeSpecificBottle(wine.id, bottle.id, wine.name, wine.vintage, choice.forDinner);
       toast.success('Bouteille ouverte — santé !', { label: 'Noter', onClick: () => navigate(`/tasting/${wine.id}`) });
     } catch {
       toast.error('La bouteille n’a pas pu être retirée du stock.');
