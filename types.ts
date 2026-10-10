@@ -272,3 +272,23 @@ export interface WineEnrichment {
   queuePosition: number | null;
   log: EnrichmentLogEntry[];
 }
+
+// ─── Partage public ───
+export interface PublicShareWine {
+  position: number; dish: string | null; name: string | null; cuvee: string | null; producer: string | null;
+  vintage: number | null; type: WineType | null; appellation: string | null; region: string | null; country: string | null;
+  grapeVarieties: string[]; sensoryDescription: string | null; aromaProfile: string[]; suggestedFoodPairings: string[];
+  tastings: { date: string | null; rating: number | null; comment: string | null }[];
+}
+export interface PublicShare { kind: 'WINE' | 'DINNER'; title: string | null; date: string | null; wines: PublicShareWine[] }
+export interface ShareLink { id: string; token: string; kind: 'WINE' | 'DINNER'; url: string; revokedAt?: string | null }
+export interface ShareSummary {
+  id: string; token: string; kind: 'WINE' | 'DINNER'; title: string | null; dinnerDate: string | null;
+  wineName: string | null; wineVintage: number | null; itemCount: number; createdAt: string;
+  revokedAt: string | null; viewCount: number; lastViewedAt: string | null;
+}
+export interface DinnerShareDetail {
+  id: string; token: string; title: string; dinnerDate: string | null; revokedAt: string | null;
+  items: { wineId: string; dish: string | null; name: string; producer: string | null; vintage: number | null }[];
+}
+export interface DinnerShareInput { title: string; date?: string | null; items: { wineId: string; dish?: string | null }[] }

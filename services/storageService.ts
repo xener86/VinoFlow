@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, PublicShare, ShareLink, ShareSummary, DinnerShareDetail, DinnerShareInput } from '../types';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -918,5 +918,35 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
   } catch (e) {
     console.error("Import failed", e);
     return { ok: false, error: "Serveur injoignable." };
+  }
+};
+
+// ─── Partage public ───
+const shareRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const response = await apiFetch(`${API_URL}${path}`, { ...init, headers: getHeaders() });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.error || `Erreur ${response.status}`);
+  return data as T;
+};
+
+export const listShares = () => shareRequest<ShareSummary[]>('/shares');
+export const getDinnerShare = (id: string) => shareRequest<DinnerShareDetail>(`/shares/${id}`);
+export const shareWine = (wineId: string) =>
+  shareRequest<ShareLink>('/shares', { method: 'POST', body: JSON.stringify({ kind: 'WINE', wineId }) });
+export const createDinnerShare = (body: DinnerShareInput) =>
+  shareRequest<ShareLink>('/shares', { method: 'POST', body: JSON.stringify({ kind: 'DINNER', ...body }) });
+export const updateDinnerShare = (id: string, body: DinnerShareInput) =>
+  shareRequest<ShareLink>(`/shares/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+export const revokeShare = (id: string) => shareRequest<ShareLink>(`/shares/${id}/revoke`, { method: 'POST' });
+
+/** Page publique : sans jeton ni déconnexion (fetch simple). */
+export const fetchPublicShare = async (token: string): Promise<{ status: 'ok'; share: PublicShare } | { status: 'gone' } | { status: 'error' }> => {
+  try {
+    const response = await fetch(`${API_URL}/public/shares/${encodeURIComponent(token)}`);
+    if (response.status === 404) return { status: 'gone' };
+    if (!response.ok) return { status: 'error' };
+    return { status: 'ok', share: await response.json() };
+  } catch {
+    return { status: 'error' };
   }
 };
