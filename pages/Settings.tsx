@@ -3,6 +3,7 @@ import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottle
 import { useAIConfig } from '../hooks/useAIConfig';
 import { AIConfig, Bottle } from '../types';
 import { exportWinesToCsv } from '../utils/exportCsv';
+import { SharedLinks } from '../components/cockpit/SharedLinks';
 import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
@@ -406,6 +407,11 @@ export const Settings: React.FC = () => {
               </div>
             )}
           </div>
+        </Section>
+
+        {/* ───── Partages ───── */}
+        <Section label="Partages" title="Liens partagés" hint="Fiches et cartes de dîner ouvertes sans compte par ceux qui ont le lien. Un lien révoqué ne fonctionne plus.">
+          <SharedLinks />
         </Section>
 
         {/* ───── Données ───── */}
