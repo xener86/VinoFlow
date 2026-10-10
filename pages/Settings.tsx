@@ -5,6 +5,7 @@ import { AIConfig, Bottle, CsvImportPlan } from '../types';
 import { CsvImportPreview } from '../components/cockpit/CsvImportPreview';
 import { exportWinesToCsv } from '../utils/exportCsv';
 import { decodeCsvBytes } from '../utils/decodeCsv';
+import { SharedLinks } from '../components/cockpit/SharedLinks';
 import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
 import { useAuth } from '../contexts/AuthContext';
@@ -460,6 +461,11 @@ export const Settings: React.FC = () => {
               </div>
             )}
           </div>
+        </Section>
+
+        {/* ───── Partages ───── */}
+        <Section label="Partages" title="Liens partagés" hint="Fiches et cartes de dîner ouvertes sans compte par ceux qui ont le lien. Un lien révoqué ne fonctionne plus.">
+          <SharedLinks />
         </Section>
 
         {/* ───── Données ───── */}

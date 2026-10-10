@@ -1,4 +1,4 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow, PublicShare, ShareLink, ShareSummary, DinnerShareDetail, DinnerShareInput } from '../types';
 import type { ReadOutcome } from '../utils/quickAddQueue';
 import { withTimeout } from '../utils/labelImage';
 import { customAuth, clearSession } from './customAuth';
@@ -1129,3 +1129,32 @@ export const previewCsvImport = (csv: string) => postCsvImport({ csv, dryRun: tr
 
 /** Application de l'aperçu identifié par planHash. */
 export const applyCsvImport = (csv: string, planHash: string) => postCsvImport({ csv, dryRun: false, planHash });
+// ─── Partage public ───
+const shareRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const response = await apiFetch(`${API_URL}${path}`, { ...init, headers: getHeaders() });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(data?.error || `Erreur ${response.status}`);
+  return data as T;
+};
+
+export const listShares = () => shareRequest<ShareSummary[]>('/shares');
+export const getDinnerShare = (id: string) => shareRequest<DinnerShareDetail>(`/shares/${id}`);
+export const shareWine = (wineId: string) =>
+  shareRequest<ShareLink>('/shares', { method: 'POST', body: JSON.stringify({ kind: 'WINE', wineId }) });
+export const createDinnerShare = (body: DinnerShareInput) =>
+  shareRequest<ShareLink>('/shares', { method: 'POST', body: JSON.stringify({ kind: 'DINNER', ...body }) });
+export const updateDinnerShare = (id: string, body: DinnerShareInput) =>
+  shareRequest<ShareLink>(`/shares/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+export const revokeShare = (id: string) => shareRequest<ShareLink>(`/shares/${id}/revoke`, { method: 'POST' });
+
+/** Page publique : sans jeton ni déconnexion (fetch simple). */
+export const fetchPublicShare = async (token: string): Promise<{ status: 'ok'; share: PublicShare } | { status: 'gone' } | { status: 'error' }> => {
+  try {
+    const response = await fetch(`${API_URL}/public/shares/${encodeURIComponent(token)}`);
+    if (response.status === 404) return { status: 'gone' };
+    if (!response.ok) return { status: 'error' };
+    return { status: 'ok', share: await response.json() };
+  } catch {
+    return { status: 'error' };
+  }
+};

@@ -2,7 +2,7 @@ import { rateLimit, ipKeyGenerator, MemoryStore } from 'express-rate-limit';
 
 // ========== Rate limiting ==========
 // Stores en mémoire explicites : remis à zéro entre deux tests (resetRateLimits).
-const stores = { auth: new MemoryStore(), refresh: new MemoryStore(), ai: new MemoryStore(), notify: new MemoryStore() };
+const stores = { auth: new MemoryStore(), refresh: new MemoryStore(), ai: new MemoryStore(), notify: new MemoryStore(), public: new MemoryStore() };
 export const resetRateLimits = () => Object.values(stores).forEach((store) => store.resetAll());
 
 const rateLimitHandler = (req, res, next, options) =>
@@ -53,4 +53,15 @@ export const notifyLimiter = rateLimit({
   store: stores.notify,
   keyGenerator: (req) => req.user?.userId || ipKeyGenerator(req.ip),
   handler: rateLimitHandler,
+});
+
+// Pages publiques des partages (sans compte) : par IP, contre l'énumération des jetons.
+export const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  store: stores.public,
+  handler: (req, res, next, options) =>
+    res.status(options.statusCode).json({ error: 'Trop de requêtes, réessaie dans quelques minutes.' }),
 });

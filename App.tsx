@@ -28,6 +28,8 @@ const EditWine           = lazy(() => import('./pages/EditWine').then(m => ({ de
 const Bar                = lazy(() => import('./pages/Bar').then(m => ({ default: m.Bar })));
 const SpiritDetails      = lazy(() => import('./pages/SpiritDetails').then(m => ({ default: m.SpiritDetails })));
 const EditSpirit         = lazy(() => import('./pages/EditSpirit').then(m => ({ default: m.EditSpirit })));
+const PublicShare        = lazy(() => import('./pages/PublicShare').then(m => ({ default: m.PublicShare })));
+const ShareDinner        = lazy(() => import('./pages/ShareDinner').then(m => ({ default: m.ShareDinner })));
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-64">
@@ -59,6 +61,8 @@ const AppRoutes: React.FC = () => {
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPassword /></Suspense>} />
+      {/* Partage public : sans compte, hors ProtectedRoute */}
+      <Route path="/p/:token" element={<Suspense fallback={<PageLoader />}><PublicShare /></Suspense>} />
 
       {/* Protected Routes with new Cockpit Layout */}
       <Route element={<ProtectedRoute><CockpitLayout /></ProtectedRoute>}>
@@ -86,6 +90,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/regions" element={<Suspense fallback={<PageLoader />}><RegionMap /></Suspense>} />
         <Route path="/insights" element={<Suspense fallback={<PageLoader />}><CockpitInsights /></Suspense>} />
         <Route path="/sommelier-tools" element={<Suspense fallback={<PageLoader />}><SommelierTools /></Suspense>} />
+        <Route path="/partages/diner" element={<Suspense fallback={<PageLoader />}><ShareDinner /></Suspense>} />
+        <Route path="/partages/diner/:id" element={<Suspense fallback={<PageLoader />}><ShareDinner /></Suspense>} />
       </Route>
 
       {/* Fallback */}
