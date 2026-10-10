@@ -24,7 +24,7 @@ Self-hosted wine cellar & bar app. Deployed with Docker Compose (db + backend + 
 - **Household cellar, not multi-tenant**: all accounts share the same data on purpose — don't add per-user filtering to cellar tables. Access control = who gets an account (`ALLOW_SIGNUP`, default false; first signup always allowed).
 - Auth: 15-min access JWT (`typ: 'access'`) + opaque refresh token hashed in `refresh_tokens` (rotation, family revocation on reuse). Front: `apiFetch` in `storageService.ts` refreshes once on 401 before logging out.
 - Rate limits (`express-rate-limit`) on `/api/auth/*` and costly AI routes; `trust proxy` = `TRUST_PROXY` (default 1, nginx).
-- Partage public : `/api/public/*` est la seule zone sans JWT (lecture seule, liste blanche `toPublicShare`, limiteur par IP). Toute nouvelle route publique doit passer par ce routeur et être justifiée.
+- Partage public : `/api/public/*` est la seule zone sans JWT (lecture seule, liste blanche `toPublicShare`, limiteur par IP). Toute nouvelle route publique doit passer par ce routeur et être justifiée. Le limiteur par IP suppose `TRUST_PROXY` juste (2 derrière nginx-proxy-manager, cas du NAS) : sinon tous les invités partagent un seul seau.
 - `backend/src/services/mailService.js` — Sweego client (`sendMail`, `renderMailHtml`); without `SWEEGO_API_KEY` it logs instead of sending.
 - `backup` compose service runs `scripts/backup.sh` (daily pg_dump → `./backups`).
 

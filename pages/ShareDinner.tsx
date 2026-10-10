@@ -1,7 +1,7 @@
 // Compositeur d'une carte des vins de dîner partagée : titre, date, vins de
 // la cave dans l'ordre de service, plat facultatif ; « Enregistrer et
 // partager » crée (ou modifie, même jeton) puis ouvre la feuille de partage.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowDown, ArrowUp, Copy, Loader2, Plus, Share2, X } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
@@ -28,23 +28,34 @@ export const ShareDinner: React.FC = () => {
   const [revoked, setRevoked] = useState(false);
   const [loadingShare, setLoadingShare] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
+  // Carte dont le formulaire reflète déjà l'état : après « Enregistrer » à la
+  // création, l'URL change d'id mais rien n'est à recharger (sinon la page
+  // clignote « Chargement… » au moment où le lien s'affiche).
+  const loadedId = useRef<string | null>(null);
 
   // Modification : charge la carte existante.
   useEffect(() => {
-    if (!id) return;
+    if (!id || loadedId.current === id) return;
     let cancelled = false;
     setLoadingShare(true);
     getShare(id)
       .then((share) => {
         if (cancelled) return;
+        // Introuvable (supprimée, id fantaisiste) ou lien de fiche vin : rien à composer ici.
+        if (share.kind !== 'DINNER') throw new Error('not a dinner');
+        loadedId.current = id;
         setTitle(share.title ?? '');
         setDate(share.dinnerDate ?? '');
         setItems(share.items.map((i) => ({ wineId: i.wineId, dish: i.dish ?? '' })));
         setToken(share.token);
         setRevoked(Boolean(share.revokedAt));
+        setLoadingShare(false);
       })
-      .catch(() => { if (!cancelled) toast.error('Carte introuvable.'); })
-      .finally(() => { if (!cancelled) setLoadingShare(false); });
+      .catch(() => {
+        if (cancelled) return;
+        toast.error('Carte introuvable.');
+        navigate('/settings', { replace: true });
+      });
     return () => { cancelled = true; };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -80,7 +91,10 @@ export const ShareDinner: React.FC = () => {
       const input = { title: title.trim(), date: date || null, items: items.map((i) => ({ wineId: i.wineId, dish: i.dish.trim() || null })) };
       const res = id ? await updateDinnerShare(id, input) : await createDinnerShare(input);
       setToken(res.token);
-      if (!id) navigate(`/partages/diner/${res.id}`, { replace: true });
+      if (!id) {
+        loadedId.current = res.id;
+        navigate(`/partages/diner/${res.id}`, { replace: true });
+      }
       await doShare(res.token);
     } catch (e) {
       toast.error(serverMessage(e, 'L’enregistrement a échoué.'));
