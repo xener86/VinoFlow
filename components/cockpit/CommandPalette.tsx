@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Sparkles, List, TrendingUp, Plus, Wine as WineIcon, Heart, BookOpen,
-  Globe, Settings as SettingsIcon, LayoutDashboard, Wand2, Martini, Map,
+  Globe, Settings as SettingsIcon, LayoutDashboard, Wand2, Martini, Map, UtensilsCrossed,
 } from 'lucide-react';
 import { useWines } from '../../hooks/useWines';
 
@@ -57,6 +57,7 @@ export const CommandPalette: React.FC<Props> = ({ open, onClose }) => {
     const fastActions: PaletteAction[] = [
       { id: 'act:add', label: 'Ajouter un vin', icon: Plus, group: 'actions', exec: () => navigate('/add-wine'), hint: 'Saisie libre + IA' },
       { id: 'act:taste', label: 'Noter une dégustation', icon: WineIcon, group: 'actions', exec: () => navigate('/tasting'), hint: 'Express en 40s' },
+      { id: 'act:dinner', label: 'Nouvelle carte de dîner', icon: UtensilsCrossed, group: 'actions', exec: () => navigate('/partages/diner'), hint: 'Lien public pour les invités' },
     ];
 
     const wineActions: PaletteAction[] = wines

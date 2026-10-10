@@ -21,6 +21,7 @@ const CockpitTasting     = lazy(() => import('./pages/CockpitTasting').then(m =>
 const SommelierTools     = lazy(() => import('./pages/SommelierTools').then(m => ({ default: m.SommelierTools })));
 const ResetPassword      = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const PublicShare        = lazy(() => import('./pages/PublicShare').then(m => ({ default: m.PublicShare })));
+const ShareDinner        = lazy(() => import('./pages/ShareDinner').then(m => ({ default: m.ShareDinner })));
 const Settings           = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Wishlist           = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
 const CockpitCellarJournal = lazy(() => import('./pages/CockpitCellarJournal').then(m => ({ default: m.CockpitCellarJournal })));
@@ -76,6 +77,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/cellar-map" element={<Navigate to="/plan" replace />} />
         <Route path="/analytics" element={<Navigate to="/insights" replace />} />
         <Route path="/settings" element={<Suspense fallback={<PageLoader />}><Settings /></Suspense>} />
+        <Route path="/partages/diner" element={<Suspense fallback={<PageLoader />}><ShareDinner /></Suspense>} />
+        <Route path="/partages/diner/:id" element={<Suspense fallback={<PageLoader />}><ShareDinner /></Suspense>} />
         <Route path="/sommelier" element={<Suspense fallback={<PageLoader />}><CockpitSommelier /></Suspense>} />
         <Route path="/bar" element={<Suspense fallback={<PageLoader />}><Bar /></Suspense>} />
         <Route path="/spirit/:id" element={<Suspense fallback={<PageLoader />}><SpiritDetails /></Suspense>} />
