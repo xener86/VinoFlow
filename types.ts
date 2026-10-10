@@ -376,3 +376,87 @@ export interface WineValuation {
 }
 export interface WineValuations { latest: WineValuation | null; history: WineValuation[]; status: 'OK' | 'NONE' | 'ERROR' | null; nextCheckAt: string | null; }
 export interface MissingPriceRow { wineId: string; name: string; cuvee: string | null; vintage: number | null; format: string | null; missing: number; suggestedPrice: number | null; }
+
+// ─── Partage public (liens /p/<jeton>) ───
+export type ShareKind = 'WINE' | 'DINNER';
+
+// Ligne de GET /api/shares (Réglages → Liens partagés).
+export interface ShareSummary {
+  id: string;
+  token: string;
+  kind: ShareKind;
+  title: string | null;
+  dinnerDate: string | null; // AAAA-MM-JJ
+  wineName: string | null;
+  wineVintage: number | null;
+  itemCount: number;
+  createdAt: string;
+  revokedAt: string | null;
+  viewCount: number;
+  lastViewedAt: string | null;
+}
+
+export interface ShareEditorItem {
+  wineId: string;
+  dish: string | null;
+  name: string;
+  producer: string | null;
+  vintage: number | null;
+}
+
+// GET /api/shares/:id — une carte pour le compositeur.
+export interface ShareEditor {
+  id: string;
+  token: string;
+  kind: ShareKind;
+  title: string | null;
+  dinnerDate: string | null;
+  revokedAt: string | null;
+  items: ShareEditorItem[];
+}
+
+// Réponse de création / modification : url = /p/<token> (relative).
+export interface ShareCreated {
+  id: string;
+  token: string;
+  kind: ShareKind;
+  url: string;
+}
+
+export interface DinnerShareInput {
+  title: string;
+  date: string | null; // AAAA-MM-JJ
+  items: { wineId: string; dish: string | null }[];
+}
+
+// Réponse de GET /api/public/shares/:token — liste blanche, rien d'autre.
+export interface PublicTasting {
+  date: string;
+  rating: number | null;
+  comment: string | null;
+}
+
+export interface PublicShareWine {
+  position: number;
+  dish: string | null;
+  name: string;
+  cuvee: string | null;
+  producer: string | null;
+  vintage: number | null;
+  type: WineType | null;
+  appellation: string | null;
+  region: string | null;
+  country: string | null;
+  grapeVarieties: string[];
+  sensoryDescription: string | null;
+  aromaProfile: string[];
+  suggestedFoodPairings: string[];
+  tastings: PublicTasting[];
+}
+
+export interface PublicShare {
+  kind: ShareKind;
+  title: string | null;
+  date: string | null;
+  wines: PublicShareWine[];
+}
