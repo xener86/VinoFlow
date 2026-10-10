@@ -5,11 +5,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
-import { getDrinkBeforeAlerts } from '../services/storageService';
+import { getDrinkBeforeAlerts, listSommelierConversations, deleteSommelierConversation, SommelierConversationSummary } from '../services/storageService';
 import { SommelierV2 } from '../components/SommelierV2';
 import { MonoLabel, Card, Tabs } from '../components/cockpit/primitives';
+import { useConfirm, useToast } from '../components/cockpit/feedback';
 import { SOMMELIER_TOOLS, SommelierToolKey, SommelierToolPanel, isSommelierToolKey } from './SommelierTools';
 
 type TabKey = 'accord' | SommelierToolKey;
@@ -24,6 +25,16 @@ interface ProactivePrompt {
   q: string;
   show: () => boolean;
 }
+
+// « aujourd'hui », « hier », « il y a N j », sinon date courte
+const relativeDay = (iso: string) => {
+  const d = new Date(iso);
+  const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return 'hier';
+  if (days < 7) return `il y a ${days} j`;
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+};
 
 const formatNow = () => {
   const days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -40,12 +51,37 @@ export const CockpitSommelier: React.FC = () => {
   const { wines } = useWines();
   const [drinkBefore, setDrinkBefore] = useState<any[]>([]);
   const [now, setNow] = useState(formatNow());
+  const [conversations, setConversations] = useState<SommelierConversationSummary[]>([]);
+  const confirm = useConfirm();
+  const toast = useToast();
+  const discussionId = searchParams.get('discussion') || undefined;
+
+  const refreshConversations = () =>
+    listSommelierConversations(5).then(r => setConversations(r?.conversations || [])).catch(() => {});
 
   useEffect(() => {
     getDrinkBeforeAlerts(2).then(r => setDrinkBefore(r?.alerts || [])).catch(() => {});
+    refreshConversations();
     const t = setInterval(() => setNow(formatNow()), 60000);
     return () => clearInterval(t);
   }, []);
+
+  const handleDeleteConversation = async (c: SommelierConversationSummary) => {
+    const ok = await confirm({
+      title: 'Supprimer cette discussion ?',
+      message: `« ${c.dish} » et ses ${c.messageCount} messages seront effacés.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await deleteSommelierConversation(c.id);
+      setConversations(list => list.filter(x => x.id !== c.id));
+      if (discussionId === c.id) setSearchParams({});
+    } catch (e: any) {
+      toast.error(`Suppression impossible : ${e.message || 'erreur'}`);
+    }
+  };
 
   const totalBottles = wines.reduce((s, w) => s + (w.inventoryCount || 0), 0);
   const inPeak = drinkBefore.filter(a => a.peak?.status === 'À Boire').length;
@@ -112,7 +148,7 @@ export const CockpitSommelier: React.FC = () => {
           {/* ───── Main pane: Sommelier V2 (en premier sur mobile) ───── */}
           <main className="col-span-12 lg:col-span-9 lg:order-2 min-w-0">
             <Card className="p-4 md:p-6">
-              <SommelierV2 inventory={wines} initialDish={initialDish} key={initialDish} />
+              <SommelierV2 inventory={wines} initialDish={initialDish} initialConversationId={discussionId} key={`${initialDish}|${discussionId || ''}`} />
             </Card>
           </main>
 
@@ -145,6 +181,36 @@ export const CockpitSommelier: React.FC = () => {
                 ))}
               </div>
             </Card>
+
+            {conversations.length > 0 && (
+              <Card className="p-4">
+                <MonoLabel>◌ Discussions récentes</MonoLabel>
+                <ul className="mt-3 space-y-1">
+                  {conversations.map(c => (
+                    <li key={c.id} className="flex items-start gap-1 group">
+                      <Link
+                        to={`/sommelier?discussion=${c.id}`}
+                        className={`flex-1 min-w-0 text-left p-2 rounded hover:bg-stone-50 transition ${discussionId === c.id ? 'bg-stone-50' : ''}`}
+                      >
+                        <div className="mono text-[9px] tracking-widest text-stone-500 group-hover:text-wine-700 uppercase mb-0.5">
+                          {relativeDay(c.updatedAt)} · {c.messageCount} msg
+                        </div>
+                        <div className="text-[12.5px] text-stone-800 leading-snug truncate">{c.dish}</div>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteConversation(c)}
+                        aria-label="Supprimer la discussion"
+                        title="Supprimer"
+                        className="h-9 w-9 md:h-7 md:w-7 shrink-0 inline-flex items-center justify-center rounded text-stone-400 hover:text-wine-700 hover:bg-stone-100"
+                      >
+                        <X size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
 
             <Card className="p-4">
               <MonoLabel>◌ Modes avancés</MonoLabel>
