@@ -179,6 +179,20 @@ export const ShareDinner: React.FC = () => {
         )}
       </Card>
 
+      {token && (
+        <Card className="p-4 md:p-5 mb-4">
+          <MonoLabel>◌ Lien public</MonoLabel>
+          {/* Lisible et sélectionnable : repli si la feuille de partage et le presse-papiers sont indisponibles. */}
+          <input
+            readOnly
+            value={shareUrl(token)}
+            onFocus={(e) => e.currentTarget.select()}
+            aria-label="Lien public de la carte"
+            className="mt-2 w-full rounded-md border border-stone-200 bg-stone-50 px-2.5 py-1.5 text-sm mono text-stone-700"
+          />
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-2">
         <Button onClick={save} disabled={saving || revoked}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
