@@ -12,6 +12,7 @@ import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '.
 import { useToast, useConfirm } from '../components/cockpit/feedback';
 import { Badge, Button, Card, EmptyState, Input, MonoLabel, Skeleton, WineLink } from '../components/cockpit/primitives';
 import { NotificationSettings } from '../components/cockpit/NotificationSettings';
+import { SharedLinksSection } from '../components/cockpit/SharedLinksSection';
 
 const PASSWORD_MIN_LENGTH = 10;
 
@@ -298,7 +299,7 @@ export const Settings: React.FC = () => {
       <div className="mb-5">
         <MonoLabel>VINOFLOW · RÉGLAGES</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Paramètres</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">Compte, notifications, intelligence artificielle, enrichissement et données</div>
+        <div className="text-[12px] text-stone-500 mt-0.5">Compte, notifications, intelligence artificielle, enrichissement, partage et données</div>
       </div>
 
       <div className="space-y-4">
@@ -460,6 +461,15 @@ export const Settings: React.FC = () => {
               </div>
             )}
           </div>
+        </Section>
+
+        {/* ───── Liens partagés ───── */}
+        <Section
+          label="Partage"
+          title="Liens partagés"
+          hint="Liens publics vers une fiche vin ou la carte des vins d’un dîner : ouverts sans compte, montrent l’état actuel (description, notes de dégustation), jamais les prix ni le stock. Révoquer est définitif."
+        >
+          <SharedLinksSection />
         </Section>
 
         {/* ───── Données ───── */}
