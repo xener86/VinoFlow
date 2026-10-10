@@ -61,6 +61,13 @@ export const PICKS_SCHEMA = obj({
   alternatives: arr(obj({ wine_id: str, reason: str })),
 });
 
+// Discussion avec le sommelier (sommelier/chat.js)
+export const CHAT_REPLY_SCHEMA = obj({
+  reply: str,
+  wine_ids: arr(str),
+  revised_dish: nullable(str),
+});
+
 const review = nullable(obj({
   pertinence: int,
   credibility: int,

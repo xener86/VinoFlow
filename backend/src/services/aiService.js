@@ -86,6 +86,12 @@ const TASK_DEFAULTS = {
     provider: 'claude', model: MODELS.CLAUDE_HAIKU, maxTokens: 2048,
     fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
   },
+  // Discussion avec le sommelier après un accord (sommelier/chat.js) ; moteur
+  // Claude Code en option (SOMMELIER_CHAT_ENGINE).
+  'sommelier-chat': {
+    provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 3000, effort: 'low',
+    fallback: { provider: 'gemini', model: MODELS.GEMINI_FLASH },
+  },
   // Newsletter : « mot du sommelier » à partir des vins en cave (1 appel par envoi).
   newsletter: {
     provider: 'claude', model: MODELS.CLAUDE_SONNET, maxTokens: 1500, effort: 'low',
