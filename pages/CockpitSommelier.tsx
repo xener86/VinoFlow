@@ -148,7 +148,13 @@ export const CockpitSommelier: React.FC = () => {
           {/* ───── Main pane: Sommelier V2 (en premier sur mobile) ───── */}
           <main className="col-span-12 lg:col-span-9 lg:order-2 min-w-0">
             <Card className="p-4 md:p-6">
-              <SommelierV2 inventory={wines} initialDish={initialDish} initialConversationId={discussionId} key={`${initialDish}|${discussionId || ''}`} />
+              <SommelierV2
+                inventory={wines}
+                initialDish={initialDish}
+                initialConversationId={discussionId}
+                onConversationCreated={refreshConversations}
+                key={`${initialDish}|${discussionId || ''}`}
+              />
             </Card>
           </main>
 

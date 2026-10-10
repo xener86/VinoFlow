@@ -48,29 +48,37 @@ export const deleteConversation = async (userId, id) =>
   (await pool.query('DELETE FROM sommelier_conversations WHERE id = $1 AND user_id = $2', [id, userId])).rowCount > 0;
 
 /**
- * Un tour : crée la conversation si besoin, enregistre question + réponse en
- * une transaction (rien n'est conservé si `answer` échoue). null si la
+ * Un tour : lit la conversation (ou prépare la nouvelle), appelle le moteur
+ * HORS transaction (plusieurs secondes : on ne retient pas de connexion du
+ * pool), puis enregistre conversation éventuelle + question + réponse en une
+ * courte transaction. Rien n'est conservé si `answer` échoue. null si la
  * conversation n'existe pas pour ce compte.
  */
-export const runTurn = async ({ userId, conversationId, dish, pairing, message, answer }) => withTransaction(async (db) => {
+export const runTurn = async ({ userId, conversationId, dish, pairing, message, answer }) => {
   let conv;
   if (conversationId) {
-    conv = await getConversation(userId, conversationId, db);
+    conv = await getConversation(userId, conversationId);
     if (!conv) return null;
   } else {
-    const ins = await db.query(
-      'INSERT INTO sommelier_conversations (user_id, dish, pairing) VALUES ($1, $2, $3) RETURNING *',
-      [userId, dish, JSON.stringify(compactPairing(pairing))]
-    );
-    conv = { ...ins.rows[0], messages: [] };
+    conv = { id: null, dish, pairing: compactPairing(pairing), messages: [] };
   }
   const reply = await answer({ dish: conv.dish, pairing: conv.pairing, messages: conv.messages, question: message });
-  await db.query('INSERT INTO sommelier_messages (conversation_id, role, content) VALUES ($1, $2, $3)', [conv.id, 'user', message]);
-  const saved = await db.query(
-    `INSERT INTO sommelier_messages (conversation_id, role, content, wine_ids, revised_dish, engine)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [conv.id, 'assistant', reply.reply, JSON.stringify(reply.wineIds || []), reply.revisedDish ?? null, reply.engine ?? null]
-  );
-  await db.query('UPDATE sommelier_conversations SET updated_at = now() WHERE id = $1', [conv.id]);
-  return { conversationId: conv.id, message: rowMessage(saved.rows[0]) };
-});
+  return withTransaction(async (db) => {
+    let id = conv.id;
+    if (!id) {
+      const ins = await db.query(
+        'INSERT INTO sommelier_conversations (user_id, dish, pairing) VALUES ($1, $2, $3) RETURNING id',
+        [userId, conv.dish, JSON.stringify(conv.pairing)]
+      );
+      id = ins.rows[0].id;
+    }
+    await db.query('INSERT INTO sommelier_messages (conversation_id, role, content) VALUES ($1, $2, $3)', [id, 'user', message]);
+    const saved = await db.query(
+      `INSERT INTO sommelier_messages (conversation_id, role, content, wine_ids, revised_dish, engine)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [id, 'assistant', reply.reply, JSON.stringify(reply.wineIds || []), reply.revisedDish ?? null, reply.engine ?? null]
+    );
+    await db.query('UPDATE sommelier_conversations SET updated_at = now() WHERE id = $1', [id]);
+    return { conversationId: id, message: rowMessage(saved.rows[0]) };
+  });
+};

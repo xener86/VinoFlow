@@ -77,7 +77,7 @@ describe('answerQuestion', () => {
     engines.claudeCodeAvailable.mockReturnValue(true);
     engines.runClaudeCode.mockResolvedValue({ data: { reply: 'r', wine_ids: ['w1', 'w2'], revised_dish: null } });
     const r = await answerQuestion({ dish: 'd', pairing, inventory, messages: [], question: 'q' });
-    expect(engines.runClaudeCode).toHaveBeenCalledWith(expect.stringContaining('Utilisateur : q'), expect.objectContaining({ task: 'sommelier-chat', schema: expect.any(Object), systemPrompt: expect.any(String) }));
+    expect(engines.runClaudeCode).toHaveBeenCalledWith(expect.stringContaining('Utilisateur : q'), expect.objectContaining({ task: 'sommelier-chat', schema: expect.any(Object), systemPrompt: expect.any(String), timeoutMs: 50_000 }));
     expect(r).toEqual({ reply: 'r', wineIds: ['w1'], revisedDish: null, engine: 'claude-code' });
     expect(ai.generateStructured).not.toHaveBeenCalled();
   });
