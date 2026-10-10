@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Commits et textes d'interface en français ; pas de classes `dark:`.
-- Migration `013_shares.sql` (012 pris par l'ajout rapide), idempotente, **sans** `BEGIN`/`COMMIT`.
+- Migration `014_shares.sql` (012 pris par l'ajout rapide, 013 par les discussions sommelier), idempotente, **sans** `BEGIN`/`COMMIT`.
 - Jeton : `crypto.randomBytes(32).toString('base64url')` (43 caractères, `^[A-Za-z0-9_-]{43}$`).
 - Route publique : `GET /api/public/shares/:token`, montée **avant** `authenticate`, limiteur `publicLimiter` 120 requêtes / 15 min / IP, en-têtes `X-Robots-Tag: noindex, nofollow` et `Cache-Control: no-store`. Jeton inconnu, mal formé ou révoqué → **404** `{ error: 'Ce lien n’est plus actif.' }` (réponse identique).
 - Liste blanche publique, par vin : `position, dish, name, cuvee, producer, vintage, type, appellation, region, country, grapeVarieties, sensoryDescription, aromaProfile, suggestedFoodPairings, tastings[{ date, rating, comment }]`. Jamais : prix, cote, bouteilles, emplacements, stock, apogée, identifiants internes (`id`, `wineId`), occasion ni convives.
@@ -44,7 +44,7 @@ puis `cd backend && TEST_DATABASE_URL=postgresql://vinoflow:vinoflow@localhost:5
 
 | Fichier | Rôle |
 |---|---|
-| `db/migrations/013_shares.sql` | tables `shares`, `share_items` |
+| `db/migrations/014_shares.sql` | tables `shares`, `share_items` |
 | `backend/src/shares/token.js` | `newShareToken`, `isShareToken` |
 | `backend/src/shares/validate.js` | `ShareError`, `isUuid`, `validateDinner` |
 | `backend/src/shares/publicView.js` | `tastingComment`, `publicTastings`, `toPublicShare` (liste blanche) |
@@ -65,10 +65,10 @@ puis `cd backend && TEST_DATABASE_URL=postgresql://vinoflow:vinoflow@localhost:5
 
 ---
 
-### Task 1: Migration 013 (tables `shares`, `share_items`)
+### Task 1: Migration 014 (tables `shares`, `share_items`)
 
 **Files:**
-- Create: `db/migrations/013_shares.sql`
+- Create: `db/migrations/014_shares.sql`
 - Modify: `backend/tests/api/migrations.test.js` (nouveau cas), `backend/tests/api/helpers.js:12-16` (TRUNCATE)
 
 **Interfaces:**
@@ -79,7 +79,7 @@ puis `cd backend && TEST_DATABASE_URL=postgresql://vinoflow:vinoflow@localhost:5
 Dans `backend/tests/api/migrations.test.js`, après le cas `011 :` :
 
 ```js
-  it('013 : shares et share_items, cascade depuis wines', async () => {
+  it('014 : shares et share_items, cascade depuis wines', async () => {
     const { rows } = await pool.query(`SELECT table_name FROM information_schema.tables
       WHERE table_schema = 'public' AND table_name IN ('shares', 'share_items') ORDER BY table_name`);
     expect(rows.map((r) => r.table_name)).toEqual(['share_items', 'shares']);
@@ -104,7 +104,7 @@ Expected: FAIL (`['share_items','shares']` attendu, `[]` reçu).
 
 - [ ] **Step 3: Écrire la migration**
 
-`db/migrations/013_shares.sql` :
+`db/migrations/014_shares.sql` :
 
 ```sql
 -- Partage public : lien vers une fiche vin (kind = WINE) ou vers la carte des
@@ -146,8 +146,8 @@ Expected: PASS (le `globalSetup` reconstruit la base avec le runner).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add db/migrations/013_shares.sql backend/tests/api/migrations.test.js backend/tests/api/helpers.js
-git commit -m "Partage public : migration 013 (shares, share_items)"
+git add db/migrations/014_shares.sql backend/tests/api/migrations.test.js backend/tests/api/helpers.js
+git commit -m "Partage public : migration 014 (shares, share_items)"
 ```
 
 ---
@@ -2135,7 +2135,7 @@ git push -u origin claude/sharp-diffie-725ced
 gh pr create --base main --title "Partage public : fiche vin et carte des vins d'un dîner" --body-file <(cat <<'EOF'
 ## Résumé
 - Lien public `/p/<jeton>` (sans compte, non indexé) vers une **fiche vin** ou la **carte des vins d'un dîner** composée à la main (titre, date, vins dans l'ordre, plat facultatif).
-- Serveur : migration `013_shares.sql` ; routes authentifiées `/api/shares*` (créer / lister / modifier / révoquer) ; **une seule** route publique `GET /api/public/shares/:token` (lecture seule, 120 req / 15 min / IP, 404 indistinct, `X-Robots-Tag`), réponse construite par `toPublicShare` à **liste blanche** (jamais prix, cote, bouteilles, emplacements, stock, apogée, identifiants, occasion, convives).
+- Serveur : migration `014_shares.sql` ; routes authentifiées `/api/shares*` (créer / lister / modifier / révoquer) ; **une seule** route publique `GET /api/public/shares/:token` (lecture seule, 120 req / 15 min / IP, 404 indistinct, `X-Robots-Tag`), réponse construite par `toPublicShare` à **liste blanche** (jamais prix, cote, bouteilles, emplacements, stock, apogée, identifiants, occasion, convives).
 - Front : page publique autonome, compositeur `/partages/diner`, boutons « Partager » / « Carte de dîner » sur la fiche vin, section « Liens partagés » (copier, modifier, révoquer, compteur d'ouvertures) dans Réglages, action dans la palette.
 - Spec : `docs/superpowers/specs/2026-10-07-partage-public-design.md` ; plan : `docs/superpowers/plans/2026-10-07-partage-public.md`.
 

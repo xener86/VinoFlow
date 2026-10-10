@@ -26,7 +26,7 @@ Partager par un **lien public** (sans compte) :
 
 ## 1. Données et serveur
 
-### Migration `013_shares.sql` (012 est pris par #18)
+### Migration `014_shares.sql` (012 est pris par #18, 013 par les discussions avec le sommelier)
 
 ```sql
 CREATE TABLE IF NOT EXISTS shares (
@@ -113,4 +113,4 @@ Construite par une fonction pure `toPublicShare(share, wines, tastings)` (`backe
 
 - Un lien transféré donne accès à cette carte seulement (principe du lien public) ; révocation et compteur d'ouvertures pour garder la main.
 - Aperçu du lien générique (accepté).
-- Numéro de migration 013 : à vérifier selon l'ordre de fusion de #14, #15, #18.
+- Numéro de migration : 014 (013 réservé par la branche des discussions avec le sommelier, en cours en parallèle).
