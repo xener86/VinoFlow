@@ -1,7 +1,8 @@
 # .gitignore - /volume3/docker/vinoflow/.gitignore
 
 # Dépendances
-node_modules/
+# Sans « / » final : couvre aussi un lien symbolique (worktrees)
+node_modules
 .pnp
 .pnp.js
 
