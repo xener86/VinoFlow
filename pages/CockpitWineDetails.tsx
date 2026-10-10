@@ -6,14 +6,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Loader2, Plus, Heart, Sparkles, ChefHat, MapPin,
-  Wine as WineIcon, Trash2, GlassWater,
+  Wine as WineIcon, Trash2, GlassWater, Share2, ListPlus,
 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { useRacks } from '../hooks/useRacks';
 import {
-  toggleFavorite, addBottles, consumeSpecificBottle, getWineHistory,
+  toggleFavorite, addBottles, consumeSpecificBottle, getWineHistory, shareWine,
 } from '../services/storageService';
+import { shareOrCopy } from '../utils/shareLink';
+import { absoluteUrl } from '../utils/shareView';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
@@ -65,6 +67,23 @@ export const CockpitWineDetails: React.FC = () => {
     if (!wine) return;
     await toggleFavorite(wine.id);
     refreshWines();
+  };
+
+  const [sharing, setSharing] = useState(false);
+  const handleShare = async () => {
+    if (!wine) return;
+    setSharing(true);
+    try {
+      const link = await shareWine(wine.id);
+      const url = absoluteUrl(link.url);
+      const result = await shareOrCopy({ title: [wine.name, wine.vintage].filter(Boolean).join(' '), url });
+      if (result === 'copied') toast.success('Lien copié');
+      else if (result === 'failed') toast.info(`Copie impossible : ${url}`);
+    } catch (e) {
+      toast.error(`Partage impossible : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
+    } finally {
+      setSharing(false);
+    }
   };
 
   const handleAddBottle = async () => {
@@ -205,6 +224,10 @@ export const CockpitWineDetails: React.FC = () => {
           )}
           <Link to={`/tasting/${wine.id}`} className="col-span-2 sm:col-span-1">
             <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
+          </Link>
+          <Button variant="outline" onClick={handleShare} disabled={sharing}><Share2 className="w-3.5 h-3.5" />Partager</Button>
+          <Link to={`/partages/diner?wine=${wine.id}`}>
+            <Button variant="outline" className="w-full"><ListPlus className="w-3.5 h-3.5" />Carte de dîner</Button>
           </Link>
         </div>
       </Card>
