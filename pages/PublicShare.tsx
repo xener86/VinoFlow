@@ -86,6 +86,11 @@ export const PublicShare: React.FC = () => {
                 {state.share.date && <div className="text-sm text-stone-500 mt-1">{frenchDate(state.share.date)}</div>}
               </header>
             )}
+            {state.share.wines.length === 0 && (
+              <div className="text-center text-stone-600 py-12 serif-it text-lg">
+                {state.share.kind === 'DINNER' ? 'Les vins de cette carte ne sont plus dans la cave.' : 'Ce vin n’est plus dans la cave.'}
+              </div>
+            )}
             <div className="space-y-3">
               {state.share.wines.map(w => <WineBlock key={w.position} wine={w} numbered={state.share.kind === 'DINNER'} />)}
             </div>
