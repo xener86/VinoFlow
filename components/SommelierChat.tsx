@@ -24,11 +24,12 @@ interface Props {
   openedCount: Record<string, number>;
   onOpenBottle: (wine: CellarWine) => void;
   onRevise: (dish: string) => void;   // relancer l'accord sur le plat reformulé
+  onConversationCreated?: () => void; // première réponse enregistrée (liste des discussions à rafraîchir)
 }
 
 const inStockBottles = (wine: CellarWine) => (wine.bottles || []).filter(b => !b.isConsumed);
 
-export const SommelierChat: React.FC<Props> = ({ dish, pairing, inventory, conversationId: initialId, initialMessages, openedCount, onOpenBottle, onRevise }) => {
+export const SommelierChat: React.FC<Props> = ({ dish, pairing, inventory, conversationId: initialId, initialMessages, openedCount, onOpenBottle, onRevise, onConversationCreated }) => {
   const [conversationId, setConversationId] = useState<string | undefined>(initialId);
   const [messages, setMessages] = useState<SommelierChatMessage[]>(initialMessages || []);
   const [draft, setDraft] = useState('');
@@ -56,6 +57,7 @@ export const SommelierChat: React.FC<Props> = ({ dish, pairing, inventory, conve
       const res = await sommelierChat(conversationId
         ? { conversationId, message: content }
         : { dish, pairing, message: content });
+      if (!conversationId) onConversationCreated?.();
       setConversationId(res.conversationId);
       setMessages(m => [...m.filter(x => x.id !== optimistic.id), { ...optimistic, id: `u-${res.message.id}` }, res.message]);
     } catch (e: any) {

@@ -9,6 +9,8 @@ import { CHAT_REPLY_SCHEMA } from './schemas.js';
 
 export const MAX_HISTORY = 12;
 export const MAX_MESSAGE_CHARS = 2000;
+// Claude Code : un tour doit tenir sous le délai du proxy (nginx : 60 s par défaut).
+export const CLAUDE_CODE_CHAT_TIMEOUT_MS = 50_000;
 const MAX_HISTORY_CHARS = 1500;
 
 const SYSTEM = `Vous êtes un sommelier français, chaleureux et précis, qui conseille à partir de la cave personnelle de l'utilisateur. Vous le vouvoyez.
@@ -80,7 +82,7 @@ export const answerQuestion = async (params) => {
   const inStock = params.inventory.filter((w) => (w.inventoryCount ?? 0) > 0);
   if (chatEngine() === 'claude-code') {
     try {
-      const { data } = await runClaudeCode(user, { schema: CHAT_REPLY_SCHEMA, systemPrompt: system, task: 'sommelier-chat' });
+      const { data } = await runClaudeCode(user, { schema: CHAT_REPLY_SCHEMA, systemPrompt: system, task: 'sommelier-chat', timeoutMs: CLAUDE_CODE_CHAT_TIMEOUT_MS });
       return { ...validateReply(data, inStock, params.dish), engine: 'claude-code' };
     } catch (error) {
       if (!isProviderConfigured('claude') && !isProviderConfigured('gemini')) throw error;

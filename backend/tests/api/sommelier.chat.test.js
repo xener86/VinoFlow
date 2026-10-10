@@ -63,7 +63,9 @@ describe.skipIf(!hasDb)('discussion avec le sommelier', () => {
     expect(login.status).toBe(200);
     const other = authed(login.body.access_token);
     expect((await other.get(`/api/sommelier/conversations/${id}`)).status).toBe(404);
+    answerQuestion.mockClear();
     expect((await other.post('/api/sommelier/chat', { conversationId: id, message: 'q' })).status).toBe(404);
+    expect(answerQuestion).not.toHaveBeenCalled();
     expect((await other.delete(`/api/sommelier/conversations/${id}`)).status).toBe(404);
     expect((await me.delete(`/api/sommelier/conversations/${id}`)).status).toBe(204);
     expect((await me.get(`/api/sommelier/conversations/${id}`)).status).toBe(404);

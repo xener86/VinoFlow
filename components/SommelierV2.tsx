@@ -39,6 +39,7 @@ interface Props {
   inventory: CellarWine[];
   initialDish?: string;     // Pre-fill the prompt and auto-run on mount (used by /?q=…)
   initialConversationId?: string; // Reprise d'une discussion enregistrée (/sommelier?discussion=…)
+  onConversationCreated?: () => void; // Une discussion vient d'être enregistrée (liste latérale à rafraîchir)
 }
 
 interface ChatState {
@@ -46,8 +47,10 @@ interface ChatState {
   messages: SommelierChatMessage[];
 }
 
-export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', initialConversationId }) => {
+export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', initialConversationId, onConversationCreated }) => {
   const [dish, setDish] = useState(initialDish);
+  // Plat pour lequel `result` a été calculé (le champ peut être modifié sans relancer l'accord).
+  const [pairedDish, setPairedDish] = useState(initialDish);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PairingResult | null>(null);
   // Discussion sous les résultats : remontée (clé) à chaque nouvel accord.
@@ -136,6 +139,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', init
       .then(c => {
         if (cancelled) return;
         setDish(c.dish);
+        setPairedDish(c.dish);
         setResult({
           criteria: { rationale: c.pairing?.rationale || null },
           candidates: [],
@@ -170,6 +174,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', init
     try {
       const res = await sommelierPair(query, {}, skipCache);
       setProgressStep(3);
+      setPairedDish(query);
       setResult(res);
       setChat(null);
       setChatKey(k => k + 1);
@@ -186,7 +191,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', init
     try {
       await sommelierFeedback({
         wineId,
-        dish,
+        dish: pairedDish,
         rating,
         category,
         criteria: result?.criteria,
@@ -366,7 +371,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', init
 
           <SommelierChat
             key={chatKey}
-            dish={dish}
+            dish={pairedDish}
             pairing={result}
             inventory={inventory}
             conversationId={chat?.conversationId}
@@ -374,6 +379,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', init
             openedCount={openedCount}
             onOpenBottle={handleOpenBottle}
             onRevise={(d) => handlePair(true, d)}
+            onConversationCreated={onConversationCreated}
           />
         </div>
       )}

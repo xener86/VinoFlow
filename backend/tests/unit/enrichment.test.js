@@ -204,6 +204,14 @@ describe('moteur Claude Code', () => {
     expect(args[args.indexOf('--append-system-prompt') + 1]).toBe('Prompt cote');
   });
 
+  it('timeoutMs transmis au runner (discussion : budget court, pas celui de l’enrichissement)', async () => {
+    const runner = vi.fn(async () => ({ code: 0, stdout: JSON.stringify({ is_error: false, structured_output: { ok: true }, usage: {} }) }));
+    await runClaudeCode('p', { runner, timeoutMs: 45_000 });
+    expect(runner.mock.calls[0][3]).toEqual({ timeoutMs: 45_000 });
+    await runClaudeCode('p', { runner });
+    expect(runner.mock.calls[1][3]).toEqual({ timeoutMs: 8 * 60 * 1000 });
+  });
+
   it('sans option : schéma et prompt de l’enrichissement (non-régression)', async () => {
     const runner = vi.fn(async () => ({ code: 0, stdout: JSON.stringify({ is_error: false, structured_output: { basis: 'EXACT' }, usage: {} }) }));
     await runClaudeCode('p', { runner });

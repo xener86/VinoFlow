@@ -51,10 +51,11 @@ export class EnrichmentEngineError extends Error {}
 
 /**
  * Exécute `claude -p` et renvoie { data, searches, usage }.
- * @param {(args: string[], input: string, cwd: string) => Promise<{stdout, code}>} [runner] - injectable pour les tests
+ * @param {(args: string[], input: string, cwd: string, opts: {timeoutMs: number}) => Promise<{stdout, code}>} [runner] - injectable pour les tests
+ * @param {number} [timeoutMs] - délai maximal (défaut : ENRICH_TIMEOUT_MS ; la discussion passe un budget court)
  */
 export const runClaudeCode = async (userPrompt, {
-  runner = defaultRunner, schema = ENRICHMENT_SCHEMA, systemPrompt = SYSTEM_PROMPT, task = 'enrich-wine',
+  runner = defaultRunner, schema = ENRICHMENT_SCHEMA, systemPrompt = SYSTEM_PROMPT, task = 'enrich-wine', timeoutMs = CLAUDE_CODE_TIMEOUT_MS,
 } = {}) => {
   const model = enrichModel();
   const args = [
@@ -71,7 +72,7 @@ export const runClaudeCode = async (userPrompt, {
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vinoflow-enrich-'));
   const started = Date.now();
   try {
-    const { stdout, code } = await runner(args, userPrompt, workDir);
+    const { stdout, code } = await runner(args, userPrompt, workDir, { timeoutMs });
     let out;
     try {
       out = JSON.parse(stdout);
@@ -101,14 +102,15 @@ export const runClaudeCode = async (userPrompt, {
   }
 };
 
-const defaultRunner = (args, input, cwd) => new Promise((resolve, reject) => {
+const defaultRunner = (args, input, cwd, { timeoutMs = CLAUDE_CODE_TIMEOUT_MS } = {}) => new Promise((resolve, reject) => {
   const child = spawn(CLAUDE_BIN, args, { cwd, env: process.env, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
   const timer = setTimeout(() => {
     child.kill('SIGTERM');
-    reject(new EnrichmentEngineError(`Claude Code n'a pas répondu en ${Math.round(CLAUDE_CODE_TIMEOUT_MS / 60000)} min`));
-  }, CLAUDE_CODE_TIMEOUT_MS);
+    const human = timeoutMs >= 60000 ? `${Math.round(timeoutMs / 60000)} min` : `${Math.round(timeoutMs / 1000)} s`;
+    reject(new EnrichmentEngineError(`Claude Code n'a pas répondu en ${human}`));
+  }, timeoutMs);
   child.stdout.on('data', (d) => { stdout += d; });
   child.stderr.on('data', (d) => { stderr += d; });
   child.on('error', (err) => { clearTimeout(timer); reject(new EnrichmentEngineError(`Claude Code introuvable : ${err.message}`)); });
