@@ -32,6 +32,15 @@ describe.skipIf(!hasDb)('runner de migrations', () => {
     expect(rows.map((r) => r.column_name)).toEqual(['valuation_next_check_at', 'valuation_status']);
   });
 
+  it('013 : shares et share_items, cascade depuis wines', async () => {
+    const { rows } = await pool.query(`SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name IN ('shares', 'share_items') ORDER BY table_name`);
+    expect(rows.map((r) => r.table_name)).toEqual(['share_items', 'shares']);
+    const fk = await pool.query(`SELECT confdeltype FROM pg_constraint
+      WHERE conrelid = 'shares'::regclass AND contype = 'f'`);
+    expect(fk.rows.map((r) => r.confdeltype)).toEqual(['c']);
+  });
+
   it('relancé, il n’applique rien', async () => {
     const report = await runMigrations(pool, { log: () => {} });
     expect(report).toMatchObject({ baseline: false, detected: [], applied: [] });
