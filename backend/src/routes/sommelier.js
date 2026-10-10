@@ -7,6 +7,8 @@ import { suggestDishesForWine, pairMenu, explainPairing } from '../sommelier/coo
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from '../sommelier/tasteProfile.js';
 import { drinkBeforeAlerts, anticipationForEvent, purchaseSuggestions } from '../sommelier/proactive.js';
 import { buildVerticalTasting, compareForDish, blindTasting } from '../sommelier/advanced.js';
+import { answerQuestion, MAX_MESSAGE_CHARS } from '../sommelier/chat.js';
+import { runTurn, listConversations, getConversation, deleteConversation } from '../sommelier/conversations.js';
 
 const router = Router();
 
@@ -191,6 +193,72 @@ router.get('/sommelier/blind', async (req, res) => {
   } catch (error) {
     console.error('blind error:', error);
     res.status(500).json({ error: 'Failed to start blind tasting' });
+  }
+});
+
+// ────────────────────────────────────────────
+// Discussion avec le sommelier après un accord (sommelier/chat.js,
+// sommelier/conversations.js). Conversations propres au compte.
+// ────────────────────────────────────────────
+
+const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || ''));
+
+router.post('/sommelier/chat', async (req, res) => {
+  const userId = req.user?.userId;
+  const { conversationId, dish, pairing } = req.body || {};
+  const message = String(req.body?.message || '').trim();
+  if (!message || message.length > MAX_MESSAGE_CHARS) {
+    return res.status(400).json({ error: `Message requis (${MAX_MESSAGE_CHARS} caractères au plus)` });
+  }
+  if (conversationId && !isUuid(conversationId)) return res.status(404).json({ error: 'Discussion introuvable' });
+  if (!conversationId && (!dish || typeof dish !== 'string' || !dish.trim() || !pairing || typeof pairing !== 'object')) {
+    return res.status(400).json({ error: 'dish et pairing requis pour une nouvelle discussion' });
+  }
+  try {
+    const inventory = await loadInventory();
+    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
+    const result = await runTurn({
+      userId, conversationId, dish: String(dish || '').trim().slice(0, 500), pairing, message,
+      answer: (ctx) => answerQuestion({ ...ctx, inventory, tasteProfile }),
+    });
+    if (!result) return res.status(404).json({ error: 'Discussion introuvable' });
+    res.json(result);
+  } catch (error) {
+    console.error('Sommelier chat error:', error);
+    res.status(502).json({ error: 'Le sommelier n’a pas pu répondre ; réessayez dans un instant.' });
+  }
+});
+
+router.get('/sommelier/conversations', async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    res.json({ conversations: await listConversations(req.user?.userId, limit) });
+  } catch (error) {
+    console.error('List conversations error:', error);
+    res.status(500).json({ error: 'Failed to list conversations' });
+  }
+});
+
+router.get('/sommelier/conversations/:id', async (req, res) => {
+  try {
+    const conv = isUuid(req.params.id) ? await getConversation(req.user?.userId, req.params.id) : null;
+    if (!conv) return res.status(404).json({ error: 'Discussion introuvable' });
+    res.json(conv);
+  } catch (error) {
+    console.error('Get conversation error:', error);
+    res.status(500).json({ error: 'Failed to load conversation' });
+  }
+});
+
+router.delete('/sommelier/conversations/:id', async (req, res) => {
+  try {
+    if (!isUuid(req.params.id) || !(await deleteConversation(req.user?.userId, req.params.id))) {
+      return res.status(404).json({ error: 'Discussion introuvable' });
+    }
+    res.status(204).end();
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ error: 'Failed to delete conversation' });
   }
 });
 

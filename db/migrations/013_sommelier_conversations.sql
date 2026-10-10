@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS sommelier_conversations (
 
 CREATE TABLE IF NOT EXISTS sommelier_messages (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    seq bigserial NOT NULL,                 -- ordre d'insertion (now() est figé dans une transaction)
     conversation_id uuid NOT NULL REFERENCES sommelier_conversations(id) ON DELETE CASCADE,
     role text NOT NULL CHECK (role IN ('user', 'assistant')),
     content text NOT NULL,
@@ -20,5 +21,5 @@ CREATE TABLE IF NOT EXISTS sommelier_messages (
     created_at timestamp with time zone DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_sommelier_messages_conv ON sommelier_messages (conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_sommelier_messages_conv ON sommelier_messages (conversation_id, seq);
 CREATE INDEX IF NOT EXISTS idx_sommelier_conversations_user ON sommelier_conversations (user_id, updated_at DESC);
