@@ -57,6 +57,8 @@ export const PICKS_SCHEMA = obj({
   personal: pick,
   creative: pick,
   global_advice: str,
+  // Autres accords qui fonctionnent vraiment, par ordre de préférence (0 à 5).
+  alternatives: arr(obj({ wine_id: str, reason: str })),
 });
 
 const review = nullable(obj({

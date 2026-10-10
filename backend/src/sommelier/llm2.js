@@ -20,6 +20,7 @@ const SYSTEM_PROMPT = `Tu es un sommelier expert français. À partir d'un plat,
 1. SAFE: l'accord classique, défendu par les règles d'accord traditionnelles. Joue la sécurité.
 2. PERSONAL: l'accord qui correspond le mieux aux goûts personnels de l'utilisateur (basé sur ses retours précédents si fournis).
 3. CREATIVE: un accord plus audacieux mais cohérent. Doit surprendre tout en restant défendable.
+4. ALTERNATIVES: parmi les candidats restants, ceux qui fonctionneraient vraiment avec le plat (0 à 5, par ordre de préférence), chacun avec une raison en 1 phrase. Ne reprends pas un vin déjà retenu en SAFE/PERSONAL/CREATIVE. Tableau vide si aucun autre candidat ne convient.
 
 Pour chaque recommandation:
 - Identifie le vin par son ID (champ id)
@@ -33,7 +34,8 @@ Structure de la réponse:
   "safe":     { "wine_id": "...", "reason": "...", "service_temp_c": 16, "decant_minutes": 30 } | null,
   "personal": { ... } | null,
   "creative": { ... } | null,
-  "global_advice": "Conseil court sur l'ordre de service ou l'accompagnement"
+  "global_advice": "Conseil court sur l'ordre de service ou l'accompagnement",
+  "alternatives": [ { "wine_id": "...", "reason": "..." } ]
 }`;
 
 /**
@@ -49,6 +51,7 @@ export const argueAndPick = async (dish, criteria, candidates, options = {}) => 
       personal: null,
       creative: null,
       global_advice: 'Aucun vin de votre cave ne correspond à ce plat. Pensez à votre wishlist.',
+      alternatives: [],
     };
   }
 
@@ -75,7 +78,7 @@ export const argueAndPick = async (dish, criteria, candidates, options = {}) => 
     'Vins candidats (déjà pré-filtrés et scorés depuis la cave):',
     candidatesText,
     '',
-    'Choisis les 3 recommandations (SAFE / PERSONAL / CREATIVE) parmi ces candidats.',
+    'Choisis les 3 recommandations (SAFE / PERSONAL / CREATIVE) puis les alternatives parmi ces candidats.',
   ].filter(Boolean).join('\n');
 
   const result = await generateJson('argue', {
@@ -113,6 +116,20 @@ const formatTasteProfile = (profile) => {
   return `Profil de goût: ${JSON.stringify(profile)}`;
 };
 
+/** Alternatives : ids valides, hors des 3 choix, sans doublon, 5 au plus. */
+export const validateAlternatives = (raw, validIds, picks) => {
+  const taken = new Set([picks.safe, picks.personal, picks.creative].filter(Boolean).map((p) => p.wine_id));
+  const out = [];
+  for (const alt of Array.isArray(raw) ? raw : []) {
+    const id = alt?.wine_id;
+    if (!id || !validIds.has(id) || taken.has(id)) continue;
+    taken.add(id);
+    out.push({ wine_id: id, reason: String(alt.reason || '') });
+    if (out.length === 5) break;
+  }
+  return out;
+};
+
 const validateLlm2Response = (raw, candidates) => {
   const validIds = new Set(candidates.map(c => c.wine.id));
   const ensure = (rec) => {
@@ -129,10 +146,10 @@ const validateLlm2Response = (raw, candidates) => {
     };
   };
 
+  const picks = { safe: ensure(raw.safe), personal: ensure(raw.personal), creative: ensure(raw.creative) };
   return {
-    safe: ensure(raw.safe),
-    personal: ensure(raw.personal),
-    creative: ensure(raw.creative),
+    ...picks,
     global_advice: String(raw.global_advice || ''),
+    alternatives: validateAlternatives(raw.alternatives, validIds, picks),
   };
 };
