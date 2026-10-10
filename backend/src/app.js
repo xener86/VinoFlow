@@ -25,6 +25,7 @@ import quickAddRouter from './routes/quickAdd.js';
 import notificationsRouter from './routes/notifications.js';
 import menuflowRouter from './routes/menuflow.js';
 import valuationRouter from './routes/valuation.js';
+import sharesRouter from './routes/shares.js';
 
 const app = express();
 
@@ -92,5 +93,6 @@ app.use('/api', quickAddRouter);
 app.use('/api', notificationsRouter);
 app.use('/api', menuflowRouter);
 app.use('/api', valuationRouter);
+app.use('/api', sharesRouter);
 
 export default app;
