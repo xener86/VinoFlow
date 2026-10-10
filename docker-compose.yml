@@ -56,6 +56,7 @@ services:
       - MENUFLOW_TOKEN=${MENUFLOW_TOKEN:-}
       # Sommelier en un appel avec outils (repli automatique sur le pipeline en cas d'échec)
       - VINOFLOW_SOMMELIER_AGENT=${VINOFLOW_SOMMELIER_AGENT:-true}
+      - SOMMELIER_CHAT_ENGINE=${SOMMELIER_CHAT_ENGINE:-api}
       - NODE_ENV=production
     networks:
       - vinoflow-network
