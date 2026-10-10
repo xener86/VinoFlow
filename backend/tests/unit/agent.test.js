@@ -35,7 +35,14 @@ describe('outils du sommelier agent', () => {
   it('validatePicks écarte les wine_id hors cave', () => {
     const inStock = cave.filter((w) => w.inventoryCount > 0);
     expect(validatePicks({ safe: { wine_id: 'w1' }, personal: { wine_id: 'inventé' }, creative: null, global_advice: 'x' }, inStock))
-      .toEqual({ safe: { wine_id: 'w1' }, personal: null, creative: null, global_advice: 'x' });
+      .toEqual({ safe: { wine_id: 'w1' }, personal: null, creative: null, global_advice: 'x', alternatives: [] });
+  });
+
+  it('validatePicks garde les alternatives en stock hors des 3 choix', () => {
+    const inStock = cave.filter((w) => w.inventoryCount > 0);
+    const r = validatePicks({ safe: { wine_id: 'w1' }, personal: null, creative: null, global_advice: 'x',
+      alternatives: [{ wine_id: 'w2', reason: 'b' }, { wine_id: 'w1', reason: 'déjà' }, { wine_id: 'w3', reason: 'épuisé' }] }, inStock);
+    expect(r.alternatives).toEqual([{ wine_id: 'w2', reason: 'b' }]);
   });
 });
 
