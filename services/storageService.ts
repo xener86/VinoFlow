@@ -173,7 +173,7 @@ export const sommelierFeedback = async (params: {
   wineId?: string;
   dish: string;
   rating: 'UP' | 'DOWN';
-  category?: 'SAFE' | 'PERSONAL' | 'CREATIVE';
+  category?: 'SAFE' | 'PERSONAL' | 'CREATIVE' | 'ALTERNATIVE';
   criteria?: any;
   context?: any;
 }) => {

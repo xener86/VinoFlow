@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle, GlassWater, MapPin } from 'lucide-react';
 import { sommelierPair, sommelierFeedback, consumeSpecificBottle } from '../services/storageService';
 import { useToast, useConfirm } from './cockpit/feedback';
+import { MonoLabel, WineLink } from './cockpit/primitives';
 import { CellarWine } from '../types';
 
 interface Pick {
@@ -10,6 +11,11 @@ interface Pick {
   reason: string;
   service_temp_c: number | null;
   decant_minutes: number;
+}
+
+interface Alternative {
+  wine_id: string;
+  reason: string;
 }
 
 interface PairingResult {
@@ -20,6 +26,8 @@ interface PairingResult {
     personal: Pick | null;
     creative: Pick | null;
     global_advice: string;
+    // Autres accords argumentés (0 à 5) ; absent sur les résultats en cache antérieurs.
+    alternatives?: Alternative[];
   };
   fromCache: 'level1' | 'level2' | null;
   cave_size: number;
@@ -134,8 +142,8 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
     }
   };
 
-  const handleFeedback = async (category: 'SAFE' | 'PERSONAL' | 'CREATIVE', wineId: string, rating: 'UP' | 'DOWN') => {
-    setFeedbackGiven(prev => ({ ...prev, [category]: rating }));
+  const handleFeedback = async (category: 'SAFE' | 'PERSONAL' | 'CREATIVE' | 'ALTERNATIVE', wineId: string, rating: 'UP' | 'DOWN') => {
+    setFeedbackGiven(prev => ({ ...prev, [category === 'ALTERNATIVE' ? `ALT:${wineId}` : category]: rating }));
     try {
       await sommelierFeedback({
         wineId,
@@ -148,6 +156,11 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
       console.error('Feedback failed:', e);
     }
   };
+
+  // Alternatives dont le vin est encore connu de la cave (résultats en cache : liste absente = vide)
+  const alternatives = (result?.picks.alternatives ?? [])
+    .map(alt => ({ alt, wine: wineById(alt.wine_id) }))
+    .filter((x): x is { alt: Alternative; wine: CellarWine } => Boolean(x.wine));
 
   return (
     <div className="space-y-4">
@@ -211,7 +224,7 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
             done={progressStep >= 3}
             inProgress={progressStep === 2}
             label="Sélection finale"
-            sublabel="3 propositions argumentées"
+            sublabel="Propositions argumentées"
           />
         </div>
       )}
@@ -257,6 +270,57 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
           {result.picks.global_advice && (
             <div className="text-sm text-stone-600 italic px-2">
               💡 {result.picks.global_advice}
+            </div>
+          )}
+
+          {alternatives.length > 0 && (
+            <div className="pt-2">
+              <MonoLabel>◌ Autres accords possibles</MonoLabel>
+              <ul className="mt-2 divide-y divide-stone-100 border border-stone-200 rounded-md bg-white">
+                {alternatives.map(({ alt, wine }) => {
+                  const stock = Math.max(0, inStockBottles(wine).length - (openedCount[wine.id] || 0));
+                  const fb = feedbackGiven[`ALT:${wine.id}`];
+                  return (
+                    <li key={alt.wine_id} className="p-3 flex flex-col sm:flex-row sm:items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <WineLink id={wine.id} className="serif text-[15px] text-stone-900">
+                          {wine.name}{wine.cuvee && wine.cuvee !== wine.name ? ` · ${wine.cuvee}` : ''}
+                        </WineLink>
+                        <div className="text-xs text-stone-500">
+                          {[wine.producer, wine.vintage || null].filter(Boolean).join(' · ')} · {stock} btl
+                        </div>
+                        <p className="text-xs text-stone-700 mt-1 leading-relaxed">{alt.reason}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenBottle(wine)}
+                          disabled={stock === 0}
+                          title={stock === 0 ? 'Plus de bouteille en stock' : `${stock} bouteille(s) en stock`}
+                          className="h-9 px-3 rounded-md bg-wine-700 hover:bg-wine-800 text-white text-xs font-medium inline-flex items-center gap-1.5 disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          <GlassWater size={14} /> Ouvrir
+                        </button>
+                        <button
+                          onClick={() => handleFeedback('ALTERNATIVE', wine.id, 'UP')}
+                          disabled={fb !== undefined}
+                          aria-label="J'aime cet accord"
+                          className={`h-9 w-9 inline-flex items-center justify-center rounded transition-colors ${fb === 'UP' ? 'bg-emerald-600 text-white' : 'hover:bg-emerald-50 text-stone-600'} disabled:cursor-not-allowed`}
+                        >
+                          <ThumbsUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleFeedback('ALTERNATIVE', wine.id, 'DOWN')}
+                          disabled={fb !== undefined}
+                          aria-label="Je n'aime pas cet accord"
+                          className={`h-9 w-9 inline-flex items-center justify-center rounded transition-colors ${fb === 'DOWN' ? 'bg-wine-700 text-white' : 'hover:bg-wine-50 text-stone-600'} disabled:cursor-not-allowed`}
+                        >
+                          <ThumbsDown size={14} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </div>
