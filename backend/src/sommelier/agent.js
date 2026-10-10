@@ -12,6 +12,7 @@ import { buildHardFilter } from './rules.js';
 import { rankWines } from './scoring.js';
 import { getPeakWindow } from './peakWindow.js';
 import { PICKS_SCHEMA, WINE_TYPES, schemaHelpers } from './schemas.js';
+import { validateAlternatives } from './llm2.js';
 
 const { obj, arr, str, num, enumOf, nullable } = schemaHelpers;
 const MAX_TURNS = 6;
@@ -22,7 +23,8 @@ Démarche :
 1. Analyse le plat (protéine, sauce, cuisson, épices, intensité) et formule le profil de vin idéal.
 2. Appelle search_cellar avec ce profil : le serveur filtre et classe la cave (règles d'accord + score). Tu peux l'appeler plusieurs fois avec des profils différents (ex. pour l'option créative).
 3. Si besoin, consulte get_wine_details ou get_peak pour départager.
-4. Choisis 3 recommandations : SAFE (l'accord classique), PERSONAL (selon les goûts connus de l'utilisateur), CREATIVE (audacieux mais défendable). Pour chacune : id, 2-3 phrases sur le mécanisme de l'accord, température de service, décantage. Mets null si aucun vin ne convient pour une catégorie. Ajoute un conseil global court.`;
+4. Choisis 3 recommandations : SAFE (l'accord classique), PERSONAL (selon les goûts connus de l'utilisateur), CREATIVE (audacieux mais défendable). Pour chacune : id, 2-3 phrases sur le mécanisme de l'accord, température de service, décantage. Mets null si aucun vin ne convient pour une catégorie. Ajoute un conseil global court.
+5. Ajoute ensuite en "alternatives" les autres vins de la cave qui fonctionneraient vraiment (0 à 5, par ordre de préférence, une raison en 1 phrase), sans reprendre les 3 choix.`;
 
 const range = arr(num);
 const TOOLS = [
@@ -107,7 +109,8 @@ export const runTool = (name, input, inStock) => {
 export const validatePicks = (picks, inStock) => {
   const ids = new Set(inStock.map((w) => w.id));
   const ensure = (p) => (p && ids.has(p.wine_id) ? p : null);
-  return { safe: ensure(picks.safe), personal: ensure(picks.personal), creative: ensure(picks.creative), global_advice: picks.global_advice || '' };
+  const base = { safe: ensure(picks.safe), personal: ensure(picks.personal), creative: ensure(picks.creative) };
+  return { ...base, global_advice: picks.global_advice || '', alternatives: validateAlternatives(picks.alternatives, ids, base) };
 };
 
 /**
