@@ -185,6 +185,61 @@ export const sommelierFeedback = async (params: {
   await handleResponse(response);
 };
 
+// Discussion avec le sommelier après un accord
+export interface SommelierChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  wineIds: string[];
+  revisedDish: string | null;
+  engine?: string | null;
+  createdAt: string;
+}
+
+export interface SommelierConversationSummary {
+  id: string;
+  dish: string;
+  updatedAt: string;
+  messageCount: number;
+  lastMessage: string | null;
+}
+
+// Erreur lisible pour le fil de discussion (le backend renvoie { error }).
+const handleChatResponse = async (response: Response) => {
+  if (response.ok) return handleResponse(response);
+  if (response.status === 401) return handleResponse(response);
+  let message = 'Le sommelier n’a pas pu répondre ; réessayez dans un instant.';
+  try {
+    const body = await response.json();
+    if (body?.error) message = body.error;
+  } catch {}
+  throw new Error(message);
+};
+
+export const sommelierChat = async (params: { conversationId?: string; dish?: string; pairing?: any; message: string }): Promise<{ conversationId: string; message: SommelierChatMessage }> => {
+  const response = await apiFetch(`${API_URL}/sommelier/chat`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(params),
+  });
+  return handleChatResponse(response);
+};
+
+export const listSommelierConversations = async (limit = 5): Promise<{ conversations: SommelierConversationSummary[] }> => {
+  const response = await apiFetch(`${API_URL}/sommelier/conversations?limit=${limit}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getSommelierConversation = async (id: string): Promise<{ id: string; dish: string; pairing: any; messages: SommelierChatMessage[] }> => {
+  const response = await apiFetch(`${API_URL}/sommelier/conversations/${id}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const deleteSommelierConversation = async (id: string): Promise<void> => {
+  const response = await apiFetch(`${API_URL}/sommelier/conversations/${id}`, { method: 'DELETE', headers: getHeaders() });
+  await handleResponse(response);
+};
+
 export const getAvailableAIProviders = async () => {
   const response = await apiFetch(`${API_URL}/ai/providers`, { headers: getHeaders() });
   return handleResponse(response);

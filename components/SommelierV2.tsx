@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, ThumbsUp, ThumbsDown, Shield, Heart, Flame, RefreshCw, Wine, Thermometer, Clock, Mic, MicOff, Check, Circle, GlassWater, MapPin } from 'lucide-react';
-import { sommelierPair, sommelierFeedback, consumeSpecificBottle } from '../services/storageService';
+import { sommelierPair, sommelierFeedback, consumeSpecificBottle, getSommelierConversation, SommelierChatMessage } from '../services/storageService';
+import { SommelierChat } from './SommelierChat';
 import { useToast, useConfirm } from './cockpit/feedback';
 import { MonoLabel, WineLink } from './cockpit/primitives';
 import { CellarWine } from '../types';
@@ -37,12 +38,21 @@ interface PairingResult {
 interface Props {
   inventory: CellarWine[];
   initialDish?: string;     // Pre-fill the prompt and auto-run on mount (used by /?q=…)
+  initialConversationId?: string; // Reprise d'une discussion enregistrée (/sommelier?discussion=…)
 }
 
-export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) => {
+interface ChatState {
+  conversationId?: string;
+  messages: SommelierChatMessage[];
+}
+
+export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '', initialConversationId }) => {
   const [dish, setDish] = useState(initialDish);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PairingResult | null>(null);
+  // Discussion sous les résultats : remontée (clé) à chaque nouvel accord.
+  const [chat, setChat] = useState<ChatState | null>(null);
+  const [chatKey, setChatKey] = useState(0);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, 'UP' | 'DOWN'>>({});
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -117,8 +127,35 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
     setTimeout(() => handlePair(false), 0);
   }, [initialDish]);
 
-  const handlePair = async (skipCache = false) => {
-    if (!dish.trim()) return;
+  // Reprise d'une discussion : plat, accord d'origine et fil restitués.
+  useEffect(() => {
+    if (!initialConversationId) return;
+    let cancelled = false;
+    setLoading(true);
+    getSommelierConversation(initialConversationId)
+      .then(c => {
+        if (cancelled) return;
+        setDish(c.dish);
+        setResult({
+          criteria: { rationale: c.pairing?.rationale || null },
+          candidates: [],
+          picks: c.pairing?.picks || { safe: null, personal: null, creative: null, global_advice: '', alternatives: [] },
+          fromCache: null,
+          cave_size: c.pairing?.cave_size ?? 0,
+          cave_after_filter: 0,
+        });
+        setChat({ conversationId: c.id, messages: c.messages });
+        setChatKey(k => k + 1);
+      })
+      .catch(e => { if (!cancelled) setError(e.message || 'Discussion introuvable'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [initialConversationId]);
+
+  const handlePair = async (skipCache = false, dishOverride?: string) => {
+    const query = (dishOverride ?? dish).trim();
+    if (!query) return;
+    if (dishOverride !== undefined) setDish(dishOverride);
     setLoading(true);
     setError(null);
     setFeedbackGiven({});
@@ -131,9 +168,11 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
     }, 3000);
 
     try {
-      const res = await sommelierPair(dish, {}, skipCache);
+      const res = await sommelierPair(query, {}, skipCache);
       setProgressStep(3);
       setResult(res);
+      setChat(null);
+      setChatKey(k => k + 1);
     } catch (e: any) {
       setError(e.message || 'Une erreur est survenue');
     } finally {
@@ -233,8 +272,9 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>
-              Cave: {result.cave_size} vins → {result.cave_after_filter} après filtres → top {result.candidates.length}
-              {result.fromCache && ` · cache (${result.fromCache})`}
+              {result.candidates.length > 0
+                ? <>Cave: {result.cave_size} vins → {result.cave_after_filter} après filtres → top {result.candidates.length}{result.fromCache && ` · cache (${result.fromCache})`}</>
+                : <>Accord d'origine de la discussion</>}
             </span>
             <button onClick={() => handlePair(true)} className="flex items-center gap-1 hover:text-wine-600">
               <RefreshCw size={12} /> Régénérer
@@ -323,6 +363,18 @@ export const SommelierV2: React.FC<Props> = ({ inventory, initialDish = '' }) =>
               </ul>
             </div>
           )}
+
+          <SommelierChat
+            key={chatKey}
+            dish={dish}
+            pairing={result}
+            inventory={inventory}
+            conversationId={chat?.conversationId}
+            initialMessages={chat?.messages}
+            openedCount={openedCount}
+            onOpenBottle={handleOpenBottle}
+            onRevise={(d) => handlePair(true, d)}
+          />
         </div>
       )}
     </div>
