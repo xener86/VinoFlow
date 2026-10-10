@@ -63,7 +63,7 @@ export const pairForDish = async ({ dish, context = {}, userId = null, skipCache
 export const pickInStock = (result, inventoryById) => {
   const p = result?.picks;
   if (!p) return null;
-  for (const pick of [p.safe, p.personal, p.creative]) {
+  for (const pick of [p.safe, p.personal, p.creative, ...(p.alternatives || [])]) {
     if (pick?.wine_id && (inventoryById.get(pick.wine_id)?.inventoryCount ?? 0) > 0) {
       return { wine_id: pick.wine_id, reason: pick.reason || null };
     }
