@@ -108,6 +108,33 @@ describe.skipIf(!hasDb)('API partage public', () => {
     it('GET /api/shares/:id : 404 inconnue', async () => {
       expect((await client.get('/api/shares/00000000-0000-4000-8000-000000000000')).status).toBe(404);
     });
+
+    it('identifiant mal formé : 404 JSON sur lecture, modification et révocation', async () => {
+      for (const res of [await client.get('/api/shares/abc'), await client.put('/api/shares/abc', dinner()), await client.post('/api/shares/abc/revoke', {})]) {
+        expect(res.status).toBe(404);
+        expect(res.body).toEqual({ error: 'Lien introuvable.' });
+      }
+    });
+
+    it('index unique : une seconde insertion active pour la même fiche est refusée, le store reprend l’existant', async () => {
+      const { createOrReuseWineShare } = await import('../../src/shares/store.js');
+      const first = await createOrReuseWineShare(a.id, null);
+      expect(first.created).toBe(true);
+      await expect(pool.query(`INSERT INTO shares (token, kind, wine_id) VALUES ('x', 'WINE', $1)`, [a.id])).rejects.toMatchObject({ code: '23505' });
+      const second = await createOrReuseWineShare(a.id, null);
+      expect(second).toEqual({ share: first.share, created: false });
+    });
+
+    it('deux demandes simultanées pour la même fiche : un seul lien actif, même jeton', async () => {
+      const [r1, r2] = await Promise.all([
+        client.post('/api/shares', { kind: 'WINE', wineId: a.id }),
+        client.post('/api/shares', { kind: 'WINE', wineId: a.id }),
+      ]);
+      expect([r1.status, r2.status].sort()).toEqual([200, 201]);
+      expect(r1.body.token).toBe(r2.body.token);
+      const { rows } = await pool.query(`SELECT count(*)::int AS n FROM shares WHERE kind = 'WINE' AND wine_id = $1 AND revoked_at IS NULL`, [a.id]);
+      expect(rows[0].n).toBe(1);
+    });
   });
 
   describe('lecture publique (sans compte)', () => {

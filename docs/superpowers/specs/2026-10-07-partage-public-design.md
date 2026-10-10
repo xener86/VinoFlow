@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS share_items (
 );
 ```
 
+Index unique partiel `shares_active_wine_idx ON shares (wine_id) WHERE kind = 'WINE' AND revoked_at IS NULL` : un seul lien actif par fiche, tenu en base ; la route reprend l'existant en cas de collision.
+
 Supprimer un vin supprime son lien de fiche (cascade) et le retire des cartes.
 
 ### Jeton

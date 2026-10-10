@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS shares (
     CHECK ((kind = 'WINE' AND wine_id IS NOT NULL) OR (kind = 'DINNER' AND title IS NOT NULL))
 );
 CREATE INDEX IF NOT EXISTS shares_wine_id_idx ON shares (wine_id);
+-- Un seul lien actif par fiche vin : l'invariant est tenu en base, la route
+-- reprend le lien existant en cas de collision (deux clics rapides).
+CREATE UNIQUE INDEX IF NOT EXISTS shares_active_wine_idx ON shares (wine_id) WHERE kind = 'WINE' AND revoked_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS share_items (
     share_id uuid NOT NULL REFERENCES shares(id) ON DELETE CASCADE,

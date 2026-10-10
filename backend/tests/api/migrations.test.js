@@ -39,6 +39,8 @@ describe.skipIf(!hasDb)('runner de migrations', () => {
     const fk = await pool.query(`SELECT confdeltype FROM pg_constraint
       WHERE conrelid = 'shares'::regclass AND contype = 'f'`);
     expect(fk.rows.map((r) => r.confdeltype)).toEqual(['c']);
+    const idx = await pool.query("SELECT indexdef FROM pg_indexes WHERE indexname = 'shares_active_wine_idx'");
+    expect(idx.rows[0]?.indexdef).toMatch(/UNIQUE/);
   });
 
   it('relancé, il n’applique rien', async () => {

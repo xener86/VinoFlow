@@ -44,12 +44,24 @@ export const findActiveWineShare = async (wineId) => {
   return rows[0] ?? null;
 };
 
-export const createWineShare = async (wineId, userId) => {
-  const { rows } = await pool.query(
-    `INSERT INTO shares (token, kind, wine_id, created_by) VALUES ($1, 'WINE', $2, $3) RETURNING id, token, kind`,
-    [newShareToken(), wineId, userId]
-  );
-  return rows[0];
+// Un seul lien actif par fiche (index unique partiel shares_active_wine_idx) :
+// on reprend l'existant, sinon on crée ; une collision (deux clics rapides)
+// renvoie le lien que l'autre requête vient de créer.
+export const createOrReuseWineShare = async (wineId, userId) => {
+  const existing = await findActiveWineShare(wineId);
+  if (existing) return { share: existing, created: false };
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO shares (token, kind, wine_id, created_by) VALUES ($1, 'WINE', $2, $3) RETURNING id, token, kind`,
+      [newShareToken(), wineId, userId]
+    );
+    return { share: rows[0], created: true };
+  } catch (error) {
+    if (error.code !== '23505') throw error;
+    const share = await findActiveWineShare(wineId);
+    if (!share) throw error;
+    return { share, created: false };
+  }
 };
 
 const insertItems = async (client, shareId, items) => {
