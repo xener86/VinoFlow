@@ -29,6 +29,9 @@ const claudeCodeInstalled = () => {
   return claudeAvailable;
 };
 
+/** Claude Code prêt (binaire présent et jeton d'abonnement fourni). */
+export const claudeCodeAvailable = () => claudeCodeInstalled() && Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN);
+
 /** Moteur utilisable, ou null si l'enrichissement est indisponible. */
 export const availableEngine = () => {
   const wanted = (process.env.ENRICH_ENGINE || 'auto').toLowerCase();
