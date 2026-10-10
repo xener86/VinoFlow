@@ -324,7 +324,7 @@ server.tool(
 
 server.tool(
     'sommelier_pair',
-    'Get 3 categorized wine pairing recommendations for a dish (SAFE / PERSONAL / CREATIVE) using the Sommelier v2 pipeline (LLM decomposition + scoring + argumentation)',
+    'Get 3 categorized wine pairing recommendations for a dish (SAFE / PERSONAL / CREATIVE), plus up to 5 argued alternatives, using the Sommelier v2 pipeline (LLM decomposition + scoring + argumentation)',
     {
         dish: z.string().describe('The dish to pair with a wine (in French preferred)'),
         constraints: z.object({
@@ -347,6 +347,9 @@ server.tool(
                 formatPick('🛡️ SAFE (classique)', result.picks.safe),
                 formatPick('💖 PERSONAL (selon vos goûts)', result.picks.personal),
                 formatPick('✨ CREATIVE (audacieux)', result.picks.creative),
+                ...((result.picks.alternatives ?? []).length
+                    ? ['', '**Autres accords possibles**', ...(result.picks.alternatives ?? []).map((a) => `- ${a.wine_id} — ${a.reason}`)]
+                    : []),
                 '',
                 result.picks.global_advice ? `💡 ${result.picks.global_advice}` : '',
             ].filter(Boolean).join('\n');
