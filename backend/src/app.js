@@ -5,7 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { FRONTEND_URL } from './config.js';
 import { authenticate } from './middleware/auth.js';
-import { aiLimiter } from './middleware/rateLimits.js';
+import { aiLimiter, publicLimiter } from './middleware/rateLimits.js';
 import { aiKeysFromHeaders } from './middleware/aiKeys.js';
 import authRouter from './routes/auth.js';
 import winesRouter from './routes/wines.js';
@@ -26,6 +26,7 @@ import notificationsRouter from './routes/notifications.js';
 import menuflowRouter from './routes/menuflow.js';
 import valuationRouter from './routes/valuation.js';
 import sharesRouter from './routes/shares.js';
+import publicSharesRouter from './routes/publicShares.js';
 
 const app = express();
 
@@ -48,6 +49,10 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', authRouter);
+
+// Partage public : la seule route lisible sans compte (lecture seule, par IP).
+app.use('/api/public', publicLimiter);
+app.use('/api', publicSharesRouter);
 
 // ========== Protected routes (require JWT) ==========
 // All /api/* routes below this point require a valid JWT token.

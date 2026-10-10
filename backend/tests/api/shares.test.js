@@ -109,4 +109,88 @@ describe.skipIf(!hasDb)('API partage public', () => {
       expect((await client.get('/api/shares/00000000-0000-4000-8000-000000000000')).status).toBe(404);
     });
   });
+
+  describe('lecture publique (sans compte)', () => {
+    const GONE = { error: 'Ce lien n’est plus actif.' };
+
+    it('fiche : champs autorisés seulement, en-têtes noindex/no-store, compteur incrémenté', async () => {
+      await client.post('/api/tasting-notes', { wineId: a.id, overallRating: 4, generalNotes: JSON.stringify({ phrase: 'Une claque', occasion: 'Noël', dish: 'Chapon' }), occasion: 'Noël', companions: 'Marc et Léa' });
+      await client.post('/api/tasting-notes', { wineId: a.id, overallRating: null, generalNotes: null });
+      const { token, id } = (await client.post('/api/shares', { kind: 'WINE', wineId: a.id })).body;
+
+      const res = await api().get(`/api/public/shares/${token}`);
+      expect(res.status).toBe(200);
+      expect(res.headers['x-robots-tag']).toBe('noindex, nofollow');
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.body).toMatchObject({ kind: 'WINE', title: null, date: null });
+      expect(res.body.wines).toHaveLength(1);
+      expect(Object.keys(res.body.wines[0]).sort()).toEqual([
+        'appellation', 'aromaProfile', 'country', 'cuvee', 'dish', 'grapeVarieties', 'name', 'position', 'producer', 'region',
+        'sensoryDescription', 'suggestedFoodPairings', 'tastings', 'type', 'vintage',
+      ]);
+      expect(res.body.wines[0]).toMatchObject({ position: 1, name: 'Grand Vin', producer: 'Château Test', vintage: 2018, appellation: 'Pauillac', grapeVarieties: ['Cabernet'] });
+      expect(res.body.wines[0].tastings).toEqual([{ date: expect.any(String), rating: 4, comment: 'Une claque' }]);
+      const text = JSON.stringify(res.body);
+      for (const forbidden of ['price', 'purchase', 'bottle', 'location', 'companion', 'occasion', 'peak', 'valuation', '"id"', 'wineId', 'Marc', 'Noël', '42', a.id]) {
+        expect(text, `contenu interdit : ${forbidden}`).not.toContain(forbidden);
+      }
+
+      await api().get(`/api/public/shares/${token}`);
+      const { rows } = await pool.query('SELECT view_count, last_viewed_at FROM shares WHERE id = $1', [id]);
+      expect(rows[0].view_count).toBe(2);
+      expect(rows[0].last_viewed_at).toBeTruthy();
+      const list = (await client.get('/api/shares')).body;
+      expect(list[0].viewCount).toBe(2);
+    });
+
+    it('carte : titre, date, vins dans l’ordre avec plats ; dégustation ajoutée après coup visible', async () => {
+      const { token } = (await client.post('/api/shares', dinner())).body;
+      const before = await api().get(`/api/public/shares/${token}`);
+      expect(before.body).toMatchObject({ kind: 'DINNER', title: 'Dîner du 11', date: '2026-10-11' });
+      expect(before.body.wines.map((w) => [w.position, w.name, w.dish])).toEqual([[1, 'Grand Vin', 'Gigot'], [2, 'Petit Blanc', null]]);
+      expect(before.body.wines[1].tastings).toEqual([]);
+
+      await client.post('/api/tasting-notes', { wineId: b.id, overallRating: 5, generalNotes: 'Vif et salin' });
+      const after = await api().get(`/api/public/shares/${token}`);
+      expect(after.body.wines[1].tastings).toEqual([{ date: expect.any(String), rating: 5, comment: 'Vif et salin' }]);
+    });
+
+    it('404 identique : inconnu, mal formé, révoqué ; le compteur ne bouge pas', async () => {
+      const { id, token } = (await client.post('/api/shares', { kind: 'WINE', wineId: a.id })).body;
+      const unknown = await api().get(`/api/public/shares/${'A'.repeat(43)}`);
+      const short = await api().get(`/api/public/shares/${token.slice(0, 42)}`);
+      expect(unknown.status).toBe(404);
+      expect(unknown.body).toEqual(GONE);
+      expect(short.status).toBe(404);
+      expect(short.body).toEqual(GONE);
+      await client.post(`/api/shares/${id}/revoke`, {});
+      const revoked = await api().get(`/api/public/shares/${token}`);
+      expect(revoked.status).toBe(404);
+      expect(revoked.body).toEqual(GONE);
+      expect(revoked.headers['x-robots-tag']).toBe('noindex, nofollow');
+      expect((await pool.query('SELECT view_count FROM shares WHERE id = $1', [id])).rows[0].view_count).toBe(0);
+    });
+
+    it('vin supprimé : lien de fiche inactif, retiré de la carte (numéros resserrés)', async () => {
+      const wineShare = (await client.post('/api/shares', { kind: 'WINE', wineId: b.id })).body;
+      const card = (await client.post('/api/shares', dinner())).body;
+      expect((await client.delete(`/api/wines/${b.id}`)).status).toBe(200);
+      expect((await api().get(`/api/public/shares/${wineShare.token}`)).status).toBe(404);
+      const res = await api().get(`/api/public/shares/${card.token}`);
+      expect(res.status).toBe(200);
+      expect(res.body.wines.map((w) => [w.position, w.name])).toEqual([[1, 'Grand Vin']]);
+      expect((await client.get('/api/shares')).body.map((s) => s.id)).toEqual([card.id]);
+    });
+
+    it('limiteur dédié : 429 après 120 lectures depuis la même IP, en JSON français', async () => {
+      const { token } = (await client.post('/api/shares', { kind: 'WINE', wineId: a.id })).body;
+      let last;
+      for (let i = 0; i < 121; i++) last = await api().get(`/api/public/shares/${token}`).set('X-Forwarded-For', '203.0.113.9');
+      expect(last.status).toBe(429);
+      expect(last.body.error).toMatch(/Trop de requêtes/);
+      // Autre IP : toujours servie ; la gestion n'est pas touchée par ce limiteur.
+      expect((await api().get(`/api/public/shares/${token}`).set('X-Forwarded-For', '203.0.113.10')).status).toBe(200);
+      expect((await client.get('/api/shares')).status).toBe(200);
+    });
+  });
 });
