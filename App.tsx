@@ -20,6 +20,7 @@ const CockpitInsights    = lazy(() => import('./pages/CockpitInsights').then(m =
 const CockpitTasting     = lazy(() => import('./pages/CockpitTasting').then(m => ({ default: m.CockpitTasting })));
 const SommelierTools     = lazy(() => import('./pages/SommelierTools').then(m => ({ default: m.SommelierTools })));
 const ResetPassword      = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const PublicShare        = lazy(() => import('./pages/PublicShare').then(m => ({ default: m.PublicShare })));
 const Settings           = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Wishlist           = lazy(() => import('./pages/Wishlist').then(m => ({ default: m.Wishlist })));
 const CockpitCellarJournal = lazy(() => import('./pages/CockpitCellarJournal').then(m => ({ default: m.CockpitCellarJournal })));
@@ -59,6 +60,8 @@ const AppRoutes: React.FC = () => {
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPassword /></Suspense>} />
+      {/* Partage public : sans compte, hors CockpitLayout */}
+      <Route path="/p/:token" element={<Suspense fallback={<PageLoader />}><PublicShare /></Suspense>} />
 
       {/* Protected Routes with new Cockpit Layout */}
       <Route element={<ProtectedRoute><CockpitLayout /></ProtectedRoute>}>
