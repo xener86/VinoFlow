@@ -5,7 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { FRONTEND_URL } from './config.js';
 import { authenticate } from './middleware/auth.js';
-import { aiLimiter } from './middleware/rateLimits.js';
+import { aiLimiter, publicLimiter } from './middleware/rateLimits.js';
 import { aiKeysFromHeaders } from './middleware/aiKeys.js';
 import authRouter from './routes/auth.js';
 import winesRouter from './routes/wines.js';
@@ -21,6 +21,8 @@ import aiRouter from './routes/ai.js';
 import enrichmentRouter from './routes/enrichment.js';
 import cocktailsRouter from './routes/cocktails.js';
 import importRouter from './routes/import.js';
+import sharesRouter from './routes/shares.js';
+import publicSharesRouter from './routes/publicShares.js';
 
 const app = express();
 
@@ -42,6 +44,9 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', authRouter);
+
+// Partage public : seule route de données ouverte sans compte (lecture seule).
+app.use('/api/public', publicLimiter, publicSharesRouter);
 
 // ========== Protected routes (require JWT) ==========
 // All /api/* routes below this point require a valid JWT token.
@@ -81,5 +86,6 @@ app.use('/api', aiRouter);
 app.use('/api', enrichmentRouter);
 app.use('/api', cocktailsRouter);
 app.use('/api', importRouter);
+app.use('/api', sharesRouter);
 
 export default app;
