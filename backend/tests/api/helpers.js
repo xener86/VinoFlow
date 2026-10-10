@@ -13,7 +13,8 @@ export const resetData = async () => {
   resetRateLimits();
   await pool.query(`TRUNCATE users, wines, bottles, racks, spirits,
   tasting_notes, journal, wishlist, pairing_feedback, pairing_cache, taste_profile,
-  refresh_tokens, password_reset_tokens, cocktails, dinner_pairings CASCADE`);
+  refresh_tokens, password_reset_tokens, cocktails, dinner_pairings,
+  sommelier_conversations, sommelier_messages CASCADE`);
 };
 
 // Base vide → le premier signup est autorisé (bootstrap) et renvoie une session.
