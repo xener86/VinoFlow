@@ -49,4 +49,11 @@ describe('pickInStock', () => {
     expect(pickInStock({ picks: { safe: null, personal: null, creative: null } }, byId)).toBeNull();
     expect(pickInStock(null, byId)).toBeNull();
   });
+  it('retombe sur une alternative en stock', () => {
+    const result = { picks: { safe: { wine_id: 'c', reason: 'x' }, personal: null, creative: null, alternatives: [{ wine_id: 'c', reason: 'épuisé' }, { wine_id: 'a', reason: 'alt' }] } };
+    expect(pickInStock(result, byId)).toEqual({ wine_id: 'a', reason: 'alt' });
+  });
+  it('tolère un résultat sans alternatives (cache ancien)', () => {
+    expect(pickInStock({ picks: { safe: null, personal: null, creative: null } }, byId)).toBeNull();
+  });
 });
