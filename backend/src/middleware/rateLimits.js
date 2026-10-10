@@ -2,7 +2,7 @@ import { rateLimit, ipKeyGenerator, MemoryStore } from 'express-rate-limit';
 
 // ========== Rate limiting ==========
 // Stores en mémoire explicites : remis à zéro entre deux tests (resetRateLimits).
-const stores = { auth: new MemoryStore(), refresh: new MemoryStore(), ai: new MemoryStore(), public: new MemoryStore() };
+const stores = { auth: new MemoryStore(), refresh: new MemoryStore(), ai: new MemoryStore(), notify: new MemoryStore(), public: new MemoryStore() };
 export const resetRateLimits = () => Object.values(stores).forEach((store) => store.resetAll());
 
 const rateLimitHandler = (req, res, next, options) =>
@@ -41,6 +41,18 @@ export const aiLimiter = rateLimit({
   skip: (req) => req.method === 'GET' && req.baseUrl === '/api/sommelier',
   handler: (req, res, next, options) =>
     res.status(options.statusCode).json({ msg: 'Limite de requêtes IA atteinte, réessayez dans quelques minutes.' }),
+});
+
+// Notifications (test, aperçu IA, envoi immédiat) : par utilisateur, pour éviter
+// de spammer Gotify ou la boîte mail.
+export const notifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  store: stores.notify,
+  keyGenerator: (req) => req.user?.userId || ipKeyGenerator(req.ip),
+  handler: rateLimitHandler,
 });
 
 // Pages publiques des partages (sans compte) : par IP, contre l'énumération des jetons.

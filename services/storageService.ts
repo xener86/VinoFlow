@@ -1,4 +1,6 @@
-import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, PublicShare, ShareLink, ShareSummary, DinnerShareDetail, DinnerShareInput } from '../types';
+import { Wine, Bottle, CellarWine, Rack, Spirit, CocktailRecipe, AIConfig, JournalEntry, BottleLocation, WishlistItem, TastingNote, NewTastingNote, WineEnrichment, CsvImportPlan, CsvImportApplied, NotificationSettingsResponse, NotificationSettingsPatch, NotificationChannel, NewsletterPreview, MenuflowStatus, TonightResponse, CellarValue, WineValuation, WineValuations, MissingPriceRow, PublicShare, ShareLink, ShareSummary, DinnerShareDetail, DinnerShareInput } from '../types';
+import type { ReadOutcome } from '../utils/quickAddQueue';
+import { withTimeout } from '../utils/labelImage';
 import { customAuth, clearSession } from './customAuth';
 import { tastingPhrase } from '../utils/tastingNotes';
 const API_URL = '/api'; // Grâce au proxy Nginx, pas besoin de mettre l'URL complète
@@ -234,6 +236,53 @@ export const extractWineFromImage = async (base64: string, mimeType = 'image/jpe
   return handleResponse(response);
 };
 
+// Lecture d'étiquette pour la rafale : jamais d'exception, l'issue est décrite
+// (réseau, HTTP + Retry-After) pour que la file sache s'il faut réessayer.
+// Délai maximal d'une lecture : au-delà (réseau de salon qui ne répond plus), la
+// photo repasse en attente au lieu de bloquer toute la file.
+const READ_TIMEOUT_MS = 60_000;
+
+export const readLabel = (base64: string): Promise<ReadOutcome> => {
+  const controller = new AbortController();
+  return withTimeout(fetchLabel(base64, controller.signal), READ_TIMEOUT_MS, () => {
+    controller.abort();
+    return { kind: 'network' };
+  });
+};
+
+const fetchLabel = async (base64: string, signal: AbortSignal): Promise<ReadOutcome> => {
+  try {
+    const response = await apiFetch(`${API_URL}/wines/extract-from-image`, {
+      method: 'POST', headers: getHeaders(), body: JSON.stringify({ image: base64, mimeType: 'image/jpeg' }), signal,
+    });
+    if (response.ok) return { kind: 'ok', ocr: await response.json() };
+    const data = await response.json().catch(() => null);
+    return { kind: 'http', status: response.status, retryAfter: Number(response.headers.get('Retry-After')) || null, message: data?.error || data?.msg };
+  } catch {
+    return { kind: 'network' };
+  }
+};
+
+export interface QuickAddResult {
+  batchId: string;
+  replay?: boolean; // rafale déjà enregistrée : réponse rejouée, rien de réécrit
+  summary: { winesCreated: number; bottlesAdded: number; wishlistAdded: number; tastingsAdded: number };
+  lines: { clientId: string; wineId: string | null; created: boolean }[];
+}
+export interface QuickAddResponse { ok: boolean; status: number; error?: string; lines?: { clientId: string; message: string }[]; result?: QuickAddResult }
+
+/** Enregistre une rafale (POST /api/quick-add). */
+export const saveQuickAdd = async (body: object): Promise<QuickAddResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/quick-add`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}`, lines: data?.lines };
+    return { ok: true, status: response.status, result: data };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable : la rafale reste sur le téléphone, réessaie.' };
+  }
+};
+
 // --- Assistant de saisie (IA côté serveur) ---
 
 // Identification d'un vin pendant la saisie. Lève une erreur si l'IA est
@@ -347,6 +396,88 @@ export const getCellarBudget = async (months = 12) => {
   return handleResponse(response);
 };
 
+// --- MENUFLOW ---
+
+export const getMenuflowStatus = async (): Promise<MenuflowStatus> => {
+  const response = await apiFetch(`${API_URL}/menuflow/status`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getTonight = async ({ remote = true }: { remote?: boolean } = {}): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight${remote ? '' : '?remote=0'}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const resuggestTonight = async (): Promise<TonightResponse> => {
+  const response = await apiFetch(`${API_URL}/menuflow/tonight/resuggest`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+// --- NOTIFICATIONS ---
+
+export const getNotificationSettings = async (): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveNotificationSettings = async (patch: NotificationSettingsPatch): Promise<NotificationSettingsResponse> => {
+  const response = await apiFetch(`${API_URL}/notifications/settings`, {
+    method: 'PUT', headers: getHeaders(), body: JSON.stringify(patch),
+  });
+  return handleResponse(response);
+};
+
+export const sendTestNotification = async (channel: NotificationChannel): Promise<{ channel: NotificationChannel; ok: boolean; error?: string }> => {
+  const response = await apiFetch(`${API_URL}/notifications/test`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({ channel }),
+  });
+  return handleResponse(response);
+};
+
+export const previewNewsletter = async (withAi = false): Promise<NewsletterPreview> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/preview${withAi ? '?ai=1' : ''}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const sendNewsletterNow = async (): Promise<{ results: { channel: NotificationChannel; ok: boolean; error?: string }[] }> => {
+  const response = await apiFetch(`${API_URL}/notifications/newsletter/send-now`, {
+    method: 'POST', headers: getHeaders(), body: JSON.stringify({}),
+  });
+  return handleResponse(response);
+};
+
+// --- VALEUR DE LA CAVE ---
+
+export const getCellarValue = async (months = 24): Promise<CellarValue> => {
+  const response = await apiFetch(`${API_URL}/cellar/value?months=${months}`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const getWineValuations = async (wineId: string): Promise<WineValuations> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveWineValuation = async (wineId: string, body: { priceEur: number; lowEur?: number | null; highEur?: number | null; note?: string | null }): Promise<WineValuation> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+  return handleResponse(response);
+};
+
+export const refreshWineValuation = async (wineId: string): Promise<{ queued: boolean; position: number }> => {
+  const response = await apiFetch(`${API_URL}/wines/${wineId}/valuations/refresh`, { method: 'POST', headers: getHeaders(), body: '{}' });
+  return handleResponse(response);
+};
+
+export const getMissingPrices = async (): Promise<MissingPriceRow[]> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { headers: getHeaders() });
+  return handleResponse(response);
+};
+
+export const saveMissingPrices = async (items: { wineId: string; priceEur: number }[]): Promise<{ updated: number }> => {
+  const response = await apiFetch(`${API_URL}/cellar/missing-prices`, { method: 'PUT', headers: getHeaders(), body: JSON.stringify(items) });
+  return handleResponse(response);
+};
+
 export const toggleFavorite = async (id: string): Promise<void> => {
   // On récupère d'abord l'état actuel
   // Note: Idéalement, le backend devrait avoir un endpoint PATCH spécifique pour ça
@@ -412,7 +543,8 @@ export const consumeSpecificBottle = async (
   wineId: string,
   bottleId: string,
   wineName: string = 'Vin inconnu',
-  wineVintage?: number
+  wineVintage?: number,
+  forDinner: boolean | null = null
 ): Promise<void> => {
   const response = await apiFetch(`${API_URL}/bottles/${bottleId}`, {
       method: 'PUT',
@@ -430,7 +562,8 @@ export const consumeSpecificBottle = async (
       wineName,
       wineVintage,
       quantity: 1,
-      description: `Consommation - ${wineName} ${wineVintage || ''}`
+      description: `Consommation - ${wineName} ${wineVintage || ''}`,
+      forDinner
   });
 };
 
@@ -921,6 +1054,26 @@ export const importFullData = async (jsonString: string): Promise<ImportResult> 
   }
 };
 
+// ─── Import CSV (aller-retour avec l'export) ───
+// status 409 à l'application : la cave a changé depuis l'aperçu.
+export interface CsvImportResponse { ok: boolean; status: number; error?: string; plan?: CsvImportPlan; applied?: CsvImportApplied }
+
+const postCsvImport = async (body: object): Promise<CsvImportResponse> => {
+  try {
+    const response = await apiFetch(`${API_URL}/import/csv`, { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) return { ok: false, status: response.status, error: data?.error || `Erreur ${response.status}` };
+    return { ok: true, status: response.status, plan: data?.plan, applied: data?.applied };
+  } catch {
+    return { ok: false, status: 0, error: 'Serveur injoignable.' };
+  }
+};
+
+/** Aperçu : ce que l'import ferait, sans rien écrire. */
+export const previewCsvImport = (csv: string) => postCsvImport({ csv, dryRun: true });
+
+/** Application de l'aperçu identifié par planHash. */
+export const applyCsvImport = (csv: string, planHash: string) => postCsvImport({ csv, dryRun: false, planHash });
 // ─── Partage public ───
 const shareRequest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
   const response = await apiFetch(`${API_URL}${path}`, { ...init, headers: getHeaders() });

@@ -167,3 +167,11 @@ export const COCKTAIL_SCHEMA = obj({
   glassType: str,
   difficulty: enumOf('Easy', 'Medium', 'Hard'),
 });
+
+// Newsletter : « mot du sommelier » (vins choisis parmi la liste fournie).
+export const NEWSLETTER_NOTE_SCHEMA = obj({
+  intro: str,
+  picks: arr(obj({ wineId: str, reason: str })),
+  seasonalPairing: nullable(str),
+  closing: nullable(str),
+});

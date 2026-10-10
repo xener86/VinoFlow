@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, getRacks } from '../services/storageService';
+import { exportFullData, importFullData, findOrphanedBottles, cleanupGhostBottles, getInventory, previewCsvImport, applyCsvImport } from '../services/storageService';
 import { useAIConfig } from '../hooks/useAIConfig';
-import { AIConfig, Bottle } from '../types';
+import { AIConfig, Bottle, CsvImportPlan } from '../types';
+import { CsvImportPreview } from '../components/cockpit/CsvImportPreview';
 import { exportWinesToCsv } from '../utils/exportCsv';
+import { decodeCsvBytes } from '../utils/decodeCsv';
 import { SharedLinks } from '../components/cockpit/SharedLinks';
 import { Download, Upload, Server, Check, Loader2, Trash2, Search, AlertTriangle, FileSpreadsheet, Sparkles, KeyRound } from 'lucide-react';
 import { customAuth } from '../services/customAuth';
@@ -10,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getAvailableAIProviders, enrichAromaProfilesBatch, auditWines } from '../services/storageService';
 import { useToast, useConfirm } from '../components/cockpit/feedback';
 import { Badge, Button, Card, EmptyState, Input, MonoLabel, Skeleton, WineLink } from '../components/cockpit/primitives';
+import { NotificationSettings } from '../components/cockpit/NotificationSettings';
 
 const PASSWORD_MIN_LENGTH = 10;
 
@@ -102,6 +105,9 @@ export const Settings: React.FC = () => {
 
   const importInput = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
+  const [csvImport, setCsvImport] = useState<{ name: string; content: string; plan: CsvImportPlan } | null>(null);
+  const [csvBusy, setCsvBusy] = useState(false);
+  const csvInput = useRef<HTMLInputElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
 
@@ -210,9 +216,9 @@ export const Settings: React.FC = () => {
   const handleCsvExport = async () => {
     setIsExportingCsv(true);
     try {
-      const [wines, racks] = await Promise.all([getInventory(), getRacks()]);
+      const wines = await getInventory();
       const withStock = wines.filter(w => w.inventoryCount > 0);
-      exportWinesToCsv(withStock, racks);
+      exportWinesToCsv(withStock);
       toast.success(`${withStock.length} vin(s) exporté(s) en CSV`);
     } catch (e) {
       toast.error("L'export CSV a échoué : " + errMsg(e));
@@ -249,12 +255,51 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const runCsvPreview = async (name: string, content: string) => {
+    const res = await previewCsvImport(content);
+    if (res.ok && res.plan) setCsvImport({ name, content, plan: res.plan });
+    else { setCsvImport(null); toast.error(`Import CSV impossible : ${res.error}`); }
+  };
+
+  const handleCsvImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permet de resélectionner le même fichier
+    if (!file) return;
+    setCsvBusy(true);
+    try {
+      await runCsvPreview(file.name, decodeCsvBytes(await file.arrayBuffer()));
+    } finally {
+      setCsvBusy(false);
+    }
+  };
+
+  const handleCsvApply = async () => {
+    if (!csvImport) return;
+    setCsvBusy(true);
+    try {
+      const res = await applyCsvImport(csvImport.content, csvImport.plan.planHash);
+      if (res.ok && res.applied) {
+        const a = res.applied;
+        setCsvImport(null);
+        toast.success(`Import appliqué : ${a.updated} vin(s) modifié(s), ${a.peaks} apogée(s), ${a.pricedBottles} prix, ${a.created} nouveau(x) vin(s). Rechargement…`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else if (res.status === 409) {
+        toast.info('La cave a changé entre-temps : aperçu mis à jour.');
+        await runCsvPreview(csvImport.name, csvImport.content);
+      } else {
+        toast.error(`Import CSV impossible : ${res.error}`);
+      }
+    } finally {
+      setCsvBusy(false);
+    }
+  };
+
   return (
     <div className="max-w-3xl">
       <div className="mb-5">
         <MonoLabel>VINOFLOW · RÉGLAGES</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Paramètres</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">Compte, intelligence artificielle, enrichissement et données</div>
+        <div className="text-[12px] text-stone-500 mt-0.5">Compte, notifications, intelligence artificielle, enrichissement et données</div>
       </div>
 
       <div className="space-y-4">
@@ -265,6 +310,15 @@ export const Settings: React.FC = () => {
           hint={<>Connecté en tant que <strong className="text-stone-800 break-all">{user?.email}</strong>. La cave est partagée par tous les comptes du foyer.</>}
         >
           <ChangePasswordForm />
+        </Section>
+
+        {/* ───── Notifications ───── */}
+        <Section
+          label="Notifications"
+          title="Alertes et newsletter"
+          hint="Propres à votre compte : chaque membre du foyer choisit ses canaux. Les alertes signalent un vin qui entre en apogée, dont la fenêtre se referme ou dont l'apogée est dépassée."
+        >
+          <NotificationSettings />
         </Section>
 
         {/* ───── IA ───── */}
@@ -416,7 +470,7 @@ export const Settings: React.FC = () => {
 
         {/* ───── Données ───── */}
         <Section label="Données" title="Sauvegarde et export">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <Button variant="outline" onClick={handleExport} disabled={isExporting}>
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Sauvegarde (JSON)
@@ -425,6 +479,11 @@ export const Settings: React.FC = () => {
               {isExportingCsv ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
               Export (CSV)
             </Button>
+            <Button variant="outline" onClick={() => csvInput.current?.click()} disabled={csvBusy}>
+              {csvBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              Importer un CSV modifié
+            </Button>
+            <input ref={csvInput} type="file" accept=".csv,text/csv" onChange={handleCsvImport} className="hidden" />
             <Button variant="danger" onClick={() => importInput.current?.click()} disabled={importing}>
               {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Restaurer…
@@ -432,8 +491,16 @@ export const Settings: React.FC = () => {
             <input ref={importInput} type="file" accept=".json,application/json" onChange={handleImport} className="hidden" />
           </div>
           <p className="mt-3 text-xs text-stone-500">
-            La sauvegarde JSON contient toute la cave ; l'export CSV liste les vins en stock avec leur emplacement.
+            La sauvegarde JSON contient toute la cave. Le CSV liste les vins en stock : modifie-le dans Excel ou Numbers puis réimporte-le.
+            Une cellule vide ne change rien, « - » efface ; une ligne sans identifiant crée un vin. Un aperçu s’affiche avant toute modification.
           </p>
+          <CsvImportPreview
+            fileName={csvImport?.name ?? ''}
+            plan={csvImport?.plan ?? null}
+            applying={csvBusy}
+            onApply={handleCsvApply}
+            onClose={() => setCsvImport(null)}
+          />
         </Section>
       </div>
     </div>

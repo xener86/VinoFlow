@@ -13,19 +13,22 @@ describe('drinkBeforeAlerts', () => {
   it('vins dont la fenêtre se ferme dans l’horizon, plus les apogées passées, triés par urgence', () => {
     const inventory = [
       w('jeune', 2024, 'RED'),          // 2029-2034 : hors horizon
-      w('bientot', 2017, 'RED'),        // 2022-2027 : 12 mois restants
+      w('bientot', 2016, 'RED'),        // 2021-2026 : 7 mois restants (juin inclus)
+      w('pasencore', 2017, 'RED'),      // 2022-2027 : 19 mois, hors horizon de 12
       w('passe', 2010, 'RED'),          // 2015-2020 : apogée passée
-      w('vide', 2017, 'RED', { inventoryCount: 0 }),
+      w('vide', 2016, 'RED', { inventoryCount: 0 }),
     ];
     const alerts = drinkBeforeAlerts(inventory, { horizonMonths: 12 });
     expect(alerts.map((a) => a.wine.id)).toEqual(['passe', 'bientot']);
-    expect(alerts[1].monthsLeft).toBe(12);
+    expect(alerts[1]).toMatchObject({ monthsLeft: 7, state: 'SE_REFERME', estimated: true });
+    expect(alerts[0].state).toBe('DEPASSEE');
   });
 
   it('utilise l’apogée stockée en priorité', () => {
     const alerts = drinkBeforeAlerts([w('ia', 2024, 'RED', { peakStart: 2020, peakEnd: 2026 })]);
     expect(alerts).toHaveLength(1);
     expect(alerts[0].peak).toMatchObject({ peakStart: 2020, peakEnd: 2026 });
+    expect(alerts[0].estimated).toBe(false);
   });
 });
 
@@ -39,6 +42,12 @@ describe('anticipationForEvent', () => {
     const picks = anticipationForEvent(inventory, '2027-12-24');
     expect(picks.map((p) => p.wine.id)).toEqual(['b', 'a']);
     expect(picks[0]).toMatchObject({ score: 9, prestige: true });
+  });
+
+  it('respecte l’apogée enregistrée plutôt que la formule naïve', () => {
+    // Naïf : 2025-2030 (retenu en 2027) ; enregistré : 2030-2040 (exclu en 2027)
+    const picks = anticipationForEvent([w('a', 2020, 'RED', { peakStart: 2030, peakEnd: 2040 })], '2027-12-24');
+    expect(picks).toEqual([]);
   });
 
   it('respecte la limite', () => {

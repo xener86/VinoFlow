@@ -4,29 +4,21 @@
 // these endpoints to display dashboards or notifications.
 
 import { getPeakWindow } from './peakWindow.js';
+import { classifyWine } from '../notifications/classify.js';
 
 /**
  * Phase 8.1 — "À boire avant"
- * Returns wines whose peak window is about to close, with optional pairing
- * suggestions for each.
+ * Vins dont la fenêtre se referme dans l'horizon ou dont l'apogée est passée,
+ * du plus urgent au moins urgent (même classification que les notifications).
  */
 export const drinkBeforeAlerts = (inventory, options = {}) => {
   const horizonMonths = options.horizonMonths ?? 12;
-  const currentYear = new Date().getFullYear();
-
-  const alerts = inventory
-    .filter(w => (w.inventoryCount ?? 0) > 0 && w.vintage && w.type)
-    .map(w => {
-      // Use stored AI/USER peak if available, else fall back to naive
-      const peak = getPeakWindow(w);
-      if (!peak) return null;
-      const monthsLeft = (peak.peakEnd - currentYear) * 12;
-      return { wine: w, peak, monthsLeft };
-    })
-    .filter(x => x && x.monthsLeft <= horizonMonths && x.peak.status !== 'Apogée passée' || (x && x.peak.status === 'Apogée passée'))
+  const now = options.now ?? new Date();
+  return inventory
+    .map((wine) => ({ wine, c: classifyWine(wine, { horizonMonths, now }) }))
+    .filter(({ c }) => c && (c.state === 'SE_REFERME' || c.state === 'DEPASSEE'))
+    .map(({ wine, c }) => ({ wine, peak: getPeakWindow(wine), monthsLeft: c.monthsLeft, state: c.state, estimated: c.estimated }))
     .sort((a, b) => a.monthsLeft - b.monthsLeft);
-
-  return alerts;
 };
 
 /**
@@ -41,7 +33,7 @@ export const anticipationForEvent = (inventory, eventDate, options = {}) => {
   return inventory
     .filter(w => (w.inventoryCount ?? 0) > 0 && w.vintage)
     .map(w => {
-      const peak = getPeakWindow(w.vintage, w.type);
+      const peak = getPeakWindow(w);
       if (!peak) return null;
       const isAtPeak = targetYear >= peak.peakStart && targetYear <= peak.peakEnd;
       if (!isAtPeak) return null;

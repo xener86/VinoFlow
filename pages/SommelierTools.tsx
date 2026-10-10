@@ -8,7 +8,8 @@ import {
   Sparkles, Wine as WineIcon, Utensils, Layers, Eye, GitCompareArrows, BookOpen,
   Camera, RefreshCw, Copy, ArrowRight, Trophy,
 } from 'lucide-react';
-import { CellarWine, WineType } from '../types';
+import { CellarWine, WineType, OcrResult } from '../types';
+import { loadLabelImage, ocrToAddText } from '../utils/labelImage';
 import {
   sommelierReversePair,
   sommelierMenu,
@@ -544,66 +545,11 @@ export const ExplainTool: React.FC<{ wines: CellarWine[] }> = ({ wines }) => {
 // ──────────────────────────────────────────
 // Scanner une étiquette
 // ──────────────────────────────────────────
-interface OcrResult {
-  producer: string | null;
-  name: string | null;
-  cuvee: string | null;
-  vintage: number | null;
-  region: string | null;
-  appellation: string | null;
-  country: string | null;
-  type: WineType | null;
-  abv: number | null;
-  format: string | null;
-  grape_varieties: string[];
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  notes: string | null;
-}
 
 const CONFIDENCE: Record<OcrResult['confidence'], { label: string; tone: 'success' | 'warning' | 'neutral' }> = {
   HIGH: { label: 'Lecture fiable', tone: 'success' },
   MEDIUM: { label: 'Lecture partielle', tone: 'neutral' },
   LOW: { label: 'Lecture incertaine', tone: 'warning' },
-};
-
-/** Réduit la photo (≤ 1600 px, JPEG) pour alléger l'envoi. */
-const loadImage = (file: File): Promise<{ base64: string; mimeType: string; preview: string }> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const img = new Image();
-      img.onerror = () => resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
-      img.onload = () => {
-        const max = 1600;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        if (scale >= 1) return resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve({ base64: dataUrl.split(',')[1], mimeType: file.type || 'image/jpeg', preview: dataUrl });
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const out = canvas.toDataURL('image/jpeg', 0.85);
-        resolve({ base64: out.split(',')[1], mimeType: 'image/jpeg', preview: out });
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
-
-/** Texte libre attendu par la page d'ajout (« Pommard 1er Cru Rugiens 2018 »). */
-const ocrToAddText = (r: OcrResult) => {
-  const parts = [r.producer, r.appellation && r.appellation !== r.name ? r.appellation : null, r.name, r.cuvee && r.cuvee !== r.name ? r.cuvee : null, r.vintage];
-  const seen = new Set<string>();
-  return parts.filter(p => {
-    if (p == null || p === '') return false;
-    const k = String(p).toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).join(' ');
 };
 
 export const OcrTool: React.FC = () => {
@@ -618,7 +564,7 @@ export const OcrTool: React.FC = () => {
     setLoading(true);
     setExtracted(null);
     try {
-      const img = await loadImage(file);
+      const img = await loadLabelImage(file);
       setPreview(img.preview);
       setExtracted(await extractWineFromImage(img.base64, img.mimeType));
     } catch (err) {

@@ -42,7 +42,18 @@ services:
       - ENRICH_ENGINE=${ENRICH_ENGINE:-auto}
       - ENRICH_DAILY_LIMIT=${ENRICH_DAILY_LIMIT:-30}
       - ENRICH_TICK_MINUTES=${ENRICH_TICK_MINUTES:-60}
+      # Cote des vins (valeur de la cave), recherche web trimestrielle
+      - VALUATION_ENABLED=${VALUATION_ENABLED:-true}
+      - VALUATION_DAILY_LIMIT=${VALUATION_DAILY_LIMIT:-15}
+      - VALUATION_TICK_MINUTES=${VALUATION_TICK_MINUTES:-60}
       - MAIL_FROM=${MAIL_FROM:-}
+      # Notifications « à boire avant » et newsletter
+      - NOTIFICATIONS_ENABLED=${NOTIFICATIONS_ENABLED:-true}
+      - NOTIFY_TZ=${NOTIFY_TZ:-Europe/Paris}
+      - NOTIFY_TICK_MINUTES=${NOTIFY_TICK_MINUTES:-60}
+      # Passerelle MenuFlow (planning des dîners) : jeton MenuFlow « write »
+      - MENUFLOW_URL=${MENUFLOW_URL:-}
+      - MENUFLOW_TOKEN=${MENUFLOW_TOKEN:-}
       # Sommelier en un appel avec outils (repli automatique sur le pipeline en cas d'échec)
       - VINOFLOW_SOMMELIER_AGENT=${VINOFLOW_SOMMELIER_AGENT:-true}
       - NODE_ENV=production

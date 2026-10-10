@@ -12,6 +12,7 @@ import { CockpitDashboard } from './pages/CockpitDashboard';
 // on-demand (huge improvement for first paint, esp. on mobile)
 const CockpitCave        = lazy(() => import('./pages/CockpitCave').then(m => ({ default: m.CockpitCave })));
 const CockpitAddWine     = lazy(() => import('./pages/CockpitAddWine').then(m => ({ default: m.CockpitAddWine })));
+const CockpitQuickAdd    = lazy(() => import('./pages/CockpitQuickAdd').then(m => ({ default: m.CockpitQuickAdd })));
 const CockpitWineDetails = lazy(() => import('./pages/CockpitWineDetails').then(m => ({ default: m.CockpitWineDetails })));
 const CockpitPlan        = lazy(() => import('./pages/CockpitPlan').then(m => ({ default: m.CockpitPlan })));
 const CockpitSommelier   = lazy(() => import('./pages/CockpitSommelier').then(m => ({ default: m.CockpitSommelier })));
@@ -68,6 +69,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/" element={<CockpitDashboard />} />
         <Route path="/cave" element={<Suspense fallback={<PageLoader />}><CockpitCave /></Suspense>} />
         <Route path="/add-wine" element={<Suspense fallback={<PageLoader />}><CockpitAddWine /></Suspense>} />
+        <Route path="/add-wine/rafale" element={<Suspense fallback={<PageLoader />}><CockpitQuickAdd /></Suspense>} />
         <Route path="/wine/:id" element={<Suspense fallback={<PageLoader />}><CockpitWineDetails /></Suspense>} />
         <Route path="/wine/:id/edit" element={<Suspense fallback={<PageLoader />}><EditWine /></Suspense>} />
         <Route path="/plan" element={<Suspense fallback={<PageLoader />}><CockpitPlan /></Suspense>} />

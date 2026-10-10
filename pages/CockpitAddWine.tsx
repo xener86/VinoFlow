@@ -5,14 +5,17 @@
 //   la saisie manuelle (nom, millésime, couleur) suffit. Après création, la
 //   cascade d'enrichissement serveur complète et source la fiche.
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Loader2, Plus, Minus, Check } from 'lucide-react';
-import { saveWine, addBottles, requestWineEnrichment, identifyWine } from '../services/storageService';
+import { Loader2, Plus, Minus, Check, Camera, Layers } from 'lucide-react';
+import { saveWine, addBottles, requestWineEnrichment, identifyWine, readLabel } from '../services/storageService';
 import { useWines } from '../hooks/useWines';
-import { CellarWine, Wine, WineType } from '../types';
+import { CellarWine, Wine, WineType, OcrResult } from '../types';
 import { Card, MonoLabel, Button, Skeleton, Badge, Input } from '../components/cockpit/primitives';
 import { useToast } from '../components/cockpit/feedback';
+import { parseFreeText, findExisting } from '../utils/findExisting';
+import { loadLabelImage, ocrToAddText, labelExtras } from '../utils/labelImage';
+import { openDraftStore } from '../utils/quickAddDraft';
 
 const EXAMPLES = [
   'Pommard 1er Cru Rugiens 2018',
@@ -29,30 +32,6 @@ const TYPES: { k: WineType; l: string; dot: string }[] = [
   { k: 'DESSERT' as WineType, l: 'Moelleux', dot: 'bg-amber-500' },
   { k: 'FORTIFIED' as WineType, l: 'Muté', dot: 'bg-orange-700' },
 ];
-
-// "Wine name 2018" → name + vintage
-const parseFreeText = (text: string): { name: string; vintage: number | null } => {
-  const trimmed = text.trim();
-  const match = trimmed.match(/^(.*?)\s+((?:19|20)\d{2})\s*$/);
-  if (match) return { name: match[1].trim(), vintage: parseInt(match[2]) };
-  return { name: trimmed, vintage: null };
-};
-
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-/** Vins de la cave qui ressemblent à la saisie (tous les mots trouvés). */
-const findExisting = (wines: CellarWine[], text: string): CellarWine[] => {
-  const { name, vintage } = parseFreeText(text);
-  const words = norm(name).split(/[^a-z0-9]+/).filter(w => w.length >= 3);
-  if (words.length === 0) return [];
-  return wines
-    .filter(w => {
-      const hay = norm([w.name, w.cuvee, w.producer, w.appellation].filter(Boolean).join(' '));
-      return words.every(word => hay.includes(word)) && (!vintage || !w.vintage || w.vintage === vintage);
-    })
-    .sort((a, b) => (b.inventoryCount > 0 ? 1 : 0) - (a.inventoryCount > 0 ? 1 : 0))
-    .slice(0, 4);
-};
 
 export const CockpitAddWine: React.FC = () => {
   const navigate = useNavigate();
@@ -84,6 +63,39 @@ export const CockpitAddWine: React.FC = () => {
   const [qty, setQty] = useState(1);
   const [price, setPrice] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  // Photo d'étiquette : champs lus en plus du texte (appellation, cépages…).
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [reading, setReading] = useState(false);
+  const [label, setLabel] = useState<OcrResult | null>(null);
+  const [draftCount, setDraftCount] = useState(0);
+
+  useEffect(() => {
+    openDraftStore().then(s => s.list()).then(l => setDraftCount(l.length)).catch(() => {});
+  }, []);
+
+  const handlePhoto = async (file: File) => {
+    setReading(true);
+    try {
+      const img = await loadLabelImage(file);
+      const outcome = await readLabel(img.base64);
+      if (outcome.kind !== 'ok') {
+        toast.error(outcome.kind === 'network' ? 'Pas de réseau : utilise la rafale, elle lira la photo plus tard.' : 'Lecture de l’étiquette impossible.');
+        return;
+      }
+      const r = outcome.ocr;
+      setLabel(r);
+      setText(ocrToAddText(r));
+      if (r.producer) setProducer(r.producer);
+      if (r.type) setType(r.type);
+      if (r.confidence === 'LOW') toast.info('Lecture incertaine : vérifie le nom et le millésime.');
+    } catch {
+      toast.error('Lecture de l’étiquette impossible.');
+    } finally {
+      setReading(false);
+      if (photoInput.current) photoInput.current.value = '';
+    }
+  };
 
   const existing = useMemo(() => (text.trim().length >= 3 ? findExisting(wines, text) : []), [wines, text]);
 
@@ -139,7 +151,8 @@ export const CockpitAddWine: React.FC = () => {
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
-    const a = analysis || {};
+    // La lecture de l'étiquette prime sur l'identification au texte, tant que le texte vient d'elle.
+    const a: Partial<Wine> = { ...(analysis || {}), ...labelExtras(label, text) };
     try {
       const wine: Wine = {
         id: crypto.randomUUID(),
@@ -183,7 +196,7 @@ export const CockpitAddWine: React.FC = () => {
       <div className="mb-5">
         <MonoLabel>VINOFLOW · INVENTAIRE</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">Ajouter un vin</h1>
-        <div className="text-[12px] text-stone-500 mt-0.5">Tape l'étiquette : on retrouve le vin s'il est déjà en cave, sinon on crée sa fiche.</div>
+        <div className="text-[12px] text-stone-500 mt-0.5">Tape l'étiquette ou prends-la en photo : on retrouve le vin s'il est déjà en cave, sinon on crée sa fiche.</div>
       </div>
 
       <div className="grid grid-cols-12 gap-5">
@@ -203,6 +216,22 @@ export const CockpitAddWine: React.FC = () => {
               enterKeyHint="done"
               className="mt-2 w-full px-4 py-3 rounded-md border border-stone-300 bg-white text-base outline-none focus:ring-2 focus:ring-wine-600/40 focus:border-wine-600 serif-it text-stone-900"
             />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => photoInput.current?.click()} disabled={reading || saving}>
+                {reading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                {reading ? 'Lecture de l’étiquette…' : 'Photo'}
+              </Button>
+              <Button variant="ghost" onClick={() => navigate('/add-wine/rafale')}>
+                <Layers className="w-4 h-4" /> Rafale (plusieurs vins)
+              </Button>
+              <input ref={photoInput} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
+            </div>
+            {draftCount > 0 && (
+              <button onClick={() => navigate('/add-wine/rafale')} className="mt-3 w-full text-left rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-900">
+                Rafale en cours · {draftCount} photo(s) — <span className="underline">Reprendre</span>
+              </button>
+            )}
             {!text && (
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {EXAMPLES.map(e => (

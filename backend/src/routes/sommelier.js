@@ -2,9 +2,8 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { convertKeysToCamelCase } from '../utils/case.js';
 import { loadInventory } from '../services/inventory.js';
-import { runAgentPairing } from '../sommelier/agent.js';
-import { isProviderConfigured } from '../services/aiService.js';
-import { runPairing, suggestDishesForWine, pairMenu, explainPairing } from '../sommelier/coordinator.js';
+import { pairForDish } from '../sommelier/pairForDish.js';
+import { suggestDishesForWine, pairMenu, explainPairing } from '../sommelier/coordinator.js';
 import { applyFeedback, getTasteProfile, upsertTasteProfile } from '../sommelier/tasteProfile.js';
 import { drinkBeforeAlerts, anticipationForEvent, purchaseSuggestions } from '../sommelier/proactive.js';
 import { buildVerticalTasting, compareForDish, blindTasting } from '../sommelier/advanced.js';
@@ -18,60 +17,7 @@ router.post('/sommelier/pair', async (req, res) => {
   try {
     const { dish, context, skipCache } = req.body;
     if (!dish) return res.status(400).json({ error: 'dish is required' });
-
-    const inventory = await loadInventory();
-    const userId = req.user?.userId;
-
-    // Load few-shot from feedback (limited to recent 30 entries)
-    let userFeedback = [];
-    if (userId) {
-      const fb = await pool.query(`
-        SELECT pf.dish, pf.rating, pf.category, w.name || ' ' || COALESCE(w.vintage::text, '') AS wine_label
-          FROM pairing_feedback pf
-          LEFT JOIN wines w ON w.id = pf.wine_id
-         WHERE pf.user_id = $1
-         ORDER BY pf.created_at DESC
-         LIMIT 30
-      `, [userId]);
-      userFeedback = fb.rows;
-    }
-
-    const tasteProfile = userId ? await getTasteProfile(pool, userId) : null;
-
-    // Sommelier en un appel avec outils (flag) — voir sommelier/agent.js.
-    // En cas d'échec (pas de clé Claude, erreur API), on retombe sur le pipeline.
-    if (process.env.VINOFLOW_SOMMELIER_AGENT === 'true' && isProviderConfigured('claude')) {
-      try {
-        const inStock = inventory.filter((w) => (w.inventoryCount ?? 0) > 0);
-        const agent = await runAgentPairing({ inventory, dish, tasteProfile, userFeedback });
-        return res.json({
-          criteria: null,
-          candidates: agent.candidates,
-          picks: agent.picks,
-          critique: null,
-          fromCache: null,
-          cave_size: inStock.length,
-          cave_after_filter: null,
-          engine: 'agent',
-          turns: agent.turns,
-        });
-      } catch (error) {
-        console.warn('Sommelier agent en échec, repli sur le pipeline :', error.message);
-      }
-    }
-
-    const result = await runPairing({
-      pool,
-      inventory,
-      dish,
-      context: context || {},
-      userId,
-      userFeedback,
-      tasteProfile,
-      skipCache: Boolean(skipCache),
-    });
-
-    res.json(result);
+    res.json(await pairForDish({ dish, context, userId: req.user?.userId, skipCache }));
   } catch (error) {
     console.error('Sommelier pair error:', error);
     res.status(500).json({ error: 'Failed to compute pairing', details: error.message });
