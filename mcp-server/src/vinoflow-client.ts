@@ -360,6 +360,7 @@ export interface SommelierResult {
         personal: SommelierPick | null;
         creative: SommelierPick | null;
         global_advice: string;
+        alternatives?: { wine_id: string; reason: string }[];
     };
     cave_size: number;
     cave_after_filter: number;
