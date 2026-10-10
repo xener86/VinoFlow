@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowDown, ArrowUp, Copy, Loader2, Plus, Share2, X } from 'l
 import { useWines } from '../hooks/useWines';
 import { createDinnerShare, getShare, updateDinnerShare } from '../services/storageService';
 import { filterShareCandidates, moveItem, serverMessage, shareUrl, typeDotClass } from '../utils/shareView';
-import { shareLink } from '../utils/shareLink';
+import { shareLink, copyLink } from '../utils/shareLink';
 import { useToast } from '../components/cockpit/feedback';
 import { Button, Card, Input, MonoLabel } from '../components/cockpit/primitives';
 
@@ -67,7 +67,7 @@ export const ShareDinner: React.FC = () => {
   }, [search, id]);
 
   const byId = useMemo(() => new Map(wines.map((w) => [w.id, w])), [wines]);
-  const candidates = useMemo(() => filterShareCandidates(wines, query), [wines, query]);
+  const candidates = useMemo(() => filterShareCandidates(wines, query, 8, items.map((i) => i.wineId)), [wines, query, items]);
 
   const addWine = (wineId: string) => {
     setItems((prev) => [...prev, { wineId, dish: '' }]);
@@ -80,7 +80,7 @@ export const ShareDinner: React.FC = () => {
   const doShare = async (t: string) => {
     const outcome = await shareLink(shareUrl(t), title.trim() || 'Carte des vins');
     if (outcome === 'copied') toast.success('Lien copié');
-    else if (outcome === 'failed') toast.error('Impossible de partager le lien ; copie-le depuis Réglages → Liens partagés.');
+    else if (outcome === 'failed') toast.error('Impossible de partager automatiquement : le lien est affiché ci-dessous, sélectionne-le pour le copier.');
   };
 
   const save = async () => {
@@ -213,7 +213,7 @@ export const ShareDinner: React.FC = () => {
           Enregistrer et partager
         </Button>
         {token && (
-          <Button variant="outline" onClick={() => doShare(token)} disabled={revoked}>
+          <Button variant="outline" onClick={() => copyLink(shareUrl(token)).then((ok) => (ok ? toast.success('Lien copié') : toast.error('Impossible de copier ; sélectionne le lien ci-dessus.')))} disabled={revoked}>
             <Copy className="w-4 h-4" />Copier le lien
           </Button>
         )}

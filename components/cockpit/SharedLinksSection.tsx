@@ -7,9 +7,10 @@ import { Copy, Pencil, Plus, Ban, Wine as WineIcon, UtensilsCrossed } from 'luci
 import { listShares, revokeShare } from '../../services/storageService';
 import type { ShareSummary } from '../../types';
 import { formatLongDate, serverMessage, shareUrl } from '../../utils/shareView';
-import { shareLink } from '../../utils/shareLink';
+import { copyLink } from '../../utils/shareLink';
 import { useConfirm, useToast } from './feedback';
 import { Badge, Button, Skeleton } from './primitives';
+import { ShareLinkDialog } from './ShareLinkDialog';
 
 const label = (s: ShareSummary) =>
   s.kind === 'WINE'
@@ -28,6 +29,7 @@ export const SharedLinksSection: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const [shares, setShares] = useState<ShareSummary[] | null>(null);
+  const [shown, setShown] = useState<ShareSummary | null>(null);
 
   const load = useCallback(() => {
     listShares().then(setShares).catch(() => { setShares([]); toast.error('Impossible de charger les liens partagés.'); });
@@ -35,9 +37,8 @@ export const SharedLinksSection: React.FC = () => {
   useEffect(load, [load]);
 
   const copy = async (s: ShareSummary) => {
-    const outcome = await shareLink(shareUrl(s.token), label(s));
-    if (outcome === 'copied') toast.success('Lien copié');
-    else if (outcome === 'failed') toast.error('Impossible de copier le lien.');
+    if (await copyLink(shareUrl(s.token))) toast.success('Lien copié');
+    else toast.error('Impossible de copier le lien.', { label: 'Voir', onClick: () => setShown(s) });
   };
 
   const revoke = async (s: ShareSummary) => {
@@ -59,6 +60,7 @@ export const SharedLinksSection: React.FC = () => {
 
   return (
     <div>
+      <ShareLinkDialog url={shown ? shareUrl(shown.token) : null} title={shown ? label(shown) : ''} onClose={() => setShown(null)} />
       <div className="flex justify-end mb-3">
         <Button variant="outline" size="sm" onClick={() => navigate('/partages/diner')}><Plus className="w-3.5 h-3.5" />Nouvelle carte de dîner</Button>
       </div>

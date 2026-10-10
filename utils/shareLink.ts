@@ -20,3 +20,14 @@ export const shareLink = async (url: string, title: string): Promise<ShareOutcom
     return 'failed';
   }
 };
+
+// Bouton « Copier » : copie directe, sans feuille de partage (sur téléphone,
+// la feuille proposerait autre chose qu'une copie).
+export const copyLink = async (url: string): Promise<boolean> => {
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
+};

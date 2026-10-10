@@ -68,6 +68,10 @@ describe('filterShareCandidates', () => {
     expect(filterShareCandidates(wines, '2018').map((x) => x.id)).toEqual(['1']);
     expect(filterShareCandidates(wines, 'zzz')).toEqual([]);
   });
+  it('exclut les vins déjà dans la carte', () => {
+    expect(filterShareCandidates(wines, '', 8, ['2', '3']).map((x) => x.id)).toEqual(['4', '1']);
+    expect(filterShareCandidates(wines, 'sancerre', 8, ['2'])).toEqual([]);
+  });
 });
 
 describe('serverMessage', () => {

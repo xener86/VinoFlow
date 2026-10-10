@@ -160,7 +160,9 @@ export const PublicShare: React.FC = () => {
         {isDinner && data.date && <div className="text-stone-500 text-sm mt-1 first-letter:uppercase">{formatLongDate(data.date)}</div>}
       </header>
       {data.wines.length === 0 ? (
-        <Message title="Cette carte est vide" hint="Les vins qu’elle contenait ne sont plus dans la cave." />
+        isDinner
+          ? <Message title="Cette carte est vide" hint="Les vins qu’elle contenait ne sont plus dans la cave." />
+          : <Message title="Ce vin n’est plus dans la cave" hint="La fiche partagée a été supprimée." />
       ) : (
         <div className="space-y-4">
           {data.wines.map((wine) => <WineBlock key={wine.position} wine={wine} numbered={isDinner} />)}

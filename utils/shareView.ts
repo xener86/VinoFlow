@@ -42,13 +42,14 @@ export const moveItem = <T>(items: T[], from: number, to: number): T[] => {
 const normalize = (text: string): string =>
   text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[-\u2010\u2011\u2013\u2014'\u2019]+/g, ' ').replace(/\s+/g, ' ').trim();
 
-// « Ajouter un vin » : en stock d'abord, filtre sans accents, 8 résultats.
-export const filterShareCandidates = (wines: CellarWine[], query: string, limit = 8): CellarWine[] => {
+// « Ajouter un vin » : en stock d'abord, filtre sans accents, 8 résultats,
+// sans les vins déjà dans la carte (excludeIds).
+export const filterShareCandidates = (wines: CellarWine[], query: string, limit = 8, excludeIds: string[] = []): CellarWine[] => {
   const q = normalize(query.trim());
-  const matches = q
-    ? wines.filter((w) => [w.name, w.cuvee, w.producer, w.appellation, w.vintage?.toString()]
-        .some((field) => field && normalize(String(field)).includes(q)))
-    : wines;
+  const excluded = new Set(excludeIds);
+  const matches = wines.filter((w) => !excluded.has(w.id) && (!q
+    || [w.name, w.cuvee, w.producer, w.appellation, w.vintage?.toString()]
+      .some((field) => field && normalize(String(field)).includes(q))));
   return [...matches]
     .sort((a, b) => Number((b.inventoryCount || 0) > 0) - Number((a.inventoryCount || 0) > 0) || a.name.localeCompare(b.name, 'fr'))
     .slice(0, limit);

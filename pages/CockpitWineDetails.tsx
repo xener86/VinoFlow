@@ -16,6 +16,7 @@ import {
 } from '../services/storageService';
 import { shareUrl, serverMessage } from '../utils/shareView';
 import { shareLink } from '../utils/shareLink';
+import { ShareLinkDialog } from '../components/cockpit/ShareLinkDialog';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
@@ -62,6 +63,8 @@ export const CockpitWineDetails: React.FC = () => {
   const wineNotes = useMemo(() => allTastingNotes.filter(n => n.wineId === id), [allTastingNotes, id]);
 
   const [history, setHistory] = useState<JournalEntry[]>([]);
+  const [sharing, setSharing] = useState(false);
+  const [shareFallback, setShareFallback] = useState<string | null>(null);
   useEffect(() => {
     if (id) getWineHistory(id).then(setHistory).catch(() => setHistory([]));
   }, [id]);
@@ -98,14 +101,19 @@ export const CockpitWineDetails: React.FC = () => {
 
   // Lien public de la fiche : créé la première fois, repris ensuite (même jeton).
   const handleShare = async () => {
-    if (!wine) return;
+    if (!wine || sharing) return;
+    setSharing(true);
     try {
       const share = await createWineShare(wine.id);
-      const outcome = await shareLink(shareUrl(share.token), `${wine.name}${wine.vintage ? ` ${wine.vintage}` : ''}`);
+      const url = shareUrl(share.token);
+      const outcome = await shareLink(url, `${wine.name}${wine.vintage ? ` ${wine.vintage}` : ''}`);
       if (outcome === 'copied') toast.success('Lien copié', { label: 'Gérer', onClick: () => navigate('/settings') });
-      else if (outcome === 'failed') toast.error('Impossible de partager le lien ; copie-le depuis Réglages → Liens partagés.');
+      // Feuille refusée (Safari après le délai réseau) et presse-papiers indisponible : on montre le lien.
+      else if (outcome === 'failed') setShareFallback(url);
     } catch (e) {
       toast.error(serverMessage(e, 'La création du lien a échoué.'));
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -145,6 +153,7 @@ export const CockpitWineDetails: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
+      <ShareLinkDialog url={shareFallback} title={`${wine.name}${wine.vintage ? ` ${wine.vintage}` : ''}`} onClose={() => setShareFallback(null)} />
       {/* Header with back link */}
       <Link to="/cave" className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-wine-700 mb-4">
         <ArrowLeft className="w-4 h-4" /> Retour à la cave
@@ -229,7 +238,7 @@ export const CockpitWineDetails: React.FC = () => {
           <Link to={`/tasting/${wine.id}`} className="col-span-2 sm:col-span-1">
             <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
           </Link>
-          <Button variant="outline" onClick={handleShare} className="col-span-1" title="Lien public vers cette fiche"><Share2 className="w-3.5 h-3.5" />Partager</Button>
+          <Button variant="outline" onClick={handleShare} disabled={sharing} className="col-span-1" title="Lien public vers cette fiche"><Share2 className="w-3.5 h-3.5" />Partager</Button>
           <Link to={`/partages/diner?wine=${wine.id}`} className="col-span-1" title="Ajouter à une carte de dîner">
             <Button variant="outline" className="w-full"><UtensilsCrossed className="w-3.5 h-3.5" />Carte de dîner</Button>
           </Link>
