@@ -6,14 +6,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Edit, Loader2, Plus, Heart, Sparkles, ChefHat, MapPin,
-  Wine as WineIcon, Trash2, GlassWater,
+  Wine as WineIcon, Trash2, GlassWater, Share2, UtensilsCrossed,
 } from 'lucide-react';
 import { useWines } from '../hooks/useWines';
 import { useTastingNotes } from '../hooks/useTastingNotes';
 import { useRacks } from '../hooks/useRacks';
 import {
-  toggleFavorite, addBottles, consumeSpecificBottle, getWineHistory,
+  toggleFavorite, addBottles, consumeSpecificBottle, getWineHistory, createWineShare,
 } from '../services/storageService';
+import { shareUrl, serverMessage } from '../utils/shareView';
+import { shareLink } from '../utils/shareLink';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
@@ -92,6 +94,19 @@ export const CockpitWineDetails: React.FC = () => {
       toast.error('La bouteille n’a pas pu être retirée du stock.');
     }
     refreshWines();
+  };
+
+  // Lien public de la fiche : créé la première fois, repris ensuite (même jeton).
+  const handleShare = async () => {
+    if (!wine) return;
+    try {
+      const share = await createWineShare(wine.id);
+      const outcome = await shareLink(shareUrl(share.token), `${wine.name}${wine.vintage ? ` ${wine.vintage}` : ''}`);
+      if (outcome === 'copied') toast.success('Lien copié', { label: 'Gérer', onClick: () => navigate('/settings') });
+      else if (outcome === 'failed') toast.error('Impossible de partager le lien ; copie-le depuis Réglages → Liens partagés.');
+    } catch (e) {
+      toast.error(serverMessage(e, 'La création du lien a échoué.'));
+    }
   };
 
   if (loadingWines) {
@@ -213,6 +228,10 @@ export const CockpitWineDetails: React.FC = () => {
           )}
           <Link to={`/tasting/${wine.id}`} className="col-span-2 sm:col-span-1">
             <Button variant="outline" className="w-full"><WineIcon className="w-3.5 h-3.5" />Noter une dégustation</Button>
+          </Link>
+          <Button variant="outline" onClick={handleShare} className="col-span-1" title="Lien public vers cette fiche"><Share2 className="w-3.5 h-3.5" />Partager</Button>
+          <Link to={`/partages/diner?wine=${wine.id}`} className="col-span-1" title="Ajouter à une carte de dîner">
+            <Button variant="outline" className="w-full"><UtensilsCrossed className="w-3.5 h-3.5" />Carte de dîner</Button>
           </Link>
         </div>
       </Card>
