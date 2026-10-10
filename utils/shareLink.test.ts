@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { shareOrCopy } from './shareLink';
+import { shareOrCopy, copyLink } from './shareLink';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -26,5 +26,23 @@ describe('shareOrCopy', () => {
   it('ni partage ni presse-papiers', async () => {
     vi.stubGlobal('navigator', {});
     expect(await shareOrCopy({ title: 'D', url: 'u' })).toBe('failed');
+  });
+});
+
+describe('copyLink', () => {
+  it('copie directement, sans feuille de partage', async () => {
+    const share = vi.fn(async (_data: ShareData) => {});
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { share, clipboard: { writeText } });
+    expect(await copyLink('u')).toBe(true);
+    expect(writeText).toHaveBeenCalledWith('u');
+    expect(share).not.toHaveBeenCalled();
+  });
+
+  it('presse-papiers absent ou refusé', async () => {
+    vi.stubGlobal('navigator', {});
+    expect(await copyLink('u')).toBe(false);
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(async () => { throw new Error('refusé'); }) } });
+    expect(await copyLink('u')).toBe(false);
   });
 });

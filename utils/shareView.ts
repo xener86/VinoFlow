@@ -36,12 +36,14 @@ export const moveItem = <T>(list: T[], index: number, delta: number): T[] => {
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-/** Vins de la cave correspondant à la recherche (tous les mots), en stock d'abord. */
-export const searchWines = (wines: CellarWine[], query: string, limit = 8): CellarWine[] => {
+/** Vins de la cave correspondant à la recherche (tous les mots), en stock d'abord, sans ceux déjà dans la carte. */
+export const searchWines = (wines: CellarWine[], query: string, limit = 8, excludeIds: string[] = []): CellarWine[] => {
   const words = norm(query).split(/[^a-z0-9]+/).filter(Boolean);
   if (words.length === 0) return [];
+  const excluded = new Set(excludeIds);
   return wines
     .filter(w => {
+      if (excluded.has(w.id)) return false;
       const hay = norm([w.name, w.cuvee, w.producer, w.appellation, w.vintage].filter(Boolean).join(' '));
       return words.every(word => hay.includes(word));
     })

@@ -16,6 +16,7 @@ import {
 } from '../services/storageService';
 import { shareOrCopy } from '../utils/shareLink';
 import { absoluteUrl } from '../utils/shareView';
+import { ShareLinkDialog } from '../components/cockpit/ShareLinkDialog';
 import { getPeakWindow, getPeakBadgeStyles } from '../utils/peakWindow';
 import { FlavorRadar } from '../components/FlavorRadar';
 import { AromaConfidenceBadge } from '../components/AromaConfidenceBadge';
@@ -73,6 +74,7 @@ export const CockpitWineDetails: React.FC = () => {
   };
 
   const [sharing, setSharing] = useState(false);
+  const [shareFallback, setShareFallback] = useState<string | null>(null);
   const handleShare = async () => {
     if (!wine) return;
     setSharing(true);
@@ -81,7 +83,8 @@ export const CockpitWineDetails: React.FC = () => {
       const url = absoluteUrl(link.url);
       const result = await shareOrCopy({ title: [wine.name, wine.vintage].filter(Boolean).join(' '), url });
       if (result === 'copied') toast.success('Lien copié');
-      else if (result === 'failed') toast.info(`Copie impossible : ${url}`);
+      // Feuille refusée (Safari après le délai réseau) et presse-papiers indisponible : on montre le lien.
+      else if (result === 'failed') setShareFallback(url);
     } catch (e) {
       toast.error(`Partage impossible : ${e instanceof Error ? e.message : 'erreur inconnue'}`);
     } finally {
@@ -149,6 +152,7 @@ export const CockpitWineDetails: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
+      <ShareLinkDialog url={shareFallback} title={[wine.name, wine.vintage].filter(Boolean).join(' ')} onClose={() => setShareFallback(null)} />
       {/* Header with back link */}
       <Link to="/cave" className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-wine-700 mb-4">
         <ArrowLeft className="w-4 h-4" /> Retour à la cave

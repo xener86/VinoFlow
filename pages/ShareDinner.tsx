@@ -9,6 +9,7 @@ import { absoluteUrl, moveItem, searchWines } from '../utils/shareView';
 import { shareOrCopy } from '../utils/shareLink';
 import { Button, Card, Input, MonoLabel } from '../components/cockpit/primitives';
 import { useToast } from '../components/cockpit/feedback';
+import { ShareLinkDialog } from '../components/cockpit/ShareLinkDialog';
 
 interface Item { wineId: string; dish: string; label: string }
 
@@ -24,6 +25,7 @@ export const ShareDinner: React.FC = () => {
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(!id);
+  const [shareFallback, setShareFallback] = useState<string | null>(null);
 
   const label = (w: { name: string | null; producer?: string | null; vintage?: number | null }) =>
     [w.name, w.producer, w.vintage].filter(Boolean).join(' · ');
@@ -37,7 +39,8 @@ export const ShareDinner: React.FC = () => {
         setDate(d.dinnerDate || '');
         setItems(d.items.map(i => ({ wineId: i.wineId, dish: i.dish || '', label: label(i) })));
       })
-      .catch(e => toast.error(`Carte introuvable : ${e instanceof Error ? e.message : ''}`))
+      // Supprimée, identifiant fantaisiste ou lien de fiche : rien à composer ici.
+      .catch(() => { toast.error('Carte introuvable.'); navigate('/settings', { replace: true }); })
       .finally(() => setLoaded(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -51,7 +54,7 @@ export const ShareDinner: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wines, params, id]);
 
-  const results = useMemo(() => searchWines(wines, query), [wines, query]);
+  const results = useMemo(() => searchWines(wines, query, 8, items.map(i => i.wineId)), [wines, query, items]);
 
   const add = (w: (typeof wines)[number]) => {
     setItems(list => [...list, { wineId: w.id, dish: '', label: label(w) }]);
@@ -66,7 +69,7 @@ export const ShareDinner: React.FC = () => {
       const url = absoluteUrl(link.url);
       const result = await shareOrCopy({ title: body.title, url });
       if (result === 'copied') toast.success('Carte enregistrée, lien copié');
-      else if (result === 'failed') toast.info(`Carte enregistrée : ${url}`);
+      else if (result === 'failed') setShareFallback(url);
       else toast.success('Carte enregistrée');
       if (!id) navigate(`/partages/diner/${link.id}`, { replace: true });
     } catch (e) {
@@ -82,6 +85,7 @@ export const ShareDinner: React.FC = () => {
 
   return (
     <div className="max-w-[720px] mx-auto pb-28 md:pb-0">
+      <ShareLinkDialog url={shareFallback} title={title.trim() || 'Carte des vins'} onClose={() => setShareFallback(null)} />
       <div className="mb-5">
         <MonoLabel>VINOFLOW · PARTAGE</MonoLabel>
         <h1 className="text-2xl text-stone-900 font-medium leading-tight mt-1">{id ? 'Modifier la carte' : 'Carte des vins d’un dîner'}</h1>
