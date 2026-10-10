@@ -6,7 +6,7 @@
 
 **Architecture:** Côté serveur, une table `shares` (+ `share_items`) et un jeton 256 bits ; un routeur authentifié (`routes/shares.js`) pour créer / lister / modifier / révoquer, et une **seule** route publique en lecture seule (`routes/publicShares.js`, montée avant `authenticate`, limiteur dédié par IP) dont la réponse est construite par une fonction pure à liste blanche (`shares/publicView.js`). Côté front, une page publique autonome `/p/:token` hors `ProtectedRoute`, un compositeur de carte (`/partages/diner`), des boutons sur la fiche vin et une section « Liens partagés » dans Réglages.
 
-**Tech Stack:** Express 4 ESM + Postgres 16 (migration 013), Vitest + supertest ; React 19 + react-router + Tailwind (Cockpit), Vitest (`utils/`).
+**Tech Stack:** Express 4 ESM + Postgres 16 (migration 014), Vitest + supertest ; React 19 + react-router + Tailwind (Cockpit), Vitest (`utils/`).
 
 **Spec:** `docs/superpowers/specs/2026-10-07-partage-public-design.md`
 
