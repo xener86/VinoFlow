@@ -20,3 +20,15 @@ export const shareOrCopy = async ({ title, url }: { title: string; url: string }
     return 'failed';
   }
 };
+
+/** Bouton « Copier » : copie directe, sans feuille de partage (qui, sur téléphone, proposerait autre chose qu'une copie). */
+export const copyLink = async (url: string): Promise<boolean> => {
+  const nav = (globalThis as { navigator?: Navigator }).navigator;
+  try {
+    if (!nav?.clipboard?.writeText) return false;
+    await nav.clipboard.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
+};

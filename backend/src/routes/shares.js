@@ -5,7 +5,8 @@ import { validateDinner, ShareError, newToken, isUuid } from '../shares/validate
 const router = Router();
 
 // ========== PARTAGES (gestion, comptes du foyer) ==========
-const ID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+// Identifiant mal formé : même 404 JSON qu'un lien inconnu (pas de 404 HTML d'Express).
+router.param('id', (req, res, next, id) => (isUuid(id) ? next() : res.status(404).json({ error: 'Lien introuvable' })));
 const link = (row) => ({ id: row.id, token: row.token, kind: row.kind, url: `/p/${row.token}` });
 
 const fail = (res, error, label) => {
@@ -45,7 +46,7 @@ router.get('/shares', async (req, res) => {
   }
 });
 
-router.get(`/shares/:id(${ID})`, async (req, res) => {
+router.get('/shares/:id', async (req, res) => {
   try {
     const { rows: [s] } = await pool.query(
       `SELECT id, token, kind, title, to_char(dinner_date, 'YYYY-MM-DD') AS dinner_date, revoked_at FROM shares WHERE id = $1`,
@@ -108,7 +109,7 @@ router.post('/shares', async (req, res) => {
   }
 });
 
-router.put(`/shares/:id(${ID})`, async (req, res) => {
+router.put('/shares/:id', async (req, res) => {
   try {
     const dinner = validateDinner(req.body);
     const row = await withTransaction(async (db) => {
@@ -127,7 +128,7 @@ router.put(`/shares/:id(${ID})`, async (req, res) => {
   }
 });
 
-router.post(`/shares/:id(${ID})/revoke`, async (req, res) => {
+router.post('/shares/:id/revoke', async (req, res) => {
   try {
     const { rows: [share] } = await pool.query(
       'UPDATE shares SET revoked_at = COALESCE(revoked_at, now()) WHERE id = $1 RETURNING id, token, kind, revoked_at',

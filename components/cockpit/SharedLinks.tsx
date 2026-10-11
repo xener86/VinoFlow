@@ -5,7 +5,8 @@ import { Copy, ListPlus, Loader2, Pencil, Wine as WineIcon, Utensils } from 'luc
 import { listShares, revokeShare } from '../../services/storageService';
 import type { ShareSummary } from '../../types';
 import { absoluteUrl, frenchDate } from '../../utils/shareView';
-import { shareOrCopy } from '../../utils/shareLink';
+import { copyLink } from '../../utils/shareLink';
+import { ShareLinkDialog } from './ShareLinkDialog';
 import { Badge, Button } from './primitives';
 import { useConfirm, useToast } from './feedback';
 
@@ -15,17 +16,17 @@ export const SharedLinks: React.FC = () => {
   const toast = useToast();
   const confirmAction = useConfirm();
   const [shares, setShares] = useState<ShareSummary[] | null>(null);
+  const [shown, setShown] = useState<ShareSummary | null>(null);
 
   const load = useCallback(() => {
     listShares().then(setShares).catch(() => setShares([]));
   }, []);
   useEffect(load, [load]);
 
+  // Copie directe (pas de feuille de partage) ; sinon le lien s'affiche, sélectionnable.
   const copy = async (s: ShareSummary) => {
-    const url = absoluteUrl(`/p/${s.token}`);
-    const result = await shareOrCopy({ title: titleOf(s), url });
-    if (result === 'copied') toast.success('Lien copié');
-    else if (result === 'failed') toast.info(url);
+    if (await copyLink(absoluteUrl(`/p/${s.token}`))) toast.success('Lien copié');
+    else setShown(s);
   };
 
   const revoke = async (s: ShareSummary) => {
@@ -48,6 +49,7 @@ export const SharedLinks: React.FC = () => {
 
   return (
     <div className="space-y-3">
+      <ShareLinkDialog url={shown ? absoluteUrl(`/p/${shown.token}`) : null} title={shown ? titleOf(shown) : ''} onClose={() => setShown(null)} />
       <Link to="/partages/diner"><Button variant="outline"><ListPlus className="w-4 h-4" />Nouvelle carte de dîner</Button></Link>
       {shares.length === 0 ? (
         <p className="text-sm text-stone-500">Aucun lien partagé. Partage une fiche depuis la page d’un vin, ou compose une carte de dîner.</p>

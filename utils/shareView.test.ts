@@ -29,4 +29,11 @@ describe('shareView', () => {
     expect(searchWines(wines, '')).toEqual([]);
     expect(searchWines(Array.from({ length: 12 }, (_, i) => w(`${i}`, 'Vin', 1)), 'vin')).toHaveLength(8);
   });
+
+  it('exclut les vins déjà dans la carte', () => {
+    const w = (id: string, name: string) => ({ id, name, producer: '', cuvee: '', appellation: '', vintage: 2018, inventoryCount: 1 }) as unknown as CellarWine;
+    const wines = [w('a', 'Chablis'), w('b', 'Chablis Montmains')];
+    expect(searchWines(wines, 'chablis', 8, ['a']).map((x) => x.id)).toEqual(['b']);
+    expect(searchWines(wines, 'chablis', 8, ['a', 'b'])).toEqual([]);
+  });
 });

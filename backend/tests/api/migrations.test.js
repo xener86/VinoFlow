@@ -32,6 +32,11 @@ describe.skipIf(!hasDb)('runner de migrations', () => {
     expect(rows.map((r) => r.column_name)).toEqual(['valuation_next_check_at', 'valuation_status']);
   });
 
+  it('015 : un seul lien actif par fiche vin (index unique partiel)', async () => {
+    const { rows } = await pool.query("SELECT indexdef FROM pg_indexes WHERE indexname = 'shares_active_wine_idx'");
+    expect(rows[0]?.indexdef).toMatch(/UNIQUE INDEX .* WHERE .*kind = 'WINE'.* AND .*revoked_at IS NULL/);
+  });
+
   it('relancé, il n’applique rien', async () => {
     const report = await runMigrations(pool, { log: () => {} });
     expect(report).toMatchObject({ baseline: false, detected: [], applied: [] });

@@ -30,6 +30,18 @@ describe.skipIf(!hasDb)('API partages', () => {
     expect((await api().post('/api/shares').send({ kind: 'WINE', wineId: a.id })).status).toBe(401);
   });
 
+  it('identifiant mal formé : 404 JSON sur lecture, modification et révocation', async () => {
+    for (const res of [await client.get('/api/shares/abc'), await client.put('/api/shares/abc', { title: 'x', items: [{ wineId: a.id }] }), await client.post('/api/shares/abc/revoke', {})]) {
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ error: 'Lien introuvable' });
+    }
+  });
+
+  it('index unique : une seconde ligne active pour la même fiche est refusée par la base', async () => {
+    await client.post('/api/shares', { kind: 'WINE', wineId: a.id });
+    await expect(pool.query(`INSERT INTO shares (token, kind, wine_id) VALUES ('x', 'WINE', $1)`, [a.id])).rejects.toMatchObject({ code: '23505' });
+  });
+
   it('fiche : créée, puis reprise ; un seul lien même en double clic', async () => {
     const [r1, r2] = await Promise.all([
       client.post('/api/shares', { kind: 'WINE', wineId: a.id }),
